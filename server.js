@@ -7,6 +7,19 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Define the Typeform Webhook route
+app.post('/api/typeform-webhook', (req, res) => {
+  try {
+    const formData = req.body; // Typeform sends data in the request body
+    console.log('Received Typeform data:', formData);
+
+    // Send a success response back to Typeform
+    res.status(200).send('Webhook received successfully!');
+  } catch (error) {
+    console.error('Error processing webhook:', error);
+    res.status(500).send('Error processing webhook.');
+  }
+});
 // Set the path to your Swiss Ephemeris files
 swisseph.swe_set_ephe_path(__dirname + '/ephe');
 

@@ -11,8 +11,10 @@
   "description": "",
   "dependencies": {
     "cors": "^2.8.5",
+    "dotenv": "^17.2.1",
     "express": "^5.1.0",
     "luxon": "^3.6.1",
+    "node-fetch": "^3.3.2",
     "swisseph": "^0.5.17"
   }
 }

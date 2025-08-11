@@ -1,4 +1,31 @@
-# FateFlix Stable Baseline – 2025-08-11
+# 📌 FateFlix Baseline – Stable Version
+
+This file logs the known **stable** commits for both the backend and frontend, so we can always roll back if needed.
+
+---
+
+## Backend  
+**Repo:** https://github.com/sepic222/astro-backend-clean  
+**Stable Commit:** `bc22d5b`  
+**Description:** Stable backend with working birth chart, geocode, and test endpoints.  
+**Date:** 2025-08-11  
+
+---
+
+## Frontend  
+**Repo:** https://github.com/sepic222/astro-frontend-clean  
+**Stable Commit:** `79f21f8`  
+**Description:** Stable frontend with API helper, geocode stability, and working local+deployed config.  
+**Date:** 2025-08-11  
+
+---
+
+## Notes  
+- Backend runs locally on **port 3001**.  
+- Frontend runs locally on **port 5173** (Vite may choose 5174 if 5173 is taken).  
+- `.env.local` in frontend must contain:  
+  ```env
+  VITE_API_BASE="http://localhost:3001"# FateFlix Stable Baseline – 2025-08-11
 
 ## 📌 Frontend
 **Repo:** astro-frontend-clean  

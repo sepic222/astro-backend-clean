@@ -8,16 +8,105 @@ const swisseph = require('swisseph');
 
 require('dotenv').config();
 const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
 
+// --- best-effort DB save helper (non-fatal on error)
+async function saveChartToDB(input, output) {
+  try {
+    // Shape data exactly like the Prisma schema
+    const data = {
+      // who
+      name: input?.name ?? null,
+      userEmail: input?.userEmail ?? input?.email ?? null,
+      // birth input (note: schema uses birthDate/birthTime)
+      city: input?.city ?? null,
+      country: input?.country ?? null,
+      birthDate: input?.birthDate ?? input?.date ?? null,
+      birthTime: input?.birthTime ?? input?.time ?? null,
+      latitude: Number(input?.latitude),
+      longitude: Number(input?.longitude),
+      timeAccuracy: input?.timeAccuracy ?? null,
 
+      // core numbers (from the computed payload)
+      jd: Number(output?.jd),
+      ascendant: Number(output?.ascendant),
+      mc: Number(output?.mc),
 
+      // quick signs (derive if present in output; otherwise null)
+      risingSign: output?.houseSigns?.[0] ?? null,   // 1st house sign
+      mcSign: output?.houseSigns?.[9] ?? null,       // 10th house sign
+
+      // big 5
+      sunSign:  output?.planets?.sun?.sign   ?? null,
+      sunHouse: output?.planets?.sun?.house  ?? null,
+      moonSign: output?.planets?.moon?.sign  ?? null,
+      moonHouse:output?.planets?.moon?.house ?? null,
+      marsSign: output?.planets?.mars?.sign  ?? null,
+      marsHouse:output?.planets?.mars?.house ?? null,
+      venusSign:output?.planets?.venus?.sign ?? null,
+      venusHouse:output?.planets?.venus?.house ?? null,
+
+      // full payload JSON goes into rawChart (schema field)
+      rawChart: output ?? null,
+    };
+
+    // Important: do NOT include unknown fields like `method` or `payload`
+    const rec = await prisma.chart.create({
+      data,
+      select: { id: true },
+    });
+
+    return rec.id;
+  } catch (e) {
+    console.error('🟥 DB save failed (non-fatal):', e);
+    return null;
+  }
+}
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+// ===== Save survey submission (MVP) =====
+app.post('/api/survey/submit', async (req, res) => {
+  try {
+    const { email, chartId, answers, version } = req.body || {};
 
-// Health/root
-app.get('/', (_req, res) => res.send('OK'));
+    if (!answers || typeof answers !== 'object') {
+      return res.status(400).json({ ok: false, error: 'answers (object) is required' });
+    }
+
+    const submission = await prisma.surveySubmission.create({
+      data: {
+        email: email ?? null,
+        chartId: chartId ?? null,
+        answers,                      // JSON blob (your whole survey payload)
+        version: version ?? 'v1'
+      }
+    });
+
+    return res.json({ ok: true, id: submission.id });
+  } catch (e) {
+    console.error('🟥 /api/survey/submit error:', e);
+    return res.status(500).json({ ok: false, error: 'Failed to save survey' });
+  }
+});
+
+app.get('/', (_req, res) => res.send('OK'))
+// Health & debug routes
+app.get('/health', (_req, res) => {
+  res.json({ ok: true, status: 'healthy' });
+});
+
+app.get('/_whoami', (_req, res) => {
+  res.json({
+    cwd: process.cwd(),
+    __dirname,
+    routesCount:
+      (app._router && app._router.stack && app._router.stack.length) || 0
+  });
+});
+
 
 // ---- Swiss Ephemeris setup ----
 swisseph.swe_set_ephe_path(__dirname + '/ephe');
@@ -82,6 +171,7 @@ function houseOfLongitude(lon, houseCusps) {
   }
   return 12; // fallback
 }
+
 // ------------- MAIN CHART ENDPOINT -------------
 app.post('/api/birth-chart-swisseph', async (req, res) => {
   try {
@@ -178,7 +268,8 @@ app.post('/api/birth-chart-swisseph', async (req, res) => {
       data.house = house;
     }
 
-    return res.json({
+    // build the response payload first
+    const payload = {
       success: true,
       method: 'swisseph',
       jd,
@@ -189,14 +280,34 @@ app.post('/api/birth-chart-swisseph', async (req, res) => {
       houseRulers,           // kept for compatibility
       planets,               // each has longitude, sign, house
       planetsInHouses        // compatibility
-    });
+    };
+
+    // try to persist (non-fatal if it fails)
+    const savedChartId = await saveChartToDB(
+      {
+        name: req.body?.name ?? null,
+        userEmail: req.body?.email ?? null,  // <<< NEW
+        city: req.body?.city ?? null,
+        country: req.body?.country ?? null,
+        timeAccuracy: req.body?.timeAccuracy ?? null,
+        date,
+        time,
+        latitude,
+        longitude
+      },
+      payload
+    );// output
+
+    // include the id (may be null if save failed)
+    payload.savedChartId = savedChartId;
+
+    // return final payload
+    return res.json(payload);
   } catch (error) {
-    console.error('Swiss Ephemeris Calculation Error:', error);
+    console.error('Error in /api/birth-chart-swisseph:', error);
     return res.status(500).json({ success: false, error: error.message || String(error) });
   }
-});
-// ===== House rulers & planets-in-houses (compact endpoint) =====
-// ===== House rulers & planets-in-houses (compact endpoint) =====
+});// ===== House rulers & planets-in-houses (compact endpoint) =====
 app.post('/api/chart-houses', async (req, res) => {
   try {
     console.log('✅ /api/chart-houses route hit');
@@ -295,6 +406,41 @@ app.post('/api/chart-houses', async (req, res) => {
     return res.status(500).json({ success: false, error: error.message || String(error) });
   }
 });
+// === Save survey response ===
+app.post('/api/survey-response', async (req, res) => {
+  try {
+    const { surveyId, chartId, email, answers } = req.body;
+
+    if (!surveyId || !answers || !Array.isArray(answers)) {
+      return res.status(400).json({ success: false, error: 'Missing surveyId or answers[]' });
+    }
+
+    // Create response
+    const response = await prisma.response.create({
+      data: {
+        surveyId,
+        chartId: chartId ?? null,
+        email: email ?? null,
+        answers: {
+          create: answers.map((a) => ({
+            questionId: a.questionId,
+            freeText: a.freeText ?? null,
+            numberValue: a.numberValue ?? null,
+            dateValue: a.dateValue ?? null,
+            selectedOptionId: a.selectedOptionId ?? null,
+          })),
+        },
+      },
+      include: { answers: true },
+    });
+
+    res.json({ success: true, response });
+  } catch (error) {
+    console.error('❌ Error saving survey response:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // -------- Test endpoint ----------
 app.get('/api/test', (_req, res) => {
   res.json({ message: '🎯 Swiss Ephemeris Astrology Backend is working!' });

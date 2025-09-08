@@ -1,0 +1,150 @@
+// ---------- Prisma setup ----------
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+// =======================================================
+// Models: we KEEP all astro fields in Chart
+// and ADD the survey models (Survey, Question, Option, Response, Answer)
+// =======================================================
+
+model Chart {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  // contact / meta
+  email String? // optional
+  name  String? // optional
+
+  // legacy columns we want to KEEP (mapped to existing DB columns)
+  birthDate  String? @map("birthDate")
+  birthTime  String? @map("birthTime")
+  risingSign String? @map("risingSign")
+  userEmail  String? @map("userEmail")
+
+  // input (as strings, how they were sent from the frontend)
+  city         String?
+  country      String?
+  timeAccuracy String?
+
+  date String? // kept optional to avoid data loss on push
+  time String? // kept optional
+
+  latitude  Float
+  longitude Float
+
+  // computed / technical
+  method String? // e.g. "swisseph"
+  jd     Float?
+
+  // angles
+  ascendant Float?
+  mc        Float?
+
+  // “Big 5” (sign + house), all optional to preserve existing data
+  sunSign    String?
+  sunHouse   Int?
+  moonSign   String?
+  moonHouse  Int?
+  marsSign   String?
+  marsHouse  Int?
+  venusSign  String?
+  venusHouse Int?
+  mcSign     String?
+
+  // raw payloads (optional JSON blobs)
+  rawChart        Json?
+  planets         Json?
+  houseRulers     Json?
+  planetsInHouses Json?
+
+  // link from survey responses (optional reverse relation)
+  responses Response[]
+}
+
+// A survey definition (e.g., “Section II”, “Section III”…)
+model Survey {
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+  title       String
+  description String?
+  order       Int      @default(0)
+
+  questions Question[]
+  responses Response[]
+}
+
+// A question in a survey
+model Question {
+  id       String @id @default(cuid())
+  surveyId String
+  survey   Survey @relation(fields: [surveyId], references: [id], onDelete: Cascade)
+
+  order    Int
+  key      String // e.g. "gender", "loveometer"
+  text     String
+  type     String // e.g. "single", "multi", "text"
+  required Boolean @default(false)
+
+  options Option[]
+  answers Answer[]
+}
+
+// An option for choice questions
+model Option {
+  id         String   @id @default(cuid())
+  questionId String
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  order Int
+  value String // e.g. internal value
+  label String // human-readable label
+}
+
+// One respondent’s submission to a survey
+model Response {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  surveyId String
+  survey   Survey @relation(fields: [surveyId], references: [id], onDelete: Cascade)
+
+  // optional link back to a chart we generated earlier
+  chartId String?
+  chart   Chart?  @relation(fields: [chartId], references: [id], onDelete: SetNull)
+
+  email String? // respondent email (if collected at the end)
+
+  answers Answer[]
+}
+
+// The answer to one question in a response
+model Answer {
+  id         String   @id @default(cuid())
+  responseId String
+  response   Response @relation(fields: [responseId], references: [id], onDelete: Cascade)
+
+  questionId String
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  // Store single value or JSON (for multi / structured). Keep as String for MVP.
+  value String?
+}
+
+model SurveySubmission {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  email     String?
+  chartId   String? // link to a chart later if you want
+
+  // the entire survey payload from the frontend
+  answers Json
+
+  // optional: versioning of your survey
+  version String? @default("v1")
+}

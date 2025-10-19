@@ -5,11 +5,17 @@ const express = require('express');
 const cors = require('cors');
 const { DateTime } = require('luxon');
 const swisseph = require('swisseph');
+const { normalizeSurveyPayload } = require('./server/normalizeSurveyPayload');
 
 require('dotenv').config();
+const OpenAI = require('openai');
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
 const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
+
+
 
 // --- best-effort DB save helper (non-fatal on error)
 async function saveChartToDB(input, output) {
@@ -18,7 +24,7 @@ async function saveChartToDB(input, output) {
     const data = {
       // who
       name: input?.name ?? null,
-      userEmail: input?.userEmail ?? input?.email ?? null,
+      userEmail: input?.userEmail ?? input?.userEmail ?? null,
       // birth input (note: schema uses birthDate/birthTime)
       city: input?.city ?? null,
       country: input?.country ?? null,
@@ -34,8 +40,23 @@ async function saveChartToDB(input, output) {
       mc: Number(output?.mc),
 
       // quick signs (derive if present in output; otherwise null)
-      risingSign: output?.houseSigns?.[0] ?? null,   // 1st house sign
-      mcSign: output?.houseSigns?.[9] ?? null,       // 10th house sign
+      risingSign: output?.ascendantSign ?? output?.houseSigns?.[0] ?? null,
+mcSign:     output?.mcSign        ?? output?.houseSigns?.[9] ?? null,
+  // extra angles (use payload.angles if present; otherwise derive/fallback)
+  descendant: Number(
+    output?.angles?.descendantDeg ??
+    output?.descendantDeg ??
+    ((Number(output?.ascendant) + 180) % 360)
+  ),
+  ic: Number(
+    output?.angles?.icDeg ??
+    output?.icDeg ??
+    ((Number(output?.mc) + 180) % 360)
+  ),
+  descendantSign:
+    output?.angles?.descendantSign ?? output?.descendantSign ?? null,
+  icSign:
+    output?.angles?.icSign ?? output?.icSign ?? null,
 
       // big 5
       sunSign:  output?.planets?.sun?.sign   ?? null,
@@ -67,30 +88,6 @@ async function saveChartToDB(input, output) {
 const app = express();
 app.use(cors());
 app.use(express.json());
-// ===== Save survey submission (MVP) =====
-app.post('/api/survey/submit', async (req, res) => {
-  try {
-    const { email, chartId, answers, version } = req.body || {};
-
-    if (!answers || typeof answers !== 'object') {
-      return res.status(400).json({ ok: false, error: 'answers (object) is required' });
-    }
-
-    const submission = await prisma.surveySubmission.create({
-      data: {
-        email: email ?? null,
-        chartId: chartId ?? null,
-        answers,                      // JSON blob (your whole survey payload)
-        version: version ?? 'v1'
-      }
-    });
-
-    return res.json({ ok: true, id: submission.id });
-  } catch (e) {
-    console.error('🟥 /api/survey/submit error:', e);
-    return res.status(500).json({ ok: false, error: 'Failed to save survey' });
-  }
-});
 
 app.get('/', (_req, res) => res.send('OK'))
 // Health & debug routes
@@ -106,7 +103,19 @@ app.get('/_whoami', (_req, res) => {
       (app._router && app._router.stack && app._router.stack.length) || 0
   });
 });
-
+app.get('/api/ai/test', async (req, res) => {
+  try {
+    const r = await openai.responses.create({
+      model: 'gpt-4o-mini',
+      input: 'Write a one-line haiku about movies and stars.',
+    });
+    const text = r.output_text ?? r.content?.[0]?.text ?? '';
+    res.json({ ok: true, text: String(text).trim() });
+  } catch (e) {
+    console.error('OpenAI error:', e);
+    res.status(500).json({ ok: false, error: e?.message ?? 'Unknown error' });
+  }
+});
 
 // ---- Swiss Ephemeris setup ----
 swisseph.swe_set_ephe_path(__dirname + '/ephe');
@@ -268,16 +277,42 @@ app.post('/api/birth-chart-swisseph', async (req, res) => {
       data.house = house;
     }
 
+// ---- Angles & signs (ASC / MC / DSC / IC) ----
+
+// Opposite angles
+const descendantDeg = (ascendant + 180) % 360;
+const icDeg         = (mc + 180) % 360;
+
+// Map degrees → sign
+const zodiacSigns = [
+  "Aries","Taurus","Gemini","Cancer","Leo","Virgo",
+  "Libra","Scorpio","Sagittarius","Capricorn","Aquarius","Pisces"
+];
+const signOf = (deg) => zodiacSigns[Math.floor((((deg % 360) + 360) % 360) / 30)];
+
+// Signs for all four angles
+const ascendantSign  = signOf(ascendant);
+const mcSign         = signOf(mc);
+const descendantSign = signOf(descendantDeg);
+const icSign         = signOf(icDeg);
     // build the response payload first
     const payload = {
       success: true,
       method: 'swisseph',
       jd,
-      ascendant,
-      mc,
+      angles: {
+        ascendantDeg: ascendant,
+        ascendantSign,
+        mcDeg: mc,
+        mcSign,
+        descendantDeg,
+        descendantSign,
+        icDeg,
+        icSign,
+      },
       houses: housesDeg,     // degrees
       houseSigns,            // sign name for each cusp
-      houseRulers,           // kept for compatibility
+      houseRulers,           // kept for compatibility (signs on cusps)
       planets,               // each has longitude, sign, house
       planetsInHouses        // compatibility
     };
@@ -286,7 +321,7 @@ app.post('/api/birth-chart-swisseph', async (req, res) => {
     const savedChartId = await saveChartToDB(
       {
         name: req.body?.name ?? null,
-        userEmail: req.body?.email ?? null,  // <<< NEW
+        userEmail: req.body?.userEmail ?? null,  // <<< NEW
         city: req.body?.city ?? null,
         country: req.body?.country ?? null,
         timeAccuracy: req.body?.timeAccuracy ?? null,
@@ -303,11 +338,16 @@ app.post('/api/birth-chart-swisseph', async (req, res) => {
 
     // return final payload
     return res.json(payload);
-  } catch (error) {
-    console.error('Error in /api/birth-chart-swisseph:', error);
-    return res.status(500).json({ success: false, error: error.message || String(error) });
+  } catch (e) {
+    console.error("💥 submit error:", e);
+    res.status(500).json({
+      ok: false,
+      error: e?.message ?? "Unknown error",
+      stack: e?.stack,
+    });
   }
-});// ===== House rulers & planets-in-houses (compact endpoint) =====
+});
+// ===== House rulers & planets-in-houses (compact endpoint) =====
 app.post('/api/chart-houses', async (req, res) => {
   try {
     console.log('✅ /api/chart-houses route hit');
@@ -366,6 +406,24 @@ app.post('/api/chart-houses', async (req, res) => {
     const ascendant = normalize360(housesRes.ascendant);
     const mc        = normalize360(housesRes.mc);
     const houseCusps = (housesRes.house || []).map(normalize360); // 12 cusp degrees
+    // ---- Angles (ASC/MC/DSC/IC) + signs ----
+    const descendantDeg = (ascendant + 180) % 360;
+    const icDeg         = (mc + 180) % 360;
+    const zodiacSigns = [
+      "Aries","Taurus","Gemini","Cancer","Leo","Virgo",
+      "Libra","Scorpio","Sagittarius","Capricorn","Aquarius","Pisces"
+    ];
+    const signOf = (deg) => zodiacSigns[Math.floor((((deg % 360) + 360) % 360) / 30)];
+    const angles = {
+      ascendantDeg: ascendant,
+      ascendantSign: signOf(ascendant),
+      mcDeg: mc,
+      mcSign: signOf(mc),
+      descendantDeg,
+      descendantSign: signOf(descendantDeg),
+      icDeg,
+      icSign: signOf(icDeg),
+    };
 
     // ---- Signs on cusps & traditional rulers ----
     const houseSigns  = houseCusps.map(signFromLongitude);            // e.g. "Aries"
@@ -394,6 +452,7 @@ app.post('/api/chart-houses', async (req, res) => {
       jd,
       ascendant,
       mc,
+      angles,
       houses: houseCusps,
       houseSigns,
       houseRulers,
@@ -409,7 +468,7 @@ app.post('/api/chart-houses', async (req, res) => {
 // === Save survey response ===
 app.post('/api/survey-response', async (req, res) => {
   try {
-    const { surveyId, chartId, email, answers } = req.body;
+    const { surveyId, chartId, userEmail, answers } = req.body;
 
     if (!surveyId || !answers || !Array.isArray(answers)) {
       return res.status(400).json({ success: false, error: 'Missing surveyId or answers[]' });
@@ -420,7 +479,7 @@ app.post('/api/survey-response', async (req, res) => {
       data: {
         surveyId,
         chartId: chartId ?? null,
-        email: email ?? null,
+        userEmail: userEmail ?? null,
         answers: {
           create: answers.map((a) => ({
             questionId: a.questionId,
@@ -449,7 +508,7 @@ app.get('/api/test', (_req, res) => {
 // -------- Geocoding --------------
 app.get('/api/geocode', async (req, res) => {
   try {
-    const { city, country } = req.query || {};
+    const { city, country, userEmail } = req.query || {};
     if (!city || !country) {
       return res.status(400).json({ error: 'City and country are required.' });
     }
@@ -468,7 +527,7 @@ app.get('/api/geocode', async (req, res) => {
     }
 
     const { lat, lng } = data.results[0].geometry;
-    return res.json({ latitude: lat, longitude: lng });
+    return res.json({ latitude: lat, longitude: lng, userEmail});
   } catch (err) {
     console.error('❌ Geocoding backend error:', err);
     return res.status(500).json({ error: 'Failed to geocode location.' });
@@ -504,8 +563,89 @@ app.get('/__routes', (_req, res) => {
 });
 
 // -------- Start server -----------
-// -------- Start server -----------
 const PORT = 3001;
+// POST /api/survey/submit
+// Body: { userEmail: string, chartId?: string, answers: [{ questionKey: string, optionValues?: string[], answerText?: string }] }
+app.post("/api/survey/submit", async (req, res) => {
+  try {
+console.log("submit route v2 hit", new Date().toISOString());
+console.log("submit v2 body:", req.body);
+
+    // 🆕 Convert legacy { survey: {...} } payloads into normalized form
+    // 🆕 Convert legacy { survey: {...} } payloads into normalized form
+const { userEmail, answers } = normalizeSurveyPayload(req.body);
+const chartId = req.body?.chartId || null;
+
+    if (!Array.isArray(answers) || answers.length === 0) {
+      return res.status(400).json({ ok: false, error: "answers[] is required" });
+    }
+
+    // 1) Create a submission (✅ use relation connect for chart)
+    const submission = await prisma.surveySubmission.create({
+      data: {
+        userEmail: userEmail || null,
+        ...(chartId ? { chart: { connect: { id: chartId } } } : {}),
+      },
+      select: { id: true },
+    });
+
+    let madeResponses = 0;
+    let linkedOptions = 0;
+
+    // 2) For each answer, create SurveyResponse + (option links for radio/checkbox)
+    for (const a of answers) {
+      if (!a?.questionKey) continue;
+
+      // find the question by its stable key (e.g. "II.4")
+      const q = await prisma.surveyQuestion.findUnique({
+        where: { key: a.questionKey },
+        include: { options: true },
+      });
+      if (!q) {
+        console.warn("No question found for key:", a.questionKey);
+        continue;
+      }
+
+      // create the response row (free text if provided)
+      const response = await prisma.surveyResponse.create({
+        data: {
+          questionId: q.id,
+          submissionId: submission.id,
+          answerText: a.answerText ?? null,
+          userId: userEmail || "anonymous",      // 👈 required by your schema
+        },
+        select: { id: true },
+      });
+      madeResponses++;
+
+      // for radio/checkbox: link chosen options via join table
+      if (Array.isArray(a.optionValues) && a.optionValues.length > 0) {
+        const allowed = new Set(q.options.map(o => o.value)); // machine values from DB
+        const chosen = a.optionValues.filter(v => allowed.has(v));
+        for (const val of chosen) {
+          const opt = q.options.find(o => o.value === val);
+          if (!opt) continue;
+          await prisma.surveyResponseOption.create({
+            data: { responseId: response.id, optionId: opt.id },
+          });
+          linkedOptions++;
+        }
+      }
+    }
+
+    return res.json({
+      ok: true,
+      submissionId: submission.id,
+      responses: madeResponses,
+      optionLinks: linkedOptions,
+    });
+  } catch (e) {
+    console.error("💥 submit error:", e);
+    return res.status(500).json({ ok: false, error: e?.message ?? "Unknown error" });
+  }
+});
+
+
 
 // Only start the HTTP listener if this file is run directly (node server.js)
 if (require.main === module) {

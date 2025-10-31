@@ -262,6 +262,24 @@ const tzOffsetMinutes = birthDT.offset; // e.g. +120 or +60 depending on DST
     );
 
     payload.savedChartId = savedChartId;
+    // --- debug: show key chart bits in the server log (POST) ---
+try {
+  const planetSummary = Object.fromEntries(
+    Object.entries(planets || {}).map(([name, p]) => [
+      name,
+      { sign: p.sign, house: p.house }
+    ])
+  );
+  console.log('🪐 [POST] chart computed:', {
+    jd,
+    angles: payload.angles,
+    planets: planetSummary,
+  });
+  console.log('💾 savedChartId:', savedChartId ?? null);
+} catch (e) {
+  console.warn('chart debug log failed (POST):', e?.message);
+}
+// return res.json (payload)is response that ends the route
     return res.json(payload);
   } catch (e) {
     console.error("💥 submit error:", e);
@@ -270,6 +288,138 @@ const tzOffsetMinutes = birthDT.offset; // e.g. +120 or +60 depending on DST
 
 });
 
+// Optional GET variant for convenience (reads from query params)
+app.get('/api/birth-chart-swisseph', async (req, res) => {
+  try {
+    const { date, time, latitude, longitude } = req.query || {};
+    if (!date || !time || latitude === undefined || longitude === undefined) {
+      return res.status(400).json({ success: false, error: 'Missing required fields (date, time, latitude, longitude).' });
+    }
+
+    const lat = parseFloat(latitude);
+    const lng = parseFloat(longitude);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      return res.status(400).json({ success: false, error: 'Invalid coordinates.' });
+    }
+
+    const birthDT = DateTime.fromISO(`${date}T${time}`, { zone: 'Europe/Berlin' });
+    if (!birthDT.isValid) return res.status(400).json({ success: false, error: 'Invalid date or time.' });
+    const birthUTC = birthDT.toUTC().toJSDate();
+    const tzOffsetMinutes = birthDT.offset;
+
+    const jd = getJulianDayFromDate(birthUTC);
+
+    const planetCodes = {
+      sun: swisseph.SE_SUN, moon: swisseph.SE_MOON, mercury: swisseph.SE_MERCURY,
+      venus: swisseph.SE_VENUS, mars: swisseph.SE_MARS, jupiter: swisseph.SE_JUPITER,
+      saturn: swisseph.SE_SATURN, uranus: swisseph.SE_URANUS,
+      neptune: swisseph.SE_NEPTUNE, pluto: swisseph.SE_PLUTO
+    };
+
+    const planets = {};
+    for (const [name, code] of Object.entries(planetCodes)) {
+      const result = await new Promise((resolve, reject) => {
+        swisseph.swe_calc_ut(jd, code, swisseph.SEFLG_SWIEPH, (r) => r.error ? reject(new Error(r.error)) : resolve(r));
+      });
+      const lon = normalize360(result.longitude);
+      planets[name] = { longitude: lon };
+    }
+
+    const housesRes = await new Promise((resolve, reject) => {
+      swisseph.swe_houses(jd, lat, lng, 'P', (r) => r.error ? reject(new Error(r.error)) : resolve(r));
+    });
+
+    const ascendant = normalize360(housesRes.ascendant);
+    const mc        = normalize360(housesRes.mc);
+    const housesDeg = (housesRes.house || []).map(normalize360);
+    const houseSigns = housesDeg.map(signFromLongitude);
+
+    const houseRulers = {};
+    for (let i = 0; i < 12; i++) houseRulers[`house${i + 1}`] = houseSigns[i] || null;
+
+    function houseOf(longitude) {
+      for (let i = 0; i < 12; i++) {
+        const start = housesDeg[i];
+        const end   = housesDeg[(i + 1) % 12];
+        if (start <= end) { if (longitude >= start && longitude < end) return i + 1; }
+        else { if (longitude >= start || longitude < end) return i + 1; }
+      }
+      return 12;
+    }
+
+    const planetsInHouses = {};
+    for (const [planet, data] of Object.entries(planets)) {
+      const house = houseOf(data.longitude);
+      planetsInHouses[planet] = house;
+      data.sign  = signFromLongitude(data.longitude);
+      data.house = house;
+    }
+
+    const descendantDeg = (ascendant + 180) % 360;
+    const icDeg         = (mc + 180) % 360;
+    const signOf = (deg) => ZODIAC_SIGNS[Math.floor((((deg % 360) + 360) % 360) / 30)];
+
+    const payload = {
+      success: true,
+      method: 'swisseph',
+      jd,
+      angles: {
+        ascendantDeg: ascendant,
+        ascendantSign: signOf(ascendant),
+        mcDeg: mc,
+        mcSign: signOf(mc),
+        descendantDeg,
+        descendantSign: signOf(descendantDeg),
+        icDeg,
+        icSign: signOf(icDeg),
+      },
+      houses: housesDeg,
+      houseSigns,
+      houseRulers,
+      planets,
+      planetsInHouses
+    };
+
+    // meta + best-effort save
+    payload.meta = payload.meta || {};
+    payload.meta.timeAccuracy = req.query?.timeAccuracy ?? null;
+
+    const savedChartId = await saveChartToDB(
+      {
+        userEmail: req.query?.userEmail ?? null,
+        city: req.query?.city ?? null,
+        country: req.query?.country ?? null,
+        timeAccuracy: req.query?.timeAccuracy ?? null,
+        date, time, latitude, longitude,
+        birthDateTimeUtc: birthUTC.toISOString(), tzOffsetMinutes,
+      },
+      payload
+    );
+
+    payload.savedChartId = savedChartId;
+    // --- debug: show key chart bits in the server log (GET) ---
+try {
+  const planetSummary = Object.fromEntries(
+    Object.entries(planets || {}).map(([name, p]) => [
+      name,
+      { sign: p.sign, house: p.house }
+    ])
+  );
+  console.log('🪐 [GET] chart computed:', {
+    jd,
+    angles: payload.angles,
+    planets: planetSummary,
+  });
+  console.log('💾 savedChartId:', savedChartId ?? null);
+} catch (e) {
+  console.warn('chart debug log failed (GET):', e?.message);
+}
+    return res.json(payload);
+  } catch (e) {
+    console.error("💥 submit error (GET):", e);
+    res.status(500).json({ ok: false, error: e?.message ?? "Unknown error", stack: e?.stack });
+  }
+});
 
 // ===== House rulers & planets-in-houses (compact endpoint) =====
 app.post('/api/chart-houses', async (req, res) => {

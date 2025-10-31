@@ -87,47 +87,4 @@ function normalizeSurveyPayload(body) {
     answers,
   };
 }
-
-module.exports = { normalizeSurveyPayload };
-function normalizeSurveyPayload(body) {
-  // already normalized?
-  if (Array.isArray(body?.answers)) {
-    return {
-      userEmail: body.userEmail || null,
-      chartId: body.chartId || null,
-      answers: body.answers,
-    };
-  }
-
-  const survey = body?.survey || {};
-  const answers = [];
-
-  for (const [sectionId, fields] of Object.entries(survey)) {
-    const sectionKey = mapSectionIdToKey(sectionId);
-    if (!fields || typeof fields !== "object") continue;
-
-    for (const [localKey, value] of Object.entries(fields)) {
-      const questionKey = `${sectionKey}.${localKey}`;
-
-      if (Array.isArray(value)) {
-        answers.push({ questionKey, optionValues: value });
-      } else if (
-        typeof value === "string" ||
-        typeof value === "number" ||
-        typeof value === "boolean"
-      ) {
-        answers.push({ questionKey, answerText: String(value) });
-      } else if (value != null) {
-        answers.push({ questionKey, answerText: JSON.stringify(value) });
-      }
-    }
-  }
-
-  return {
-    userEmail: body?.userEmail || null,
-    chartId: body?.chartId || null,
-    answers,
-  };
-}
-
 module.exports = { normalizeSurveyPayload };

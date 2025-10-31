@@ -1,31 +1,145 @@
+// server.js
 console.log("✅ Running server.js from:", __dirname);
 
 const express = require('express');
 const cors = require('cors');
 const { DateTime } = require('luxon');
 const swisseph = require('swisseph');
+const { normalizeSurveyPayload } = require('./server/normalizeSurveyPayload');
 
+require('dotenv').config();
+const OpenAI = require('openai');
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
+
+// ---- helpers -------------------------------------------------
+function normalize360(val) {
+  let x = Number(val);
+  if (!Number.isFinite(x)) return NaN;
+  x = x % 360;
+  if (x < 0) x += 360;
+  return x;
+}
+
+const ZODIAC_SIGNS = [
+  "Aries","Taurus","Gemini","Cancer","Leo","Virgo",
+  "Libra","Scorpio","Sagittarius","Capricorn","Aquarius","Pisces"
+];
+
+function signFromLongitude(lon) {
+  lon = normalize360(lon);
+  const idx = Math.floor(lon / 30) % 12;
+  return ZODIAC_SIGNS[idx];
+}
+
+const SIGN_RULER = {
+  Aries: "Mars", Taurus: "Venus", Gemini: "Mercury", Cancer: "Moon",
+  Leo: "Sun", Virgo: "Mercury", Libra: "Venus", Scorpio: "Mars",
+  Sagittarius: "Jupiter", Capricorn: "Saturn", Aquarius: "Saturn", Pisces: "Jupiter"
+};
+
+function houseOfLongitude(lon, houseCusps) {
+  const L = normalize360(lon);
+  for (let i = 0; i < 12; i++) {
+    const a = normalize360(houseCusps[i]);
+    const b = normalize360(houseCusps[(i + 1) % 12]);
+    if (a <= b) { if (L >= a && L < b) return i + 1; }
+    else { if (L >= a || L < b) return i + 1; }
+  }
+  return 12;
+}
+
+function num(v) {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null; // convert NaN/undefined/null -> null
+}
+
+// --- best-effort DB save helper (non-fatal on error) ----------
+async function saveChartToDB(input, output) {
+  try {
+    const num = (v) => (Number.isFinite(v) ? v : null);
+
+    const data = {
+      userEmail: input?.userEmail ?? null,
+      city: input?.city ?? null,
+      country: input?.country ?? null,
+      birthDateTimeUtc: input?.birthDateTimeUtc ? new Date(input.birthDateTimeUtc) : null,
+      tzOffsetMinutes: input?.tzOffsetMinutes ?? null,
+      latitude: num(input?.latitude),
+      longitude: num(input?.longitude),
+
+      ascendant: num(output?.angles?.ascendantDeg ?? output?.ascendant),
+      mc: num(output?.angles?.mcDeg ?? output?.mc),
+      descendant: num(output?.angles?.descendantDeg ?? ((output?.ascendant ?? 0) + 180) % 360),
+      ic: num(output?.angles?.icDeg ?? ((output?.mc ?? 0) + 180) % 360),
+
+      risingSign: output?.angles?.ascendantSign ?? null,
+      mcSign: output?.angles?.mcSign ?? null,
+      descendantSign: output?.angles?.descendantSign ?? null,
+      icSign: output?.angles?.icSign ?? null,
+
+      sunSign: output?.planets?.sun?.sign ?? null,
+      sunHouse: output?.planets?.sun?.house ?? null,
+      moonSign: output?.planets?.moon?.sign ?? null,
+      moonHouse: output?.planets?.moon?.house ?? null,
+      mercurySign: output?.planets?.mercury?.sign ?? null,
+      mercuryHouse: output?.planets?.mercury?.house ?? null,
+      venusSign: output?.planets?.venus?.sign ?? null,
+      venusHouse: output?.planets?.venus?.house ?? null,
+      marsSign: output?.planets?.mars?.sign ?? null,
+      marsHouse: output?.planets?.mars?.house ?? null,
+      jupiterSign: output?.planets?.jupiter?.sign ?? null,
+      jupiterHouse: output?.planets?.jupiter?.house ?? null,
+      saturnSign: output?.planets?.saturn?.sign ?? null,
+      saturnHouse: output?.planets?.saturn?.house ?? null,
+      uranusSign: output?.planets?.uranus?.sign ?? null,
+      uranusHouse: output?.planets?.uranus?.house ?? null,
+      neptuneSign: output?.planets?.neptune?.sign ?? null,
+      neptuneHouse: output?.planets?.neptune?.house ?? null,
+      plutoSign: output?.planets?.pluto?.sign ?? null,
+      plutoHouse: output?.planets?.pluto?.house ?? null,
+
+      rawChart: output ?? null,
+    };
+
+    const rec = await prisma.chart.create({ data, select: { id: true } });
+    return rec.id;
+  } catch (e) {
+    console.error("🟥 DB save failed (non-fatal):", e);
+    return null;
+  }
+}
+
+// --------------------------------------------------------------
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Define the Typeform Webhook route
-app.post('/api/typeform-webhook', (req, res) => {
-  try {
-    const formData = req.body; // Typeform sends data in the request body
-    console.log('Received Typeform data:', formData);
+// root & health
+app.get('/', (_req, res) => res.send('OK'));
+app.get('/health', (_req, res) => res.json({ ok: true, status: 'healthy' }));
+app.get('/_whoami', (_req, res) => {
+  res.json({ cwd: process.cwd(), __dirname, routesCount: (app._router?.stack?.length) || 0 });
+});
 
-    // Send a success response back to Typeform
-    res.status(200).send('Webhook received successfully!');
-  } catch (error) {
-    console.error('Error processing webhook:', error);
-    res.status(500).send('Error processing webhook.');
+// tiny OpenAI smoke test
+app.get('/api/ai/test', async (_req, res) => {
+  try {
+    const r = await openai.responses.create({ model: 'gpt-4o-mini', input: 'Write a one-line haiku about movies and stars.' });
+    const text = r.output_text ?? r.content?.[0]?.text ?? '';
+    res.json({ ok: true, text: String(text).trim() });
+  } catch (e) {
+    console.error('OpenAI error:', e);
+    res.status(500).json({ ok: false, error: e?.message ?? 'Unknown error' });
   }
 });
-// Set the path to your Swiss Ephemeris files
+
+// ---- Swiss Ephemeris setup ----
 swisseph.swe_set_ephe_path(__dirname + '/ephe');
 
-// Helper to get Julian Day from date
 function getJulianDayFromDate(date) {
   return swisseph.swe_julday(
     date.getUTCFullYear(),
@@ -36,181 +150,521 @@ function getJulianDayFromDate(date) {
   );
 }
 
-// Main endpoint using Swiss Ephemeris for birth chart calculation
+// ------------- MAIN CHART ENDPOINT -------------
 app.post('/api/birth-chart-swisseph', async (req, res) => {
   try {
-    const { date, time, latitude, longitude } = req.body;
-    console.log("🛬 Raw incoming coords:", { latitude, longitude });
-    const birthDateTime = DateTime.fromISO(`${date}T${time}`, { zone: 'Europe/Berlin' });
-    const birthDateUTC = birthDateTime.toUTC().toJSDate();
+    const { date, time, latitude, longitude } = req.body || {};
+    if (!date || !time || latitude === undefined || longitude === undefined) {
+      return res.status(400).json({ success: false, error: 'Missing required fields (date, time, latitude, longitude).' });
+    }
+
     const lat = parseFloat(latitude);
     const lng = parseFloat(longitude);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      return res.status(400).json({ success: false, error: 'Invalid coordinates.' });
+    }
 
-    // Calculate Julian Day
-    const jd = getJulianDayFromDate(birthDateUTC);
+    // Convert input date/time (Berlin zone) → UTC
+const birthDT = DateTime.fromISO(`${date}T${time}`, { zone: 'Europe/Berlin' });
+if (!birthDT.isValid) {
+  return res.status(400).json({ success: false, error: 'Invalid date or time.' });
+}
+const birthUTC = birthDT.toUTC().toJSDate();
+const tzOffsetMinutes = birthDT.offset; // e.g. +120 or +60 depending on DST
 
-    // Calculate planet positions
+
+    const jd = getJulianDayFromDate(birthUTC);
+
     const planetCodes = {
-      sun: swisseph.SE_SUN,
-      moon: swisseph.SE_MOON,
-      mercury: swisseph.SE_MERCURY,
-      venus: swisseph.SE_VENUS,
-      mars: swisseph.SE_MARS,
-      jupiter: swisseph.SE_JUPITER,
-      saturn: swisseph.SE_SATURN,
-      uranus: swisseph.SE_URANUS,
-      neptune: swisseph.SE_NEPTUNE,
-      pluto: swisseph.SE_PLUTO
+      sun: swisseph.SE_SUN, moon: swisseph.SE_MOON, mercury: swisseph.SE_MERCURY,
+      venus: swisseph.SE_VENUS, mars: swisseph.SE_MARS, jupiter: swisseph.SE_JUPITER,
+      saturn: swisseph.SE_SATURN, uranus: swisseph.SE_URANUS,
+      neptune: swisseph.SE_NEPTUNE, pluto: swisseph.SE_PLUTO
     };
 
     const planets = {};
     for (const [name, code] of Object.entries(planetCodes)) {
       const result = await new Promise((resolve, reject) => {
-        swisseph.swe_calc_ut(jd, code, swisseph.SEFLG_SWIEPH, (res) => {
-          if (res.error) reject(res.error); else resolve(res);
-        });
+        swisseph.swe_calc_ut(jd, code, swisseph.SEFLG_SWIEPH, (r) => r.error ? reject(new Error(r.error)) : resolve(r));
       });
-      planets[name] = {
-        longitude: result.longitude
-      };
+      const lon = normalize360(result.longitude);
+      planets[name] = { longitude: lon };
     }
 
-    // Calculate Ascendant and houses
-    console.log("🧭 JD:", jd);
-    console.log("📍 Coordinates:", { lat, lng });
-    const ascmc = await new Promise((resolve, reject) => {
-      swisseph.swe_houses(jd, lat, lng, 'P', (res) => {
-        console.log("🧪 swe_houses raw result:", res);
-        if (res.error) {
-          console.error("❌ swe_houses error:", res.error);
-          reject(res.error);
-        } else {
-          resolve(res);
-        }
-      });
+    const housesRes = await new Promise((resolve, reject) => {
+      swisseph.swe_houses(jd, lat, lng, 'P', (r) => r.error ? reject(new Error(r.error)) : resolve(r));
     });
 
-    console.log("📦 ascmc structure:", Object.keys(ascmc));
-    console.dir(ascmc, { depth: null });
-
-    const ascendant = ascmc.ascendant;
-    const mc = ascmc.mc;
-
-    const houses = {};
-    ascmc.house.forEach((deg, i) => {
-      houses[`house${i + 1}`] = deg;
-    });
-
-    console.log("🪐 Calculated Houses:", houses);
-
-    const zodiacSigns = [
-      "Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",
-      "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces"
-    ];
+    const ascendant = normalize360(housesRes.ascendant);
+    const mc        = normalize360(housesRes.mc);
+    const housesDeg = (housesRes.house || []).map(normalize360);
+    const houseSigns = housesDeg.map(signFromLongitude);
 
     const houseRulers = {};
-    for (let i = 1; i <= 12; i++) {
-      const deg = houses[`house${i}`];
-      const index = Math.floor(deg / 30) % 12;
-      houseRulers[`house${i}`] = zodiacSigns[index];
+    for (let i = 0; i < 12; i++) houseRulers[`house${i + 1}`] = houseSigns[i] || null;
+
+    function houseOf(longitude) {
+      for (let i = 0; i < 12; i++) {
+        const start = housesDeg[i];
+        const end   = housesDeg[(i + 1) % 12];
+        if (start <= end) { if (longitude >= start && longitude < end) return i + 1; }
+        else { if (longitude >= start || longitude < end) return i + 1; }
+      }
+      return 12;
     }
 
-   // === Calculate which house each planet is in ===
-const planetsInHouses = {};
-const houseCusps = ascmc.house; // array of 12 cusp degrees
-
-for (const [planetName, data] of Object.entries(planets)) {
-  const planetLon = data.longitude;
-  let houseNum = 12;
-
-  for (let i = 0; i < 12; i++) {
-    const cuspStart = houseCusps[i];
-    const cuspEnd = houseCusps[(i + 1) % 12]; // wrap around
-
-    if (cuspStart < cuspEnd) {
-      if (planetLon >= cuspStart && planetLon < cuspEnd) {
-        houseNum = i + 1;
-        break;
-      }
-    } else {
-      // Handles the wrap-around at 360°
-      if (planetLon >= cuspStart || planetLon < cuspEnd) {
-        houseNum = i + 1;
-        break;
-      }
+    const planetsInHouses = {};
+    for (const [planet, data] of Object.entries(planets)) {
+      const house = houseOf(data.longitude);
+      planetsInHouses[planet] = house;
+      data.sign  = signFromLongitude(data.longitude);
+      data.house = house;
     }
-  }
 
-  planetsInHouses[planetName] = houseNum;
-}
+    const descendantDeg = (ascendant + 180) % 360;
+    const icDeg         = (mc + 180) % 360;
+    const signOf = (deg) => ZODIAC_SIGNS[Math.floor((((deg % 360) + 360) % 360) / 30)];
 
-    res.json({
+    const payload = {
       success: true,
       method: 'swisseph',
       jd,
-      planets,
-      ascendant,
-      mc,
-      houses,
+      angles: {
+        ascendantDeg: ascendant,
+        ascendantSign: signOf(ascendant),
+        mcDeg: mc,
+        mcSign: signOf(mc),
+        descendantDeg,
+        descendantSign: signOf(descendantDeg),
+        icDeg,
+        icSign: signOf(icDeg),
+      },
+      houses: housesDeg,
+      houseSigns,
       houseRulers,
+      planets,
       planetsInHouses
+    };
+ // ensure a meta bag exists
+ payload.meta = payload.meta || {};
+ payload.meta.timeAccuracy = req.body?.timeAccuracy ?? null;
+   
+ const savedChartId = await saveChartToDB(
+      {
+        userEmail: req.body?.userEmail ?? null,
+        city: req.body?.city ?? null,
+        country: req.body?.country ?? null,
+        timeAccuracy: req.body?.timeAccuracy ?? null,
+        date, time, latitude, longitude,
+        birthDateTimeUtc: birthUTC.toISOString(),tzOffsetMinutes,
+      },
+      payload
+    );
+
+    payload.savedChartId = savedChartId;
+    // --- debug: show key chart bits in the server log (POST) ---
+try {
+  const planetSummary = Object.fromEntries(
+    Object.entries(planets || {}).map(([name, p]) => [
+      name,
+      { sign: p.sign, house: p.house }
+    ])
+  );
+  console.log('🪐 [POST] chart computed:', {
+    jd,
+    angles: payload.angles,
+    planets: planetSummary,
+  });
+  console.log('💾 savedChartId:', savedChartId ?? null);
+} catch (e) {
+  console.warn('chart debug log failed (POST):', e?.message);
+}
+// return res.json (payload)is response that ends the route
+    return res.json(payload);
+  } catch (e) {
+    console.error("💥 submit error:", e);
+    res.status(500).json({ ok: false, error: e?.message ?? "Unknown error", stack: e?.stack });
+  }
+
+});
+
+// Optional GET variant for convenience (reads from query params)
+app.get('/api/birth-chart-swisseph', async (req, res) => {
+  try {
+    const { date, time, latitude, longitude } = req.query || {};
+    if (!date || !time || latitude === undefined || longitude === undefined) {
+      return res.status(400).json({ success: false, error: 'Missing required fields (date, time, latitude, longitude).' });
+    }
+
+    const lat = parseFloat(latitude);
+    const lng = parseFloat(longitude);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      return res.status(400).json({ success: false, error: 'Invalid coordinates.' });
+    }
+
+    const birthDT = DateTime.fromISO(`${date}T${time}`, { zone: 'Europe/Berlin' });
+    if (!birthDT.isValid) return res.status(400).json({ success: false, error: 'Invalid date or time.' });
+    const birthUTC = birthDT.toUTC().toJSDate();
+    const tzOffsetMinutes = birthDT.offset;
+
+    const jd = getJulianDayFromDate(birthUTC);
+
+    const planetCodes = {
+      sun: swisseph.SE_SUN, moon: swisseph.SE_MOON, mercury: swisseph.SE_MERCURY,
+      venus: swisseph.SE_VENUS, mars: swisseph.SE_MARS, jupiter: swisseph.SE_JUPITER,
+      saturn: swisseph.SE_SATURN, uranus: swisseph.SE_URANUS,
+      neptune: swisseph.SE_NEPTUNE, pluto: swisseph.SE_PLUTO
+    };
+
+    const planets = {};
+    for (const [name, code] of Object.entries(planetCodes)) {
+      const result = await new Promise((resolve, reject) => {
+        swisseph.swe_calc_ut(jd, code, swisseph.SEFLG_SWIEPH, (r) => r.error ? reject(new Error(r.error)) : resolve(r));
+      });
+      const lon = normalize360(result.longitude);
+      planets[name] = { longitude: lon };
+    }
+
+    const housesRes = await new Promise((resolve, reject) => {
+      swisseph.swe_houses(jd, lat, lng, 'P', (r) => r.error ? reject(new Error(r.error)) : resolve(r));
+    });
+
+    const ascendant = normalize360(housesRes.ascendant);
+    const mc        = normalize360(housesRes.mc);
+    const housesDeg = (housesRes.house || []).map(normalize360);
+    const houseSigns = housesDeg.map(signFromLongitude);
+
+    const houseRulers = {};
+    for (let i = 0; i < 12; i++) houseRulers[`house${i + 1}`] = houseSigns[i] || null;
+
+    function houseOf(longitude) {
+      for (let i = 0; i < 12; i++) {
+        const start = housesDeg[i];
+        const end   = housesDeg[(i + 1) % 12];
+        if (start <= end) { if (longitude >= start && longitude < end) return i + 1; }
+        else { if (longitude >= start || longitude < end) return i + 1; }
+      }
+      return 12;
+    }
+
+    const planetsInHouses = {};
+    for (const [planet, data] of Object.entries(planets)) {
+      const house = houseOf(data.longitude);
+      planetsInHouses[planet] = house;
+      data.sign  = signFromLongitude(data.longitude);
+      data.house = house;
+    }
+
+    const descendantDeg = (ascendant + 180) % 360;
+    const icDeg         = (mc + 180) % 360;
+    const signOf = (deg) => ZODIAC_SIGNS[Math.floor((((deg % 360) + 360) % 360) / 30)];
+
+    const payload = {
+      success: true,
+      method: 'swisseph',
+      jd,
+      angles: {
+        ascendantDeg: ascendant,
+        ascendantSign: signOf(ascendant),
+        mcDeg: mc,
+        mcSign: signOf(mc),
+        descendantDeg,
+        descendantSign: signOf(descendantDeg),
+        icDeg,
+        icSign: signOf(icDeg),
+      },
+      houses: housesDeg,
+      houseSigns,
+      houseRulers,
+      planets,
+      planetsInHouses
+    };
+
+    // meta + best-effort save
+    payload.meta = payload.meta || {};
+    payload.meta.timeAccuracy = req.query?.timeAccuracy ?? null;
+
+    const savedChartId = await saveChartToDB(
+      {
+        userEmail: req.query?.userEmail ?? null,
+        city: req.query?.city ?? null,
+        country: req.query?.country ?? null,
+        timeAccuracy: req.query?.timeAccuracy ?? null,
+        date, time, latitude, longitude,
+        birthDateTimeUtc: birthUTC.toISOString(), tzOffsetMinutes,
+      },
+      payload
+    );
+
+    payload.savedChartId = savedChartId;
+    // --- debug: show key chart bits in the server log (GET) ---
+try {
+  const planetSummary = Object.fromEntries(
+    Object.entries(planets || {}).map(([name, p]) => [
+      name,
+      { sign: p.sign, house: p.house }
+    ])
+  );
+  console.log('🪐 [GET] chart computed:', {
+    jd,
+    angles: payload.angles,
+    planets: planetSummary,
+  });
+  console.log('💾 savedChartId:', savedChartId ?? null);
+} catch (e) {
+  console.warn('chart debug log failed (GET):', e?.message);
+}
+    return res.json(payload);
+  } catch (e) {
+    console.error("💥 submit error (GET):", e);
+    res.status(500).json({ ok: false, error: e?.message ?? "Unknown error", stack: e?.stack });
+  }
+});
+
+// ===== House rulers & planets-in-houses (compact endpoint) =====
+app.post('/api/chart-houses', async (req, res) => {
+  try {
+    const { date, time, latitude, longitude } = req.body || {};
+    if (!date || !time || latitude === undefined || longitude === undefined) {
+      return res.status(400).json({ success: false, error: 'Missing required fields (date, time, latitude, longitude).' });
+    }
+    const lat = parseFloat(latitude);
+    const lng = parseFloat(longitude);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      return res.status(400).json({ success: false, error: 'Invalid coordinates.' });
+    }
+
+    const birthDT = DateTime.fromISO(`${date}T${time}`, { zone: 'Europe/Berlin' });
+    if (!birthDT.isValid) return res.status(400).json({ success: false, error: 'Invalid date or time.' });
+    const birthUTC = birthDT.toUTC().toJSDate();
+    const jd = getJulianDayFromDate(birthUTC);
+
+    const planetCodes = {
+      sun: swisseph.SE_SUN, moon: swisseph.SE_MOON, mercury: swisseph.SE_MERCURY,
+      venus: swisseph.SE_VENUS, mars: swisseph.SE_MARS, jupiter: swisseph.SE_JUPITER,
+      saturn: swisseph.SE_SATURN, uranus: swisseph.SE_URANUS,
+      neptune: swisseph.SE_NEPTUNE, pluto: swisseph.SE_PLUTO
+    };
+
+    const planets = {};
+    for (const [name, code] of Object.entries(planetCodes)) {
+      const result = await new Promise((resolve, reject) => {
+        swisseph.swe_calc_ut(jd, code, swisseph.SEFLG_SWIEPH, (r) => r.error ? reject(new Error(r.error)) : resolve(r));
+      });
+      planets[name] = { longitude: normalize360(result.longitude) };
+    }
+
+    const housesRes = await new Promise((resolve, reject) => {
+      swisseph.swe_houses(jd, lat, lng, 'P', (r) => r.error ? reject(new Error(r.error)) : resolve(r));
+    });
+
+    const ascendant = normalize360(housesRes.ascendant);
+    const mc        = normalize360(housesRes.mc);
+    const houseCusps = (housesRes.house || []).map(normalize360);
+
+    const descendantDeg = (ascendant + 180) % 360;
+    const icDeg         = (mc + 180) % 360;
+    const signOf = (deg) => ZODIAC_SIGNS[Math.floor((((deg % 360) + 360) % 360) / 30)];
+    const angles = {
+      ascendantDeg: ascendant,
+      ascendantSign: signOf(ascendant),
+      mcDeg: mc,
+      mcSign: signOf(mc),
+      descendantDeg,
+      descendantSign: signOf(descendantDeg),
+      icDeg,
+      icSign: signOf(icDeg),
+    };
+
+    const houseSigns  = houseCusps.map(signFromLongitude);
+    const houseRulers = houseSigns.map(sign => SIGN_RULER[sign] || null);
+
+    const planetsInHouses = {};
+    Object.entries(planets).forEach(([name, { longitude }]) => {
+      planetsInHouses[name] = houseOfLongitude(longitude, houseCusps);
+    });
+
+    const planetsByHouse = Array.from({ length: 12 }, () => []);
+    Object.entries(planetsInHouses).forEach(([planet, h]) => {
+      planetsByHouse[h - 1].push(planet);
+    });
+
+    for (const [name, p] of Object.entries(planets)) {
+      p.sign  = signFromLongitude(p.longitude);
+      p.house = planetsInHouses[name];
+    }
+
+    return res.json({
+      success: true,
+      jd, ascendant, mc, angles,
+      houses: houseCusps, houseSigns, houseRulers,
+      planetsInHouses, planetsByHouse, planets
     });
   } catch (error) {
-    console.error('Swiss Ephemeris Calculation Error:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
+    console.error('Error in /api/chart-houses:', error);
+    return res.status(500).json({ success: false, error: error.message || String(error) });
   }
 });
 
-// Test endpoint
-app.get('/api/test', (req, res) => {
-  res.json({ message: '🎯 Swiss Ephemeris Astrology Backend is working!' });
-});
-
-/// Load environment variables
-require('dotenv').config();
-const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
-
-app.get('/api/geocode', async (req, res) => {
-  const { city, country } = req.query;
-  console.log("📩 Received geocode request:", city, country);
-  // ✅ Add this debug log to inspect incoming frontend request
-  console.log("📥 Geocode API hit:", { city, country });
-
-  if (!city || !country) {
-    return res.status(400).json({ error: 'City and country are required.' });
-  }
-
+// === Save survey response (normalized) ========================
+app.post('/api/survey-response', async (req, res) => {
   try {
+    const { surveyId, chartId, userEmail, answers } = req.body;
+
+    if (!surveyId || !answers || !Array.isArray(answers)) {
+      return res.status(400).json({ success: false, error: 'Missing surveyId or answers[]' });
+    }
+
+    const response = await prisma.response.create({
+      data: {
+        surveyId,
+        chartId: chartId ?? null,
+        userEmail: userEmail ?? null,
+        answers: {
+          create: answers.map((a) => ({
+            questionId: a.questionId,
+            freeText: a.freeText ?? null,
+            numberValue: a.numberValue ?? null,
+            dateValue: a.dateValue ?? null,
+            selectedOptionId: a.selectedOptionId ?? null,
+          })),
+        },
+      },
+      include: { answers: true },
+    });
+
+    res.json({ success: true, response });
+  } catch (error) {
+    console.error('❌ Error saving survey response:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// --- TEMP: ping + route dump ---------------------------------
+app.post('/api/chart-houses/ping', (_req, res) => res.json({ ok: true }));
+
+// -------- Geocoding --------------
+app.get('/api/geocode', async (req, res) => {
+  try {
+    const { city, country, userEmail } = req.query || {};
+    if (!city || !country) {
+      return res.status(400).json({ error: 'City and country are required.' });
+    }
+
     const apiKey = process.env.OPENCAGE_API_KEY;
+    if (!apiKey) return res.status(500).json({ error: 'Server geocoding key missing.' });
+
     const query = encodeURIComponent(`${city}, ${country}`);
+    const url = `https://api.opencagedata.com/geocode/v1/json?q=${query}&key=${apiKey}`;
 
-    // ✅ Add this to log the exact URL your server is calling
-    console.log("🌍 Calling OpenCage with:", `https://api.opencagedata.com/geocode/v1/json?q=${query}&key=${apiKey}`);
-
-    const response = await fetch(`https://api.opencagedata.com/geocode/v1/json?q=${query}&key=${apiKey}`);
+    const response = await fetch(url);
     const data = await response.json();
 
-    if (!data.results || data.results.length === 0) {
+    if (!data.results || !data.results.length) {
       return res.status(404).json({ error: 'Location not found.' });
     }
 
     const { lat, lng } = data.results[0].geometry;
-
-    res.json({
-      latitude: lat,
-      longitude: lng
-    });
+    return res.json({ latitude: lat, longitude: lng, userEmail });
   } catch (err) {
     console.error('❌ Geocoding backend error:', err);
-    res.status(500).json({ error: 'Failed to geocode location.' });
+    return res.status(500).json({ error: 'Failed to geocode location.' });
   }
 });
 
-// Start server
-const PORT = 3001;
-app.listen(PORT, () => {
-  console.log(`Swiss Ephemeris backend running on http://localhost:${PORT}`);
+
+app.get('/__routes', (_req, res) => {
+  const out = [];
+  const stack = (app && app._router && Array.isArray(app._router.stack)) ? app._router.stack : [];
+  for (const layer of stack) {
+    if (layer.route?.path) {
+      const methods = Object.keys(layer.route.methods || {}).map(m => m.toUpperCase());
+      out.push({ path: layer.route.path, methods });
+    } else if (layer.name === 'router' && layer.handle && Array.isArray(layer.handle.stack)) {
+      for (const sl of layer.handle.stack) {
+        if (sl.route?.path) {
+          const methods = Object.keys(sl.route.methods || {}).map(m => m.toUpperCase());
+          out.push({ path: sl.route.path, methods });
+        }
+      }
+    }
+  }
+  console.log('📜 Registered routes:', out);
+  res.json(out);
 });
+
+// === Survey submit (normalized via shim) ======================
+const PORT = 3001;
+
+app.post("/api/survey/submit", async (req, res) => {
+  try {
+    console.log("submit route v2 hit", new Date().toISOString());
+    console.log("submit v2 body:", req.body);
+
+    const { userEmail, answers } = normalizeSurveyPayload(req.body);
+    const chartId = req.body?.chartId || null;
+
+    if (!Array.isArray(answers) || answers.length === 0) {
+      return res.status(400).json({ ok: false, error: "answers[] is required" });
+    }
+
+    const submission = await prisma.surveySubmission.create({
+      data: {
+        userEmail: userEmail || null,
+        ...(chartId ? { chart: { connect: { id: chartId } } } : {}),
+      },
+      select: { id: true },
+    });
+
+    let madeResponses = 0;
+    let linkedOptions = 0;
+
+    for (const a of answers) {
+      if (!a?.questionKey) continue;
+
+      const q = await prisma.surveyQuestion.findUnique({
+        where: { key: a.questionKey },
+        include: { options: true },
+      });
+      if (!q) { console.warn("No question found for key:", a.questionKey); continue; }
+
+      const response = await prisma.surveyResponse.create({
+        data: {
+          questionId: q.id,
+          submissionId: submission.id,
+          answerText: a.answerText ?? null,
+          userId: userEmail || "anonymous",
+        },
+        select: { id: true },
+      });
+      madeResponses++;
+
+      if (Array.isArray(a.optionValues) && a.optionValues.length > 0) {
+        const allowed = new Set(q.options.map(o => o.value));
+        const chosen = a.optionValues.filter(v => allowed.has(v));
+        for (const val of chosen) {
+          const opt = q.options.find(o => o.value === val);
+          if (!opt) continue;
+          await prisma.surveyResponseOption.create({
+            data: { responseId: response.id, optionId: opt.id },
+          });
+          linkedOptions++;
+        }
+      }
+    }
+
+    return res.json({ ok: true, submissionId: submission.id, responses: madeResponses, optionLinks: linkedOptions });
+  } catch (e) {
+    console.error("💥 submit error:", e);
+    return res.status(500).json({ ok: false, error: e?.message ?? "Unknown error" });
+  }
+});
+
+// start server (only when run directly)
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`Swiss Ephemeris backend running on http://localhost:${PORT}`);
+  });
+}
+
+module.exports = app;

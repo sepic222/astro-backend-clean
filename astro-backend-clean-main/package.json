@@ -10,11 +10,19 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@prisma/client": "^6.16.0",
     "cors": "^2.8.5",
-    "dotenv": "^17.2.1",
+    "dotenv": "^17.2.3",
     "express": "^5.1.0",
     "luxon": "^3.6.1",
     "node-fetch": "^3.3.2",
+    "openai": "^6.2.0",
     "swisseph": "^0.5.17"
+  },
+  "devDependencies": {
+    "@types/node": "^24.7.0",
+    "prisma": "^6.16.0",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3"
   }
 }

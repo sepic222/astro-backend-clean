@@ -1,63 +1,99 @@
-# 📌 FateFlix Baseline – Stable Version
+# FateFlix Backend — Technical Baseline
 
-This file logs the known **stable** commits for both the backend and frontend, so we can always roll back if needed.
-
----
-
-## Backend  
-**Repo:** https://github.com/sepic222/astro-backend-clean  
-**Stable Commit:** `bc22d5b`  
-**Description:** Stable backend with working birth chart, geocode, and test endpoints.  
-**Date:** 2025-08-11  
+This document provides a high-level overview of the FateFlix backend architecture, core technologies, and key design principles.  
+It represents the **current stable version (v1.1-stable-backend, November 2025)** of the project.
 
 ---
 
-## Frontend  
-**Repo:** https://github.com/sepic222/astro-frontend-clean  
-**Stable Commit:** `79f21f8`  
-**Description:** Stable frontend with API helper, geocode stability, and working local+deployed config.  
-**Date:** 2025-08-11  
+## 🧱 System Architecture
+
+![FateFlix Backend Architecture](./architecture-diagram.png)
 
 ---
 
-## Notes  
-- Backend runs locally on **port 3001**.  
-- Frontend runs locally on **port 5173** (Vite may choose 5174 if 5173 is taken).  
-- `.env.local` in frontend must contain:  
-  ```env
-  VITE_API_BASE="http://localhost:3001"# FateFlix Stable Baseline – 2025-08-11
+## ⚙️ Core Components
 
-## 📌 Frontend
-**Repo:** astro-frontend-clean  
-**Commit:** `79f21f8`  
-**Message:** Frontend: validation + API helper + geocode stability  
-**Hosting:** Vercel – linked to `main` branch  
-**Local folder:** `/Users/saraellenpicard/astro-frontend-clean`  
-
-## 📌 Backend
-**Repo:** astro-backend-clean-main  
-**Commit:** `bc22d5b`  
-**Message:** Backend: validation + API helper + geocode stability  
-**Hosting:** Render – linked to `main` branch  
-**Local folder:** `/Users/saraellenpicard/Documents/FATEFLIX - CODE/astro-backend-clean-main`  
+| Component | Description |
+|------------|-------------|
+| **server.js** | Entry point for all routes. Configures Express, loads env variables, and defines `/api` endpoints. |
+| **prisma/schema.prisma** | Database schema for all models (Charts, Surveys, Responses, Submissions, Outbox, Readings). |
+| **server/normalizeSurveyPayload.js** | Standardizes survey submissions before saving. |
+| **server/mailer.js** | Handles transactional email sending (via Resend API). |
+| **server/readings.js** | Generates the user’s personalized reading summary. |
+| **tools/** | Audit and validation scripts for ensuring data consistency. |
+| **scripts/** | Test and automation utilities (resend_failed.mjs, etc.). |
+| **context/** | Documentation for Codex/Agents and project alignment. |
 
 ---
 
-## 🌍 Environment Variables
-**Frontend:** `.env.local`
+## 🌍 Key Endpoints
 
-**Backend:** `.env`
-
----
-
-## 🔍 Health Checks
-- Backend test endpoint:  
-  https://astro-backend-clean-main.onrender.com/api/test  
-- Frontend local dev:  
-  http://localhost:5173
+| Route | Method | Purpose |
+|-------|---------|---------|
+| `/health` | GET | Basic server health check |
+| `/api/geocode` | GET | Geocode city + country via OpenCage |
+| `/api/birth-chart-swisseph` | POST | Compute and persist a full astrological chart |
+| `/api/survey/submit` | POST | Save user survey responses and trigger email generation |
+| `/__routes` | GET | Debug: list all registered endpoints |
+| `/dev/email/preview/:outboxId` | GET | Preview a stored email HTML in the browser |
 
 ---
 
-## 📝 Notes
-- `.env.local` is excluded from GitHub for security, so remember to update it manually after cloning.  
-- Vercel frontend will call the deployed backend once `VITE_API_BASE` is updated in its environment variables.  
+## 🧠 Data Model Overview
+
+### Main Prisma Models
+- `Chart` — Birth data, calculated positions, and angles  
+- `SurveyQuestion` / `SurveyResponse` — Structured survey framework  
+- `SurveySubmission` — Links user responses to their chart  
+- `ResponseOption` — Multiple choice and checkbox options  
+- `Reading` — Stores generated reading summaries per submission  
+- `EmailOutbox` — Stores all outgoing email data and statuses  
+
+### Relations
+- One `Chart` → Many `SurveySubmissions`  
+- One `Submission` → Many `SurveyResponses`  
+- One `Submission` → One `Reading`  
+- One `EmailOutbox` → Optional `Chart` and `Submission` links  
+
+---
+
+## 🧩 Deployment Notes
+
+| Environment | Description |
+|--------------|-------------|
+| **Local** | Run with `node server.js` (port 3001). Connect frontend via `VITE_API_BASE=http://localhost:3001`. |
+| **Render** | Backend host for production (connected to main branch). |
+| **Vercel** | Frontend hosting, connected to this backend API. |
+
+---
+
+## 🧰 Developer Utilities
+
+| Command | Description |
+|----------|-------------|
+| `npx prisma studio` | Opens the local database viewer |
+| `node tools/audit-prisma-vs-server.cjs` | Validates schema vs routes |
+| `node tools/audit-survey-coverage.cjs` | Checks if all survey sections are implemented |
+| `npm run dev` | Starts backend in dev mode |
+| `node scripts/resend_failed.mjs` | Retries failed emails in the outbox |
+
+---
+
+## 🛠️ Versioning
+
+| Version | Tag | Date | Status |
+|----------|-----|------|--------|
+| v1.1-stable-backend | `v1.1-stable-backend` | Nov 2025 | ✅ Stable |
+| v1.0.0 | `v1.0.0` | Sep 2025 | Deprecated |
+
+---
+
+## 🧭 Maintainers
+- **Sara-Ellen Picard** — Founder & Product Lead  
+- **Frontend:** (TBD)  
+- **Backend Support:** GPT-5 / Codex (assistant integration)
+
+---
+
+**Last Updated:** November 2025  
+© FateFlix 2025 – All rights reserved.

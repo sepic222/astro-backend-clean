@@ -298,3 +298,25 @@ model SurveySubmission {
 
   @@index([userEmail, createdAt])
 }
+model EmailOutbox {
+  id            String   @id @default(cuid())
+  toEmail       String
+  subject       String
+  htmlBody      String
+  status        String   @default("PENDING") // PENDING|SENT|FAILED
+  error         String?  // last error if failed
+  submissionId  String?  // optional link
+  chartId       String?  // optional link
+  createdAt     DateTime @default(now())
+  sentAt        DateTime?
+}
+
+model Reading {
+  id            String   @id @default(cuid())
+  submissionId  String   @unique
+  chartId       String?
+  userEmail     String?
+  // compact text for now; can be JSON later
+  summary       String   // the stitched “reading” text we send
+  createdAt     DateTime @default(now())
+}

@@ -118,6 +118,14 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// dev-helpers (preview & retry tools)
+app.get('/dev/email/preview/:outboxId', async (req, res) => {
+  const r = await prisma.emailOutbox.findUnique({ where: { id: req.params.outboxId } });
+  if (!r) return res.status(404).send('Not found');
+  res.set('Content-Type', 'text/html; charset=utf-8');
+  res.send(r.htmlBody);
+});
+
 // root & health
 app.get('/', (_req, res) => res.send('OK'));
 app.get('/health', (_req, res) => res.json({ ok: true, status: 'healthy' }));
@@ -652,6 +660,96 @@ app.post("/api/survey/submit", async (req, res) => {
         }
       }
     }
+// ---- Build & queue email (fire-and-forget) ----
+try {
+  const { buildReading } = require('./server/readings');
+  const { render } = require('./server/template');
+  const { sendHtmlEmail } = require('./server/mailer');
+  const fs = require('fs');
+  const path = require('path');
+  const templatePath = path.join(__dirname, 'templates/email/survey-result.html');
+
+  // Load template once
+  const htmlTpl = fs.readFileSync(templatePath, 'utf8');
+
+  // 1) Load the chart (if linked)
+  let chart = null;
+  if (chartId) {
+    chart = await prisma.chart.findUnique({ where: { id: chartId } });
+  }
+
+  // 2) Gather answers into a keyed map (e.g. { "genres.loved": ["drama", ...], "world.crave_in_movie": "..." })
+  const answerMap = {};
+  for (const a of answers) {
+    if (!a?.questionKey) continue;
+    // normalize radio/checkbox vs free text
+    if (Array.isArray(a.optionValues)) answerMap[a.questionKey] = a.optionValues;
+    if (a.answerText) answerMap[a.questionKey] = a.answerText;
+  }
+
+  // 3) Build reading text
+  const chartPayload = chart?.rawChart || null;
+  const readingSummary = buildReading({ chartPayload, answersByKey: answerMap });
+
+  // 4) Persist reading
+  const readingRec = await prisma.reading.create({
+    data: {
+      submissionId: submission.id,
+      chartId,
+      userEmail,
+      summary: readingSummary,
+    },
+    select: { id: true },
+  });
+
+  // 5) Render email HTML
+  const htmlBody = render(htmlTpl, {
+    asc: chartPayload?.angles?.ascendantSign || '',
+    mc:  chartPayload?.angles?.mcSign || '',
+    sunSign: chartPayload?.planets?.sun?.sign || '',
+    sunHouse: chartPayload?.planets?.sun?.house || '',
+    moonSign: chartPayload?.planets?.moon?.sign || '',
+    moonHouse: chartPayload?.planets?.moon?.house || '',
+    readingSummary,
+  });
+
+  // 6) Create outbox row (so failures can be retried)
+  const outbox = await prisma.emailOutbox.create({
+    data: {
+      toEmail: userEmail || 'anonymous@example.com',
+      subject: 'Your FateFlix Astro Reading',
+      htmlBody,
+      submissionId: submission.id,
+      chartId,
+    },
+    select: { id: true },
+  });
+
+  // 7) Send email asynchronously (don’t block the HTTP response)
+  (async () => {
+    try {
+      await sendHtmlEmail({
+        to: userEmail,
+        subject: 'Your FateFlix Astro Reading',
+        html: htmlBody,
+      });
+      await prisma.emailOutbox.update({
+        where: { id: outbox.id },
+        data: { status: 'SENT', sentAt: new Date(), error: null },
+      });
+    } catch (err) {
+      await prisma.emailOutbox.update({
+        where: { id: outbox.id },
+        data: { status: 'FAILED', error: String(err?.message || err) },
+      });
+      console.error('❌ Email send failed:', err);
+    }
+  })();
+
+} catch (e) {
+  console.error('Email pipeline error (non-fatal):', e);
+}
+
 
     return res.json({ ok: true, submissionId: submission.id, responses: madeResponses, optionLinks: linkedOptions });
   } catch (e) {

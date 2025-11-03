@@ -17,6 +17,7 @@
     "luxon": "^3.6.1",
     "node-fetch": "^3.3.2",
     "openai": "^4.104.0",
+    "resend": "^6.4.0",
     "swisseph": "^0.5.17"
   },
   "devDependencies": {

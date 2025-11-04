@@ -6,7 +6,12 @@ const cors = require('cors');
 const { DateTime } = require('luxon');
 const swisseph = require('swisseph');
 const { normalizeSurveyPayload } = require('./server/normalizeSurveyPayload');
+// near other requires:
+const { readingHtmlHandler, readingSvgHandler } = require('./server/readingRoutes');
 
+// after your other app.get/app.post routes:
+app.get('/reading/:id/html', readingHtmlHandler);
+app.get('/reading/:id/chart.svg', readingSvgHandler);
 require('dotenv').config();
 
 // --- OpenAI (optional) ---

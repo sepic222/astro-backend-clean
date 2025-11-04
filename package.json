@@ -1,5 +1,4 @@
-{
-  "name": "astro-backend-clean",
+{ "name": "astro-backend-clean",
   "version": "1.0.0",
   "engines": { 
     "node": "18.x"
@@ -7,7 +6,8 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "migrate:deploy": "prisma migrate deploy",
+    "migrate:deploy": "npx prisma generate && npx prisma migrate deploy",
+    "build": "npm rebuild swisseph --build-from-source && npm run migrate:deploy",
     "postinstall": "npm rebuild swisseph --build-from-source"
   },
   "keywords": [],

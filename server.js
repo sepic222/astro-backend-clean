@@ -8,6 +8,36 @@ const { DateTime } = require('luxon');
 const swisseph = require('swisseph');
 const { normalizeSurveyPayload } = require('./server/normalizeSurveyPayload');
  
+// --- Express app (init early so routes can attach) ---
+const app = express();
+app.use(cors());
+app.use(express.json());
+
+// Single source of truth for PORT
+const PORT = process.env.PORT || 3001;
+// minimal, robust route lister
+function listAllRoutes(app) {
+  const out = [];
+  const stack = app && app._router && Array.isArray(app._router.stack) ? app._router.stack : [];
+  for (const layer of stack) {
+    if (layer.route && layer.route.path) {
+      out.push({
+        path: layer.route.path,
+        methods: Object.keys(layer.route.methods || {}).map(m => m.toUpperCase())
+      });
+    } else if (layer.name === 'router' && layer.handle && Array.isArray(layer.handle.stack)) {
+      for (const sl of layer.handle.stack) {
+        if (sl.route && sl.route.path) {
+          out.push({
+            path: sl.route.path,
+            methods: Object.keys(sl.route.methods || {}).map(m => m.toUpperCase())
+          });
+        }
+      }
+    }
+  }
+  return out;
+}
 
 // --- OpenAI (optional) ---
 let openai = null;
@@ -134,9 +164,6 @@ async function saveChartToDB(input, output) {
 }
 
 // --------------------------------------------------------------
-const app = express();
-app.use(cors());
-app.use(express.json());
 
 // dev-helpers (preview & retry tools)
 app.get('/dev/email/preview/:outboxId', async (req, res) => {
@@ -146,11 +173,70 @@ app.get('/dev/email/preview/:outboxId', async (req, res) => {
   res.send(r.htmlBody);
 });
 
+// --- Dev helper: one-call flow to get a chart SVG URL -----------------
+app.post('/api/dev/chart-to-svg', async (req, res) => {
+  try {
+    const { date, time, latitude, longitude, userEmail } = req.body || {};
+    if (!date || !time || latitude == null || longitude == null) {
+      return res.status(400).json({ ok: false, error: 'Missing date, time, latitude, or longitude' });
+    }
+
+    // Derive the correct base from the incoming request (works locally + Railway)
+    const base = `${req.protocol}://${req.get('host')}`;
+
+    // 1) Create chart (re-use your existing endpoint logic via function call would be ideal;
+    //    here we simply call the route locally using fetch to keep this patch minimal).
+    const r = await fetch(`${base}/api/birth-chart-swisseph`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ date, time, latitude, longitude, userEmail })
+    });
+    const data = await r.json();
+    if (!r.ok || !data?.savedChartId) {
+      return res.status(500).json({ ok: false, error: 'Failed to create chart', detail: data });
+    }
+    const chartId = data.savedChartId;
+
+    // 2) Create a minimal submission + reading linked to that chart
+    const submission = await prisma.surveySubmission.create({
+      data: { userEmail: userEmail || null, chart: { connect: { id: chartId } } },
+      select: { id: true }
+    });
+
+    const reading = await prisma.reading.create({
+      data: {
+        submissionId: submission.id,
+        chartId,
+        userEmail: userEmail || null,
+        summary: 'Auto-generated placeholder reading for dev preview.'
+      },
+      select: { id: true }
+    });
+
+    // 3) Build URLs your dev can open immediately
+
+    const svgUrl  = `${base}/reading/${submission.id}/chart.svg`;
+    const htmlUrl = `${base}/reading/${submission.id}/html`;
+
+    return res.json({
+      ok: true,
+      submissionId: submission.id,
+      readingId: reading.id,
+      chartId,
+      svgUrl,
+      htmlUrl
+    });
+  } catch (e) {
+    console.error('💥 /api/dev/chart-to-svg error:', e);
+    return res.status(500).json({ ok: false, error: e?.message || 'Unknown error' });
+  }
+});
+
 // root & health
 app.get('/', (_req, res) => res.send('OK'));
+
 app.get('/health', (req, res) => {
-  const stack = app._router?.stack || [];
-  const count = stack.filter(l => l.route).length;
+  const routes = listAllRoutes(app);
   res.json({
     ok: true,
     status: 'healthy',
@@ -158,10 +244,11 @@ app.get('/health', (req, res) => {
         || process.env.VERCEL_GIT_COMMIT_SHA
         || 'unknown',
     cwd: process.cwd(),
-    __dirname: __dirname,
-    routesCount: count
+    __dirname,
+    routesCount: routes.length
   });
-});app.get('/_whoami', (_req, res) => {
+});
+app.get('/_whoami', (_req, res) => {
   res.json({ cwd: process.cwd(), __dirname, routesCount: (app._router?.stack?.length) || 0 });
 });
 
@@ -1243,21 +1330,12 @@ app.get('/api/geocode', async (req, res) => {
   }
 });
 
-
 app.get('/__routes', (req, res) => {
-  const stack = app._router?.stack || [];
-  const routes = stack
-    .filter(l => l.route)
-    .map(l => {
-      const methods = Object.keys(l.route.methods).map(m => m.toUpperCase()).join(',');
-      return { methods, path: l.route.path };
-    });
+  const routes = listAllRoutes(app);
   res.json({ count: routes.length, routes });
 });
 
 // === Survey submit (normalized via shim) ======================
-const PORT = 3001;
-
 app.post("/api/survey/submit", async (req, res) => {
   try {
     console.log("submit route v2 hit", new Date().toISOString());
@@ -1466,11 +1544,13 @@ app.get('/api/debug/latest', async (_req, res) => {
     ]);
     res.json({ ok: true, latest: { chart, submission, reading } });
   } catch (e) {
-    console.error('💥 /api/debug/latest error:', e);
     res.status(500).json({ ok: false, error: e.message });
   }
 });
-
+try {
+  const _bootRoutes = listAllRoutes(app);
+  console.log('📜 Discovered routes on load:', _bootRoutes.length);
+} catch (_) {}
 // start server (only when run directly)
 if (require.main === module) {
   app.listen(PORT, () => {

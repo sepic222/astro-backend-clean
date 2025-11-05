@@ -1,14 +1,13 @@
 // server.js
 console.log("✅ Running server.js from:", __dirname);
+require('dotenv').config();
 
 const express = require('express');
 const cors = require('cors');
 const { DateTime } = require('luxon');
 const swisseph = require('swisseph');
 const { normalizeSurveyPayload } = require('./server/normalizeSurveyPayload');
-// near other requires:
-
-require('dotenv').config();
+ 
 
 // --- OpenAI (optional) ---
 let openai = null;
@@ -23,7 +22,7 @@ if (process.env.OPENAI_API_KEY) {
 const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
-
+const { readingHtmlHandler, readingSvgHandler, chartSvgAlias } = require('./server/readingRoutes');
 // ---- helpers -------------------------------------------------
 function normalize360(val) {
   let x = Number(val);
@@ -64,6 +63,15 @@ function houseOfLongitude(lon, houseCusps) {
 function num(v) {
   const n = Number(v);
   return Number.isFinite(n) ? n : null; // convert NaN/undefined/null -> null
+}
+
+// Normalize chartRulerPlanet for enum variants
+function normalizePlanetName(p) {
+  if (!p) return null;
+  // If your enum is TitleCase (Sun/Moon/...) this is already fine.
+  // If your enum is UPPERCASE, uncomment the next line:
+  // return p.toUpperCase();
+  return p;
 }
 
 // --- best-effort DB save helper (non-fatal on error) ----------
@@ -116,14 +124,7 @@ async function saveChartToDB(input, output) {
       chironHouse: output?.nodesAndChiron?.chiron?.house ?? null,
       rawChart: output ?? null,
     };
-// Normalize chartRulerPlanet for enum variants
-function normalizePlanetName(p) {
-  if (!p) return null;
-  // If your enum is TitleCase (Sun/Moon/...) this is already fine.
-  // If your enum is UPPERCASE, uncomment the next line:
-  // return p.toUpperCase();
-  return p;
-}
+
     const rec = await prisma.chart.create({ data, select: { id: true } });
     return rec.id;
   } catch (e) {
@@ -147,8 +148,16 @@ app.get('/dev/email/preview/:outboxId', async (req, res) => {
 
 // root & health
 app.get('/', (_req, res) => res.send('OK'));
-app.get('/health', (_req, res) => res.json({ ok: true, status: 'healthy' }));
-app.get('/_whoami', (_req, res) => {
+app.get('/health', (_req, res) => {
+  res.json({
+    ok: true,
+    status: 'healthy',
+    build: process.env.RAILWAY_GIT_COMMIT_SHA || process.env.COMMIT_SHA || 'local-dev',
+    cwd: process.cwd(),
+    __dirname,
+    routesCount: (app._router?.stack?.length) || 0
+  });
+});app.get('/_whoami', (_req, res) => {
   res.json({ cwd: process.cwd(), __dirname, routesCount: (app._router?.stack?.length) || 0 });
 });
 
@@ -434,6 +443,42 @@ app.get('/api/birth-chart-swisseph', async (req, res) => {
       data.house = house;
     }
 
+    // --- Nodes & Chiron (compute AFTER housesDeg + houseOf exist) ---
+    const extraBodies = {
+      northNode: swisseph.SE_TRUE_NODE,
+      chiron:    swisseph.SE_CHIRON
+    };
+
+    const nodesAndChiron = {};
+    for (const [name, code] of Object.entries(extraBodies)) {
+      try {
+        const result = await new Promise((resolve, reject) => {
+          swisseph.swe_calc_ut(jd, code, swisseph.SEFLG_SWIEPH, (r) => {
+            if (r.error) reject(new Error(r.error)); else resolve(r);
+          });
+        });
+        const lon = normalize360(result.longitude);
+        const house = houseOf(lon);
+        nodesAndChiron[name] = {
+          longitude: lon,
+          sign: signFromLongitude(lon),
+          house
+        };
+      } catch (err) {
+        console.warn(`⚠️ Skipping ${name}:`, err.message);
+      }
+    }
+
+    // merge whatever we got into planets-style structures
+    if (nodesAndChiron.northNode) {
+      planets.northNode = nodesAndChiron.northNode;
+      planetsInHouses.northNode = nodesAndChiron.northNode.house;
+    }
+    if (nodesAndChiron.chiron) {
+      planets.chiron = nodesAndChiron.chiron;
+      planetsInHouses.chiron = nodesAndChiron.chiron.house;
+    }
+
     const descendantDeg = (ascendant + 180) % 360;
     const icDeg         = (mc + 180) % 360;
     const signOf = (deg) => ZODIAC_SIGNS[Math.floor((((deg % 360) + 360) % 360) / 30)];
@@ -464,6 +509,7 @@ app.get('/api/birth-chart-swisseph', async (req, res) => {
       houseRulers,
       planets,
       planetsInHouses,
+      nodesAndChiron,
       chartRulerPlanet,
       chartRulerHouse
     };
@@ -480,6 +526,8 @@ app.get('/api/birth-chart-swisseph', async (req, res) => {
         timeAccuracy: req.query?.timeAccuracy ?? null,
         date, time, latitude, longitude,
         birthDateTimeUtc: birthUTC.toISOString(), tzOffsetMinutes,
+        northNodeHouse: nodesAndChiron.northNode?.house ?? null,
+        chironHouse: nodesAndChiron.chiron?.house ?? null,
       },
       payload
     );
@@ -1121,6 +1169,9 @@ app.post('/api/chart-houses', async (req, res) => {
     return res.status(500).json({ success: false, error: error.message || String(error) });
   }
 });
+app.get('/reading/:id/html', readingHtmlHandler);
+app.get('/reading/:id/chart.svg', readingSvgHandler);
+chartSvgAlias(app);  // adds /api/chart/:id/svg redirect  
 
 // === Save survey response (normalized) ========================
 app.post('/api/survey-response', async (req, res) => {

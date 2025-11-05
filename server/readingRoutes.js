@@ -77,4 +77,17 @@ function readingSvgHandler(req, res) {
   })();
 }
 
-module.exports = { readingHtmlHandler, readingSvgHandler };
+// --- Convenience alias that returns the exact same SVG as /reading/:id/chart.svg ---
+function chartSvgAlias(app) {
+  app.get('/api/chart/:id/svg', async (req, res) => {
+    const id = req.params.id;
+    // Keep it simple: redirect to the existing handler so there’s one source of truth
+    res.redirect(302, `/reading/${id}/chart.svg`);
+  });
+}
+
+module.exports = {
+  readingHtmlHandler,
+  readingSvgHandler,
+  chartSvgAlias,
+};

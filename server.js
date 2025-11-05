@@ -148,14 +148,18 @@ app.get('/dev/email/preview/:outboxId', async (req, res) => {
 
 // root & health
 app.get('/', (_req, res) => res.send('OK'));
-app.get('/health', (_req, res) => {
+app.get('/health', (req, res) => {
+  const stack = app._router?.stack || [];
+  const count = stack.filter(l => l.route).length;
   res.json({
     ok: true,
     status: 'healthy',
-    build: process.env.RAILWAY_GIT_COMMIT_SHA || process.env.COMMIT_SHA || 'local-dev',
+    build: process.env.RAILWAY_GIT_COMMIT_SHA
+        || process.env.VERCEL_GIT_COMMIT_SHA
+        || 'unknown',
     cwd: process.cwd(),
-    __dirname,
-    routesCount: (app._router?.stack?.length) || 0
+    __dirname: __dirname,
+    routesCount: count
   });
 });app.get('/_whoami', (_req, res) => {
   res.json({ cwd: process.cwd(), __dirname, routesCount: (app._router?.stack?.length) || 0 });
@@ -1240,24 +1244,15 @@ app.get('/api/geocode', async (req, res) => {
 });
 
 
-app.get('/__routes', (_req, res) => {
-  const out = [];
-  const stack = (app && app._router && Array.isArray(app._router.stack)) ? app._router.stack : [];
-  for (const layer of stack) {
-    if (layer.route?.path) {
-      const methods = Object.keys(layer.route.methods || {}).map(m => m.toUpperCase());
-      out.push({ path: layer.route.path, methods });
-    } else if (layer.name === 'router' && layer.handle && Array.isArray(layer.handle.stack)) {
-      for (const sl of layer.handle.stack) {
-        if (sl.route?.path) {
-          const methods = Object.keys(sl.route.methods || {}).map(m => m.toUpperCase());
-          out.push({ path: sl.route.path, methods });
-        }
-      }
-    }
-  }
-  console.log('📜 Registered routes:', out);
-  res.json(out);
+app.get('/__routes', (req, res) => {
+  const stack = app._router?.stack || [];
+  const routes = stack
+    .filter(l => l.route)
+    .map(l => {
+      const methods = Object.keys(l.route.methods).map(m => m.toUpperCase()).join(',');
+      return { methods, path: l.route.path };
+    });
+  res.json({ count: routes.length, routes });
 });
 
 // === Survey submit (normalized via shim) ======================

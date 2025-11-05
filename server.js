@@ -1470,28 +1470,7 @@ app.get('/api/debug/latest', async (_req, res) => {
     res.status(500).json({ ok: false, error: e.message });
   }
 });
-// --- TEMP: route dump so we can see what's actually mounted in prod ---
-app.get('/__routes', (_req, res) => {
-  const list = [];
-  const stack = (app && app._router && Array.isArray(app._router.stack))
-    ? app._router.stack
-    : [];
-  for (const layer of stack) {
-    if (layer.route && layer.route.path) {
-      const methods = Object.keys(layer.route.methods || {}).map(m => m.toUpperCase());
-      list.push({ path: layer.route.path, methods });
-    } else if (layer.name === 'router' && layer.handle && Array.isArray(layer.handle.stack)) {
-      for (const sl of layer.handle.stack) {
-        if (sl.route && sl.route.path) {
-          const methods = Object.keys(sl.route.methods || {}).map(m => m.toUpperCase());
-          list.push({ path: sl.route.path, methods });
-        }
-      }
-    }
-  }
-  console.log('📜 Registered routes:', list);
-  res.json(list);
-});
+
 // start server (only when run directly)
 if (require.main === module) {
   app.listen(PORT, () => {

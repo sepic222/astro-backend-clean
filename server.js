@@ -1559,6 +1559,115 @@ app.get('/__routes', (_req, res) => {
 });
 
 
+// ===== Chart SVG Endpoint (Birthday Surprise Edition!) =====
+// TODO: Replace with real buildChartSVG functionality after Nov 14
+app.get('/reading/:submissionId/chart.svg', async (req, res) => {
+  try {
+    const { submissionId } = req.params;
+
+    // Check if today is November 14th (birthday surprise!)
+    const now = new Date();
+    const month = now.getMonth(); // 0-indexed, so 10 = November
+    const day = now.getDate();
+    const isBirthday = (month === 10 && day === 14);
+
+    if (isBirthday) {
+      // Birthday surprise SVG!
+      const svg = `<?xml version="1.0" encoding="UTF-8"?>
+<svg width="800" height="600" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+  <!-- Background -->
+  <rect width="800" height="600" fill="#1a1a2e"/>
+
+  <!-- Embedded GIF (new retouched version) -->
+  <image x="100" y="150" width="600" height="400"
+         xlink:href="https://result.videoplus.ai/veo2-outputs/output/result/202511/14/14035279c3124b618551dbd107200264.gif"/>
+
+  <!-- Birthday Text Overlay with SF San Francisco font -->
+  <text x="400" y="120"
+        font-family="-apple-system, SF Pro Display, SF Pro Text, system-ui, sans-serif"
+        font-size="52"
+        font-weight="bold"
+        fill="#FFD700"
+        text-anchor="middle"
+        stroke="#FF6B6B"
+        stroke-width="2">
+    Happy Birthdayyy!
+  </text>
+
+  <!-- Confetti - Upper area falling animation -->
+  <!-- Row 1 - Confetti pieces -->
+  <circle cx="150" cy="-20" r="8" fill="#FF6B6B" opacity="0.9">
+    <animate attributeName="cy" values="-20;300" dur="3s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values="0.9;0.3;0.9" dur="3s" repeatCount="indefinite"/>
+  </circle>
+  <rect x="250" y="-30" width="10" height="10" fill="#FFD700" opacity="0.9" transform="rotate(45 255 -25)">
+    <animate attributeName="y" values="-30;320" dur="3.5s" repeatCount="indefinite"/>
+    <animateTransform attributeName="transform" type="rotate" values="45 255 -25;405 255 295" dur="3.5s" repeatCount="indefinite"/>
+  </rect>
+  <circle cx="350" cy="-15" r="6" fill="#4ECDC4" opacity="0.9">
+    <animate attributeName="cy" values="-15;310" dur="2.8s" repeatCount="indefinite"/>
+  </circle>
+  <polygon points="450,-25 458,-10 442,-10" fill="#FF6B6B" opacity="0.9">
+    <animate attributeName="transform" values="translate(0,-25);translate(0,305)" dur="3.2s" repeatCount="indefinite"/>
+  </polygon>
+  <circle cx="550" cy="-40" r="7" fill="#A78BFA" opacity="0.9">
+    <animate attributeName="cy" values="-40;290" dur="3.6s" repeatCount="indefinite"/>
+  </circle>
+  <rect x="650" y="-20" width="8" height="8" fill="#4ECDC4" opacity="0.9" transform="rotate(30 654 -16)">
+    <animate attributeName="y" values="-20;315" dur="3.3s" repeatCount="indefinite"/>
+  </rect>
+
+  <!-- Row 2 - More confetti -->
+  <circle cx="100" cy="-50" r="6" fill="#FFD700" opacity="0.9">
+    <animate attributeName="cy" values="-50;280" dur="3.4s" begin="0.5s" repeatCount="indefinite"/>
+  </circle>
+  <rect x="200" y="-45" width="9" height="9" fill="#FF6B6B" opacity="0.9" transform="rotate(60 204.5 -40.5)">
+    <animate attributeName="y" values="-45;295" dur="3.1s" begin="0.5s" repeatCount="indefinite"/>
+  </rect>
+  <polygon points="320,-35 326,-22 314,-22" fill="#4ECDC4" opacity="0.9">
+    <animate attributeName="transform" values="translate(0,-35);translate(0,295)" dur="2.9s" begin="0.5s" repeatCount="indefinite"/>
+  </polygon>
+  <circle cx="420" cy="-30" r="8" fill="#A78BFA" opacity="0.9">
+    <animate attributeName="cy" values="-30;300" dur="3.7s" begin="0.5s" repeatCount="indefinite"/>
+  </circle>
+  <rect x="520" y="-40" width="10" height="10" fill="#FFD700" opacity="0.9" transform="rotate(20 525 -35)">
+    <animate attributeName="y" values="-40;285" dur="3.2s" begin="0.5s" repeatCount="indefinite"/>
+  </rect>
+  <circle cx="620" cy="-25" r="7" fill="#FF6B6B" opacity="0.9">
+    <animate attributeName="cy" values="-25;305" dur="3.5s" begin="0.5s" repeatCount="indefinite"/>
+  </circle>
+
+  <!-- Row 3 - Even more confetti -->
+  <circle cx="180" cy="-60" r="7" fill="#4ECDC4" opacity="0.9">
+    <animate attributeName="cy" values="-60;270" dur="3.3s" begin="1s" repeatCount="indefinite"/>
+  </circle>
+  <polygon points="280,-50 288,-37 272,-37" fill="#FFD700" opacity="0.9">
+    <animate attributeName="transform" values="translate(0,-50);translate(0,285)" dur="3.4s" begin="1s" repeatCount="indefinite"/>
+  </polygon>
+  <rect x="380" y="-55" width="9" height="9" fill="#A78BFA" opacity="0.9" transform="rotate(75 384.5 -50.5)">
+    <animate attributeName="y" values="-55;275" dur="3.0s" begin="1s" repeatCount="indefinite"/>
+  </rect>
+  <circle cx="480" cy="-45" r="6" fill="#FF6B6B" opacity="0.9">
+    <animate attributeName="cy" values="-45;290" dur="3.6s" begin="1s" repeatCount="indefinite"/>
+  </circle>
+  <circle cx="580" cy="-35" r="8" fill="#4ECDC4" opacity="0.9">
+    <animate attributeName="cy" values="-35;295" dur="3.1s" begin="1s" repeatCount="indefinite"/>
+  </circle>
+  <rect x="680" y="-50" width="8" height="8" fill="#FFD700" opacity="0.9" transform="rotate(45 684 -46)">
+    <animate attributeName="y" values="-50;280" dur="3.5s" begin="1s" repeatCount="indefinite"/>
+  </rect>
+</svg>`;
+      res.type('image/svg+xml').send(svg);
+    } else {
+      // After birthday - endpoint ready for real chart implementation
+      res.status(503).send('Chart SVG generation coming soon! (Temporary birthday version expired)');
+    }
+  } catch (e) {
+    console.error('💥 /reading/:submissionId/chart.svg error:', e);
+    res.status(500).send('Error generating chart');
+  }
+});
+
 // start server (only when run directly)
 if (require.main === module) {
   app.listen(PORT, () => {

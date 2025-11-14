@@ -758,6 +758,66 @@ try {
   }
 });
 
+// ===== Chart SVG Endpoint (Birthday Surprise Edition!) =====
+// TODO: Replace with real buildChartSVG functionality after Nov 14
+app.get('/reading/:submissionId/chart.svg', async (req, res) => {
+  try {
+    const { submissionId } = req.params;
+
+    // Check if today is November 14th (birthday surprise!)
+    const now = new Date();
+    const month = now.getMonth(); // 0-indexed, so 10 = November
+    const day = now.getDate();
+    const isBirthday = (month === 10 && day === 14);
+
+    if (isBirthday) {
+      // Birthday surprise SVG!
+      const svg = `<?xml version="1.0" encoding="UTF-8"?>
+<svg width="800" height="600" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+  <!-- Background -->
+  <rect width="800" height="600" fill="#1a1a2e"/>
+
+  <!-- Embedded GIF -->
+  <image x="100" y="150" width="600" height="400"
+         xlink:href="https://result.videoplus.ai/veo2-outputs/output/result/202511/14/34c8e6cd729a44cb8a95487237f6b798.gif"/>
+
+  <!-- Birthday Text Overlay -->
+  <text x="400" y="120"
+        font-family="Arial, sans-serif"
+        font-size="48"
+        font-weight="bold"
+        fill="#FFD700"
+        text-anchor="middle"
+        stroke="#FF6B6B"
+        stroke-width="2">
+    Happy Birthdayyy!
+  </text>
+
+  <!-- Decorative elements -->
+  <circle cx="100" cy="100" r="15" fill="#FF6B6B" opacity="0.8">
+    <animate attributeName="cy" values="100;80;100" dur="2s" repeatCount="indefinite"/>
+  </circle>
+  <circle cx="700" cy="100" r="15" fill="#4ECDC4" opacity="0.8">
+    <animate attributeName="cy" values="100;80;100" dur="2s" begin="0.5s" repeatCount="indefinite"/>
+  </circle>
+  <circle cx="150" cy="80" r="12" fill="#FFD700" opacity="0.8">
+    <animate attributeName="cy" values="80;60;80" dur="2s" begin="1s" repeatCount="indefinite"/>
+  </circle>
+  <circle cx="650" cy="80" r="12" fill="#FF6B6B" opacity="0.8">
+    <animate attributeName="cy" values="80;60;80" dur="2s" begin="1.5s" repeatCount="indefinite"/>
+  </circle>
+</svg>`;
+      res.type('image/svg+xml').send(svg);
+    } else {
+      // After birthday - endpoint ready for real chart implementation
+      res.status(503).send('Chart SVG generation coming soon! (Temporary birthday version expired)');
+    }
+  } catch (e) {
+    console.error('💥 /reading/:submissionId/chart.svg error:', e);
+    res.status(500).send('Error generating chart');
+  }
+});
+
 // start server (only when run directly)
 if (require.main === module) {
   app.listen(PORT, () => {

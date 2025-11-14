@@ -781,6 +781,9 @@ app.get('/reading/:submissionId/chart.svg', async (req, res) => {
   <image x="100" y="150" width="600" height="400"
          xlink:href="https://result.videoplus.ai/veo2-outputs/output/result/202511/14/34c8e6cd729a44cb8a95487237f6b798.gif"/>
 
+  <!-- Cover leftover in top right corner -->
+  <rect x="620" y="140" width="100" height="100" fill="#1a1a2e"/>
+
   <!-- Birthday Text Overlay -->
   <text x="400" y="120"
         font-family="Arial, sans-serif"

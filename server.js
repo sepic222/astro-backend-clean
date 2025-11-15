@@ -1191,6 +1191,8 @@ app.get('/reading/:submissionId/html', async (req, res) => {
     if (!reading) return res.status(404).send('Reading not found');
 
     let chartDTO = null;
+    let readingText = reading.summary || 'Reading not available';
+
     if (reading.chartId) {
       const chart = await prisma.chart.findUnique({
         where: { id: reading.chartId },
@@ -1212,6 +1214,17 @@ app.get('/reading/:submissionId/html', async (req, res) => {
           rawHouses: rc.houses || [],
           planets: planets
         };
+
+        // Build reading from content files
+        try {
+          const { buildReading } = require('./server/readings');
+          const builtReading = buildReading({ chartPayload: rc, answersByKey: {} });
+          if (builtReading && builtReading.text) {
+            readingText = builtReading.text;
+          }
+        } catch (err) {
+          console.warn('Failed to build reading from content:', err.message);
+        }
       }
     }
 
@@ -1243,7 +1256,7 @@ app.get('/reading/:submissionId/html', async (req, res) => {
 
         <section class="card">
           <h2>Summary</h2>
-          <div class="reading">${esc(reading.summary)}</div>
+          <div class="reading">${esc(readingText)}</div>
         </section>
 
         <div class="card">

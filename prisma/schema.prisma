@@ -1,56 +1,15 @@
-// ---------- DATASOURCE / GENERATOR ----------
+generator client {
+  provider = "prisma-client-js"
+}
+
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-generator client {
-  provider = "prisma-client-js"
-}
-
-// ---------- ENUMS ----------
-enum Planet {
-  Sun
-  Moon
-  Mercury
-  Venus
-  Mars
-  Jupiter
-  Saturn
-  Uranus
-  Neptune
-  Pluto
-}
-
-enum Sign {
-  Aries
-  Taurus
-  Gemini
-  Cancer
-  Leo
-  Virgo
-  Libra
-  Scorpio
-  Sagittarius
-  Capricorn
-  Aquarius
-  Pisces
-}
-
-enum AspectType {
-  Conjunction
-  Sextile
-  Square
-  Trine
-  Opposition
-}
-
-// ---------- MODELS ----------
 model Chart {
-  id        String   @id @default(cuid())
-  createdAt DateTime @default(now())
-
-  // Identity & timing
+  id               String             @id @default(cuid())
+  createdAt        DateTime           @default(now())
   userEmail        String?
   birthDateTimeUtc DateTime?
   tzOffsetMinutes  Int?
@@ -58,55 +17,44 @@ model Chart {
   country          String?
   latitude         Float?
   longitude        Float?
-
-  // Angles (degrees + signs)
-  ascendant      Float?
-  mc             Float?
-  descendant     Float?
-  ic             Float?
-  risingSign     Sign?
-  mcSign         Sign?
-  descendantSign Sign?
-  icSign         Sign?
-
-  // Denormalized planets: sign + house (1..12)
-  sunSign      Sign?
-  sunHouse     Int?
-  moonSign     Sign?
-  moonHouse    Int?
-  mercurySign  Sign?
-  mercuryHouse Int?
-  venusSign    Sign?
-  venusHouse   Int?
-  marsSign     Sign?
-  marsHouse    Int?
-  jupiterSign  Sign?
-  jupiterHouse Int?
-  saturnSign   Sign?
-  saturnHouse  Int?
-  uranusSign   Sign?
-  uranusHouse  Int?
-  neptuneSign  Sign?
-  neptuneHouse Int?
-  plutoSign    Sign?
-  plutoHouse   Int?
-
-  // Chart ruler + nodes/chiron
+  ascendant        Float?
+  mc               Float?
+  descendant       Float?
+  ic               Float?
+  risingSign       Sign?
+  mcSign           Sign?
+  descendantSign   Sign?
+  icSign           Sign?
+  sunSign          Sign?
+  sunHouse         Int?
+  moonSign         Sign?
+  moonHouse        Int?
+  mercurySign      Sign?
+  mercuryHouse     Int?
+  venusSign        Sign?
+  venusHouse       Int?
+  marsSign         Sign?
+  marsHouse        Int?
+  jupiterSign      Sign?
+  jupiterHouse     Int?
+  saturnSign       Sign?
+  saturnHouse      Int?
+  uranusSign       Sign?
+  uranusHouse      Int?
+  neptuneSign      Sign?
+  neptuneHouse     Int?
+  plutoSign        Sign?
+  plutoHouse       Int?
   chartRulerPlanet Planet?
   chartRulerHouse  Int?
   northNodeHouse   Int?
   chironHouse      Int?
+  rawChart         Json
+  aspects          ChartAspect[]
+  responses        Response[]
+  surveys          Survey[]
+  submissions      SurveySubmission[]
 
-  // Canonical “everything”
-  rawChart Json
-
-  // Relations
-  aspects     ChartAspect[]
-  responses   Response[]
-  surveys     Survey[]
-  submissions SurveySubmission[]
-
-  // ✅ Back-reference for SurveySubmission.chart
   @@index([userEmail, createdAt])
   @@index([risingSign])
   @@index([sunSign, moonSign, mercurySign])
@@ -116,15 +64,14 @@ model Chart {
 }
 
 model ChartAspect {
-  id      String @id @default(cuid())
-  chartId String
-  chart   Chart  @relation(fields: [chartId], references: [id], onDelete: Cascade)
-
+  id       String     @id @default(cuid())
+  chartId  String
   a        Planet
   b        Planet
   aspect   AspectType
   orb      Float?
   strength Int?
+  chart    Chart      @relation(fields: [chartId], references: [id], onDelete: Cascade)
 
   @@index([chartId, aspect])
 }
@@ -193,12 +140,12 @@ model Survey {
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
   chartId   String?
-  chart     Chart?     @relation(fields: [chartId], references: [id], onDelete: SetNull)
   type      String?
   version   String?
   schema    Json?
   userEmail String?
   responses Response[]
+  chart     Chart?     @relation(fields: [chartId], references: [id])
 
   @@index([userEmail, createdAt])
 }
@@ -208,77 +155,145 @@ model Response {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   surveyId  String
-  survey    Survey   @relation(fields: [surveyId], references: [id], onDelete: Cascade)
   chartId   String?
-  chart     Chart?   @relation(fields: [chartId], references: [id], onDelete: SetNull)
   answers   Json
   userEmail String?
+  chart     Chart?   @relation(fields: [chartId], references: [id])
+  survey    Survey   @relation(fields: [surveyId], references: [id], onDelete: Cascade)
 
   @@index([userEmail, createdAt])
 }
 
-// ===== Survey Core (namespaced & safe) =====
 model SurveySection {
-  id         String           @id @default(cuid())
-  key        String           @unique      // e.g. "I", "II", ... "IX"
-  title      String
-  sortOrder  Int
-  questions  SurveyQuestion[]
+  id        String           @id @default(cuid())
+  key       String           @unique
+  title     String
+  sortOrder Int
+  questions SurveyQuestion[]
+
   @@map("survey_sections")
 }
 
 model SurveyQuestion {
-  id          String              @id @default(cuid())
-  sectionId   String
-  section     SurveySection       @relation(fields: [sectionId], references: [id])
-  key         String              @unique      // e.g. "I.1", "IX.6"
-  text        String
-  type        SurveyQuestionType
-  sortOrder   Int
-  options     SurveyOption[]
-  responses   SurveyResponse[]
-  showIfJson  Json?
+  id         String             @id @default(cuid())
+  sectionId  String
+  key        String             @unique
+  text       String
+  type       SurveyQuestionType
+  sortOrder  Int
+  showIfJson Json?
+  options    SurveyOption[]
+  section    SurveySection      @relation(fields: [sectionId], references: [id])
+  responses  SurveyResponse[]
+
   @@map("survey_questions")
 }
 
 model SurveyOption {
-  id          String         @id @default(cuid())
-  questionId  String
-  question    SurveyQuestion @relation(fields: [questionId], references: [id])
-  value       String         // machine value
-  label       String         // display label
-  sortOrder   Int
+  id              String                 @id @default(cuid())
+  questionId      String
+  value           String
+  label           String
+  sortOrder       Int
+  question        SurveyQuestion         @relation(fields: [questionId], references: [id])
   responseOptions SurveyResponseOption[]
+
   @@map("survey_options")
 }
 
 model SurveyResponse {
-  id           String         @id @default(cuid())
-  userId       String
-  questionId   String
-  question     SurveyQuestion @relation(fields: [questionId], references: [id])
-  submissionId String?
-  submission   SurveySubmission? @relation(fields: [submissionId], references: [id])
-
-@@index([questionId])
-@@index([submissionId])
-  // For free-text / slider answers:
-  answerText  String?
-
-  createdAt   DateTime @default(now())
-
+  id              String                 @id @default(cuid())
+  userId          String
+  questionId      String
+  submissionId    String?
+  answerText      String?
+  createdAt       DateTime               @default(now())
   responseOptions SurveyResponseOption[]
+  question        SurveyQuestion         @relation(fields: [questionId], references: [id])
+  submission      SurveySubmission?      @relation(fields: [submissionId], references: [id])
+
+  @@index([questionId])
+  @@index([submissionId])
   @@map("survey_responses")
 }
 
 model SurveyResponseOption {
-  responseId  String
-  optionId    String
-  response    SurveyResponse @relation(fields: [responseId], references: [id])
-  option      SurveyOption   @relation(fields: [optionId], references: [id])
+  responseId String
+  optionId   String
+  option     SurveyOption   @relation(fields: [optionId], references: [id])
+  response   SurveyResponse @relation(fields: [responseId], references: [id])
 
   @@id([responseId, optionId])
   @@map("survey_response_options")
+}
+
+model SurveySubmission {
+  id        String           @id @default(cuid())
+  userEmail String?
+  chartId   String?
+  createdAt DateTime         @default(now())
+  chart     Chart?           @relation(fields: [chartId], references: [id])
+  responses SurveyResponse[]
+
+  @@index([userEmail, createdAt])
+}
+
+model EmailOutbox {
+  id           String    @id @default(cuid())
+  toEmail      String
+  subject      String
+  htmlBody     String
+  status       String    @default("PENDING")
+  error        String?
+  submissionId String?
+  chartId      String?
+  createdAt    DateTime  @default(now())
+  sentAt       DateTime?
+}
+
+model Reading {
+  id           String   @id @default(cuid())
+  submissionId String   @unique
+  chartId      String?
+  userEmail    String?
+  summary      String
+  createdAt    DateTime @default(now())
+}
+
+enum Planet {
+  Sun
+  Moon
+  Mercury
+  Venus
+  Mars
+  Jupiter
+  Saturn
+  Uranus
+  Neptune
+  Pluto
+}
+
+enum Sign {
+  Aries
+  Taurus
+  Gemini
+  Cancer
+  Leo
+  Virgo
+  Libra
+  Scorpio
+  Sagittarius
+  Capricorn
+  Aquarius
+  Pisces
+}
+
+enum AspectType {
+  Conjunction
+  Sextile
+  Square
+  Trine
+  Opposition
 }
 
 enum SurveyQuestionType {
@@ -286,37 +301,4 @@ enum SurveyQuestionType {
   radio
   checkbox
   slider
-}
-model SurveySubmission {
-  id        String   @id @default(cuid())
-  userEmail String?
-  chartId   String?
-  chart     Chart?   @relation(fields: [chartId], references: [id], onDelete: SetNull)
-  createdAt DateTime @default(now())
-
-  responses SurveyResponse[]
-
-  @@index([userEmail, createdAt])
-}
-model EmailOutbox {
-  id            String   @id @default(cuid())
-  toEmail       String
-  subject       String
-  htmlBody      String
-  status        String   @default("PENDING") // PENDING|SENT|FAILED
-  error         String?  // last error if failed
-  submissionId  String?  // optional link
-  chartId       String?  // optional link
-  createdAt     DateTime @default(now())
-  sentAt        DateTime?
-}
-
-model Reading {
-  id            String   @id @default(cuid())
-  submissionId  String   @unique
-  chartId       String?
-  userEmail     String?
-  // compact text for now; can be JSON later
-  summary       String   // the stitched “reading” text we send
-  createdAt     DateTime @default(now())
 }

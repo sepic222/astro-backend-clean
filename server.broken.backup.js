@@ -26,7 +26,6 @@ const SUN_HOUSE_TEXT  = loadJson(path.join(CONTENT_DIR, 'sun_house.json'));
 const MOON_SIGN_TEXT  = loadJson(path.join(CONTENT_DIR, 'moon_sign.json'));
 const MOON_HOUSE_TEXT = loadJson(path.join(CONTENT_DIR, 'moon_house.json'));
 const CHART_RULER_TEXT = loadJson(path.join(CONTENT_DIR, 'chart_ruler.json'));
-const CHART_RULER_HOUSE_TEXT = loadJson(path.join(CONTENT_DIR, 'chart_ruler_house.json'));
 
 const MERCURY_SIGN_TEXT = loadJson(path.join(CONTENT_DIR, 'mercury_sign.json'));
 const MERCURY_HOUSE_TEXT = loadJson(path.join(CONTENT_DIR, 'mercury_house.json'));
@@ -44,26 +43,6 @@ const NEPTUNE_SIGN_TEXT = loadJson(path.join(CONTENT_DIR, 'neptune_sign.json'));
 const NEPTUNE_HOUSE_TEXT = loadJson(path.join(CONTENT_DIR, 'neptune_house.json'));
 const PLUTO_SIGN_TEXT = loadJson(path.join(CONTENT_DIR, 'pluto_sign.json'));
 const PLUTO_HOUSE_TEXT = loadJson(path.join(CONTENT_DIR, 'pluto_house.json'));
-
-// House-by-house generic “style” blurbs (sign on the cusp)
-const HOUSE_01 = require('./content/readings/house_01.json');
-const HOUSE_02 = require('./content/readings/house_02.json');
-const HOUSE_03 = require('./content/readings/house_03.json');
-const HOUSE_04 = require('./content/readings/house_04.json');
-const HOUSE_05 = require('./content/readings/house_05.json');
-const HOUSE_06 = require('./content/readings/house_06.json');
-const HOUSE_07 = require('./content/readings/house_07.json');
-const HOUSE_08 = require('./content/readings/house_08.json');
-const HOUSE_09 = require('./content/readings/house_09.json');
-const HOUSE_10 = require('./content/readings/house_10.json');
-const HOUSE_11 = require('./content/readings/house_11.json');
-const HOUSE_12 = require('./content/readings/house_12.json');
-
-const HOUSES_GENERIC = {
-  1: HOUSE_01, 2: HOUSE_02, 3: HOUSE_03, 4: HOUSE_04, 5: HOUSE_05, 6: HOUSE_06,
-  7: HOUSE_07, 8: HOUSE_08, 9: HOUSE_09, 10: HOUSE_10, 11: HOUSE_11, 12: HOUSE_12
-};
-
 
 // --- Express app (init early so routes can attach) ---
 const app = express();
@@ -756,7 +735,7 @@ app.post('/api/dev/chart-to-svg', async (req, res) => {
   }
 });
 
-// === Reading DTO by submission id // JSON endpoint =================================
+// === Reading DTO by submission id =================================
 //1st version of GET handler for /api/reading/:submissionId
 app.get('/api/reading/:submissionId', async (req, res) => {
   try {
@@ -824,8 +803,7 @@ app.get('/api/reading/:submissionId', async (req, res) => {
           moonSign:       planets?.moon?.sign || null,
           moonHouse:      planets?.moon?.house || null,
           chartRulerPlanet: chart.chartRulerPlanet || null,
-          chartRulerHouse:  chart.chartRulerHouse  || null,
-          planets
+          chartRulerHouse:  chart.chartRulerHouse  || null
         };
         builtText = buildReadingFromContent(builderDto);
       }
@@ -1137,135 +1115,18 @@ function buildChartSVG(rawChart, opts = {}) {
 
   svg.push(`</svg>`);
   return svg.join('\n');
-}
-//-2nd GET handler for /reading/:submissionId/html // HTML endpoint
+
+// 2nd version of GET handler for /reading/:submissionId/html
 
   app.get('/reading/:submissionId/html', async (req, res) => {
     try {
       const { submissionId } = req.params;
-
-      // Check if today is November 14th (birthday surprise!)
-      const now = new Date();
-      const month = now.getMonth(); // 0-indexed, so 10 = November
-      const day = now.getDate();
-      const isBirthday = (month === 10 && day === 14);
-
-      if (isBirthday) {
-        // Birthday surprise SVG!
-        const svg = `<?xml version="1.0" encoding="UTF-8"?>
-<svg width="800" height="600" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
-  <!-- Background -->
-  <rect width="800" height="600" fill="#1a1a2e"/>
-
-  <!-- Embedded GIF (new retouched version) -->
-  <image x="100" y="150" width="600" height="400"
-         xlink:href="https://result.videoplus.ai/veo2-outputs/output/result/202511/14/14035279c3124b618551dbd107200264.gif"/>
-
-  <!-- Birthday Text Overlay with SF San Francisco font -->
-  <text x="400" y="120"
-        font-family="-apple-system, SF Pro Display, SF Pro Text, system-ui, sans-serif"
-        font-size="52"
-        font-weight="bold"
-        fill="#FFD700"
-        text-anchor="middle"
-        stroke="#FF6B6B"
-        stroke-width="2">
-    Happy Birthdayyy!
-  </text>
-
-  <!-- Confetti - Upper area falling animation -->
-  <!-- Row 1 - Confetti pieces -->
-  <circle cx="150" cy="-20" r="8" fill="#FF6B6B" opacity="0.9">
-    <animate attributeName="cy" values="-20;300" dur="3s" repeatCount="indefinite"/>
-    <animate attributeName="opacity" values="0.9;0.3;0.9" dur="3s" repeatCount="indefinite"/>
-  </circle>
-  <rect x="250" y="-30" width="10" height="10" fill="#FFD700" opacity="0.9" transform="rotate(45 255 -25)">
-    <animate attributeName="y" values="-30;320" dur="3.5s" repeatCount="indefinite"/>
-    <animateTransform attributeName="transform" type="rotate" values="45 255 -25;405 255 295" dur="3.5s" repeatCount="indefinite"/>
-  </rect>
-  <circle cx="350" cy="-15" r="6" fill="#4ECDC4" opacity="0.9">
-    <animate attributeName="cy" values="-15;310" dur="2.8s" repeatCount="indefinite"/>
-  </circle>
-  <polygon points="450,-25 458,-10 442,-10" fill="#FF6B6B" opacity="0.9">
-    <animate attributeName="transform" values="translate(0,-25);translate(0,305)" dur="3.2s" repeatCount="indefinite"/>
-  </polygon>
-  <circle cx="550" cy="-40" r="7" fill="#A78BFA" opacity="0.9">
-    <animate attributeName="cy" values="-40;290" dur="3.6s" repeatCount="indefinite"/>
-  </circle>
-  <rect x="650" y="-20" width="8" height="8" fill="#4ECDC4" opacity="0.9" transform="rotate(30 654 -16)">
-    <animate attributeName="y" values="-20;315" dur="3.3s" repeatCount="indefinite"/>
-  </rect>
-
-  <!-- Row 2 - More confetti -->
-  <circle cx="100" cy="-50" r="6" fill="#FFD700" opacity="0.9">
-    <animate attributeName="cy" values="-50;280" dur="3.4s" begin="0.5s" repeatCount="indefinite"/>
-  </circle>
-  <rect x="200" y="-45" width="9" height="9" fill="#FF6B6B" opacity="0.9" transform="rotate(60 204.5 -40.5)">
-    <animate attributeName="y" values="-45;295" dur="3.1s" begin="0.5s" repeatCount="indefinite"/>
-  </rect>
-  <polygon points="320,-35 326,-22 314,-22" fill="#4ECDC4" opacity="0.9">
-    <animate attributeName="transform" values="translate(0,-35);translate(0,295)" dur="2.9s" begin="0.5s" repeatCount="indefinite"/>
-  </polygon>
-  <circle cx="420" cy="-30" r="8" fill="#A78BFA" opacity="0.9">
-    <animate attributeName="cy" values="-30;300" dur="3.7s" begin="0.5s" repeatCount="indefinite"/>
-  </circle>
-  <rect x="520" y="-40" width="10" height="10" fill="#FFD700" opacity="0.9" transform="rotate(20 525 -35)">
-    <animate attributeName="y" values="-40;285" dur="3.2s" begin="0.5s" repeatCount="indefinite"/>
-  </rect>
-  <circle cx="620" cy="-25" r="7" fill="#FF6B6B" opacity="0.9">
-    <animate attributeName="cy" values="-25;305" dur="3.5s" begin="0.5s" repeatCount="indefinite"/>
-  </circle>
-
-  <!-- Row 3 - Even more confetti -->
-  <circle cx="180" cy="-60" r="7" fill="#4ECDC4" opacity="0.9">
-    <animate attributeName="cy" values="-60;270" dur="3.3s" begin="1s" repeatCount="indefinite"/>
-  </circle>
-  <polygon points="280,-50 288,-37 272,-37" fill="#FFD700" opacity="0.9">
-    <animate attributeName="transform" values="translate(0,-50);translate(0,285)" dur="3.4s" begin="1s" repeatCount="indefinite"/>
-  </polygon>
-  <rect x="380" y="-55" width="9" height="9" fill="#A78BFA" opacity="0.9" transform="rotate(75 384.5 -50.5)">
-    <animate attributeName="y" values="-55;275" dur="3.0s" begin="1s" repeatCount="indefinite"/>
-  </rect>
-  <circle cx="480" cy="-45" r="6" fill="#FF6B6B" opacity="0.9">
-    <animate attributeName="cy" values="-45;290" dur="3.6s" begin="1s" repeatCount="indefinite"/>
-  </circle>
-  <circle cx="580" cy="-35" r="8" fill="#4ECDC4" opacity="0.9">
-    <animate attributeName="cy" values="-35;295" dur="3.1s" begin="1s" repeatCount="indefinite"/>
-  </circle>
-  <rect x="680" y="-50" width="8" height="8" fill="#FFD700" opacity="0.9" transform="rotate(45 684 -46)">
-    <animate attributeName="y" values="-50;280" dur="3.5s" begin="1s" repeatCount="indefinite"/>
-  </rect>
-</svg>`;
-        return res.type('image/svg+xml').send(svg);
-      }
-
-      // Normal chart (after birthday or not Nov 14)
       if (!submissionId) return res.status(400).send('Missing submissionId');
-<<<<<<< Updated upstream
-
-      // Get reading → chartId
-=======
   
->>>>>>> Stashed changes
       const reading = await prisma.reading.findFirst({
         where: { submissionId },
         select: { id: true, summary: true, chartId: true, createdAt: true, userEmail: true }
       });
-<<<<<<< Updated upstream
-      if (!reading || !reading.chartId) return res.status(404).send('Chart not found for submission');
-
-      // Load raw chart
-      const chart = await prisma.chart.findUnique({
-        where: { id: reading.chartId },
-        select: { rawChart: true }
-      });
-      if (!chart || !chart.rawChart) return res.status(404).send('Raw chart not available');
-
-      const size = Number(req.query.size) || 640;
-      const svg = buildChartSVG(chart.rawChart, { size });
-      res.set('Content-Type', 'image/svg+xml; charset=utf-8');
-      res.send(svg);
-=======
       if (!reading) return res.status(404).send('Reading not found');
   
       // Load chart + build DTO for the content builder
@@ -1310,8 +1171,7 @@ function buildChartSVG(rawChart, opts = {}) {
             moonSign:       planets?.moon?.sign || null,
             moonHouse:      planets?.moon?.house || null,
             chartRulerPlanet: chart.chartRulerPlanet || null,
-            chartRulerHouse:  chart.chartRulerHouse  || null,
-            planets
+            chartRulerHouse:  chart.chartRulerHouse  || null
           };
   
           // ← This pulls from content/readings/*.json
@@ -1371,94 +1231,11 @@ function buildChartSVG(rawChart, opts = {}) {
       </html>`;
   
       res.type('html').send(html);
->>>>>>> Stashed changes
     } catch (e) {
       console.error('💥 /reading/:submissionId/html error:', e);
       res.status(500).send('Internal error');
     }
   });
-
-// ===== Chart SVG Endpoint (with Birthday Surprise!) =====
-app.get('/reading/:submissionId/chart.svg', async (req, res) => {
-  try {
-    const { submissionId } = req.params;
-
-    // Check if today is November 14th (birthday!)
-    const now = new Date();
-    const month = now.getMonth(); // 0-indexed, so 10 = November
-    const day = now.getDate();
-    const isBirthday = (month === 10 && day === 14);
-
-    if (isBirthday) {
-      // Birthday surprise SVG!
-      const svg = `<?xml version="1.0" encoding="UTF-8"?>
-<svg width="800" height="600" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
-  <!-- Background -->
-  <rect width="800" height="600" fill="#1a1a2e"/>
-
-  <!-- Embedded GIF -->
-  <image x="100" y="150" width="600" height="400"
-         xlink:href="https://result.videoplus.ai/veo2-outputs/output/result/202511/14/34c8e6cd729a44cb8a95487237f6b798.gif"/>
-
-  <!-- Birthday Text Overlay -->
-  <text x="400" y="120"
-        font-family="Arial, sans-serif"
-        font-size="48"
-        font-weight="bold"
-        fill="#FFD700"
-        text-anchor="middle"
-        stroke="#FF6B6B"
-        stroke-width="2">
-    Happy Birthdayyy!
-  </text>
-
-  <!-- Decorative elements -->
-  <circle cx="100" cy="100" r="15" fill="#FF6B6B" opacity="0.8">
-    <animate attributeName="cy" values="100;80;100" dur="2s" repeatCount="indefinite"/>
-  </circle>
-  <circle cx="700" cy="100" r="15" fill="#4ECDC4" opacity="0.8">
-    <animate attributeName="cy" values="100;80;100" dur="2s" begin="0.5s" repeatCount="indefinite"/>
-  </circle>
-  <circle cx="150" cy="80" r="12" fill="#FFD700" opacity="0.8">
-    <animate attributeName="cy" values="80;60;80" dur="2s" begin="1s" repeatCount="indefinite"/>
-  </circle>
-  <circle cx="650" cy="80" r="12" fill="#FF6B6B" opacity="0.8">
-    <animate attributeName="cy" values="80;60;80" dur="2s" begin="1.5s" repeatCount="indefinite"/>
-  </circle>
-</svg>`;
-      res.type('image/svg+xml').send(svg);
-    } else {
-      // Normal chart SVG (after birthday)
-      if (!submissionId) return res.status(400).send('Missing submissionId');
-
-      const reading = await prisma.reading.findFirst({
-        where: { submissionId },
-        select: { chartId: true }
-      });
-
-      if (!reading || !reading.chartId) {
-        return res.status(404).send('Chart not found');
-      }
-
-      const chart = await prisma.chart.findUnique({
-        where: { id: reading.chartId },
-        select: { rawChart: true }
-      });
-
-      if (!chart || !chart.rawChart) {
-        return res.status(404).send('Chart data not found');
-      }
-
-      // Generate the actual astrology chart SVG
-      const svgContent = buildChartSVG(chart.rawChart, { size: 720 });
-      res.type('image/svg+xml').send(svgContent);
-    }
-  } catch (e) {
-    console.error('💥 /reading/:submissionId/chart.svg error:', e);
-    res.status(500).send('Error generating chart');
-  }
-});
-
 // ===== House rulers & planets-in-houses (compact endpoint) =====
 app.post('/api/chart-houses', async (req, res) => {
   try {
@@ -1543,12 +1320,6 @@ app.post('/api/chart-houses', async (req, res) => {
     return res.status(500).json({ success: false, error: error.message || String(error) });
   }
 });
-<<<<<<< Updated upstream
-app.get('/reading/:id/html', readingHtmlHandler);
-// chart.svg endpoint moved up to line 1056 with birthday logic
-chartSvgAlias(app);  // adds /api/chart/:id/svg redirect  
-=======
->>>>>>> Stashed changes
 
 // === Save survey response (normalized) ========================
 app.post('/api/survey-response', async (req, res) => {
@@ -1859,15 +1630,9 @@ if (require.main === module) {
 
 module.exports = app;
 
-function pick(map, key, fallback = '') {
+function pick(map, key, fallback = ''){ 
   if (!map || typeof map !== 'object') return fallback;
-  if (key == null) return fallback;
-  const raw = String(key);
-  // try exact first, then case-insensitive (lowercased)
-  if (raw in map) return map[raw];
-  const low = raw.toLowerCase();
-  if (low in map) return map[low];
-  return fallback;
+  return map[key] ?? fallback;
 }
 
 function buildReadingFromContent(chartDto) {
@@ -1902,40 +1667,6 @@ function buildReadingFromContent(chartDto) {
   if (SECTION_INTROS.moon_house) parts.push(SECTION_INTROS.moon_house.trim());
   parts.push(pick(MOON_HOUSE_TEXT, moonHouse, ''));
 
-    // ---- CHART RULER (sign + house) ----
-    if (chartRulerPlanet) {
-      const planetKey      = chartRulerPlanet.toLowerCase();
-      const chartRulerSign = chartDto.planets?.[planetKey]?.sign || '';
-  
-      // 1) General CHART RULER explainer — SIGN LEVEL
-      if (SECTION_INTROS.chart_ruler) {
-        parts.push(String(SECTION_INTROS.chart_ruler).trim());
-      }
-  
-      // 2) “Chart Ruler in Aries / Taurus / …” from chart_ruler.json
-      if (chartRulerSign) {
-        const bySign = pick(CHART_RULER_TEXT, chartRulerSign, '');
-        if (bySign) parts.push(bySign);
-      }
-  
-      // 3) CHART RULER IN THE HOUSES intro
-      if (SECTION_INTROS.chart_ruler_houses) {
-        parts.push(String(SECTION_INTROS.chart_ruler_houses).trim());
-      }
-  
-      // 4) Simple house line (this is the old “b)” placeholder made official)
-      if (chartRulerHouse) {
-        parts.push(`Your chart ruler is **${chartRulerPlanet}** in **House ${chartRulerHouse}**.`);
-      }
-    }
-  // 5) Chart Ruler → House interpretation
-if (chartRulerHouse) {
-  const houseKey = String(chartRulerHouse);
-  const houseMeaning = pick(CHART_RULER_HOUSE_TEXT, houseKey, '');
-  if (houseMeaning) parts.push(houseMeaning);
-}
-    // ---- MERCURY → PLUTO ----
-
   // ---- MERCURY → PLUTO ----
   const PLANETS = [
     ['mercury', MERCURY_SIGN_TEXT, MERCURY_HOUSE_TEXT],
@@ -1957,23 +1688,14 @@ if (chartRulerHouse) {
     parts.push(pick(HOUSE_TEXT, houseVal, ''));
   }
 
-  // ---- HOUSES IN THE SIGNS (generic set design) ----
-  const houseSigns = chartDto.houseSigns || [];
-  if (houseSigns.length && SECTION_INTROS.houses_in_signs) {
-    // one-time intro
-    parts.push(SECTION_INTROS.houses_in_signs.trim());
-
-    // then each house 1–12, using your house_01..12.json maps
-    for (let i = 0; i < houseSigns.length; i++) {
-      const houseNum = i + 1;
-      const sign     = houseSigns[i];
-      const table    = HOUSES_GENERIC[houseNum];
-      if (!table) continue;
-
-      const blurb = pick(table, sign, '');
-      if (blurb) parts.push(blurb);
-    }
+  // ---- CHART RULER ----
+  if (SECTION_INTROS.chart_ruler) parts.push(SECTION_INTROS.chart_ruler.trim());
+  if (chartRulerPlanet && chartRulerHouse) {
+    const key = `${chartRulerPlanet}:${chartRulerHouse}`;
+    const rulerCopy = pick(CHART_RULER_TEXT, key, '');
+    parts.push(rulerCopy || `Your chart ruler is **${chartRulerPlanet}** in **House ${chartRulerHouse}**.`);
   }
 
   return parts.filter(Boolean).join('\n\n');
 }
+

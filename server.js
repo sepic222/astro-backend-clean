@@ -7,7 +7,39 @@ const cors = require('cors');
 const { DateTime } = require('luxon');
 const swisseph = require('swisseph');
 const { normalizeSurveyPayload } = require('./server/normalizeSurveyPayload');
- 
+const fs = require('fs');
+const path = require('path');
+
+// ---- content cache (reads your JSON once on boot) ----
+function loadJson(p) {
+  return JSON.parse(fs.readFileSync(p, 'utf8'));
+}
+const CONTENT_DIR = path.join(__dirname, 'content', 'readings');
+const SECTION_INTROS = loadJson(path.join(CONTENT_DIR, 'section_intros.json'));
+const ASCENDANT_TEXT  = loadJson(path.join(CONTENT_DIR, 'ascendant.json'));
+const SUN_SIGN_TEXT   = loadJson(path.join(CONTENT_DIR, 'sun_sign.json'));
+const SUN_HOUSE_TEXT  = loadJson(path.join(CONTENT_DIR, 'sun_house.json'));
+const MOON_SIGN_TEXT  = loadJson(path.join(CONTENT_DIR, 'moon_sign.json'));
+const MOON_HOUSE_TEXT = loadJson(path.join(CONTENT_DIR, 'moon_house.json'));
+const CHART_RULER_TEXT = loadJson(path.join(CONTENT_DIR, 'chart_ruler.json'));
+const CHART_RULER_HOUSE_TEXT = loadJson(path.join(CONTENT_DIR, 'chart_ruler_house.json'));
+const MERCURY_SIGN_TEXT = loadJson(path.join(CONTENT_DIR, 'mercury_sign.json'));
+const MERCURY_HOUSE_TEXT = loadJson(path.join(CONTENT_DIR, 'mercury_house.json'));
+const VENUS_SIGN_TEXT = loadJson(path.join(CONTENT_DIR, 'venus_sign.json'));
+const VENUS_HOUSE_TEXT = loadJson(path.join(CONTENT_DIR, 'venus_house.json'));
+const MARS_SIGN_TEXT = loadJson(path.join(CONTENT_DIR, 'mars_sign.json'));
+const MARS_HOUSE_TEXT = loadJson(path.join(CONTENT_DIR, 'mars_house.json'));
+const JUPITER_SIGN_TEXT = loadJson(path.join(CONTENT_DIR, 'jupiter_sign.json'));
+const JUPITER_HOUSE_TEXT = loadJson(path.join(CONTENT_DIR, 'jupiter_house.json'));
+const SATURN_SIGN_TEXT = loadJson(path.join(CONTENT_DIR, 'saturn_sign.json'));
+const SATURN_HOUSE_TEXT = loadJson(path.join(CONTENT_DIR, 'saturn_house.json'));
+const URANUS_SIGN_TEXT = loadJson(path.join(CONTENT_DIR, 'uranus_sign.json'));
+const URANUS_HOUSE_TEXT = loadJson(path.join(CONTENT_DIR, 'uranus_house.json'));
+const NEPTUNE_SIGN_TEXT = loadJson(path.join(CONTENT_DIR, 'neptune_sign.json'));
+const NEPTUNE_HOUSE_TEXT = loadJson(path.join(CONTENT_DIR, 'neptune_house.json'));
+const PLUTO_SIGN_TEXT = loadJson(path.join(CONTENT_DIR, 'pluto_sign.json'));
+const PLUTO_HOUSE_TEXT = loadJson(path.join(CONTENT_DIR, 'pluto_house.json'));
+
 // --- Express app (init early so routes can attach) ---
 const app = express();
 app.use(cors());
@@ -102,6 +134,85 @@ function normalizePlanetName(p) {
   // If your enum is UPPERCASE, uncomment the next line:
   // return p.toUpperCase();
   return p;
+}
+
+// Helper to safely pick from a map
+function pick(map, key, fallback = '') {
+  if (!map || typeof map !== 'object') return fallback;
+  return map[key] ?? fallback;
+}
+
+// Builds the reading text using your JSON blocks
+function buildReadingFromContent(chartDto) {
+  // chartDto should contain: ascendantSign, sunSign, sunHouse, chartRulerPlanet, chartRulerHouse, etc.
+  const ascSign  = chartDto.ascendantSign || chartDto.risingSign || '';
+  const sunSign  = chartDto.sunSign || '';
+  const sunHouse = String(chartDto.sunHouse || '');
+  const moonSign = chartDto.moonSign || (chartDto.planets?.moon?.sign || '');
+  const moonHouse = String(chartDto.moonHouse || (chartDto.planets?.moon?.house || ''));
+
+  const parts = [];
+
+  // Summary (optional intro)
+  if (SECTION_INTROS.summary) parts.push(SECTION_INTROS.summary.trim());
+
+  // Ascendant section
+  if (SECTION_INTROS.ascendant) parts.push(SECTION_INTROS.ascendant.trim());
+  parts.push(pick(ASCENDANT_TEXT, ascSign, ''));
+
+  // Sun sign
+  if (SECTION_INTROS.sun_sign) parts.push(SECTION_INTROS.sun_sign.trim());
+  parts.push(pick(SUN_SIGN_TEXT, sunSign, ''));
+
+  // Sun house
+  if (SECTION_INTROS.sun_house) parts.push(SECTION_INTROS.sun_house.trim());
+  parts.push(pick(SUN_HOUSE_TEXT, sunHouse, ''));
+
+  // Moon sign
+  if (SECTION_INTROS.moon_sign) parts.push(SECTION_INTROS.moon_sign.trim());
+  parts.push(pick(MOON_SIGN_TEXT, moonSign, ''));
+
+  // Moon house
+  if (SECTION_INTROS.moon_house) parts.push(SECTION_INTROS.moon_house.trim());
+  parts.push(pick(MOON_HOUSE_TEXT, moonHouse, ''));
+
+  // Mercury → Pluto
+  const PLANETS = [
+    ['mercury', MERCURY_SIGN_TEXT, MERCURY_HOUSE_TEXT],
+    ['venus',   VENUS_SIGN_TEXT,   VENUS_HOUSE_TEXT],
+    ['mars',    MARS_SIGN_TEXT,    MARS_HOUSE_TEXT],
+    ['jupiter', JUPITER_SIGN_TEXT, JUPITER_HOUSE_TEXT],
+    ['saturn',  SATURN_SIGN_TEXT,  SATURN_HOUSE_TEXT],
+    ['uranus',  URANUS_SIGN_TEXT,  URANUS_HOUSE_TEXT],
+    ['neptune', NEPTUNE_SIGN_TEXT, NEPTUNE_HOUSE_TEXT],
+    ['pluto',   PLUTO_SIGN_TEXT,   PLUTO_HOUSE_TEXT],
+  ];
+
+  for (const [name, SIGN_TEXT, HOUSE_TEXT] of PLANETS) {
+    const signVal  = chartDto[`${name}Sign`]  || chartDto.planets?.[name]?.sign  || '';
+    const houseVal = String(chartDto[`${name}House`] || chartDto.planets?.[name]?.house || '');
+    if (SECTION_INTROS[`${name}_sign`])  parts.push(SECTION_INTROS[`${name}_sign`].trim());
+    parts.push(pick(SIGN_TEXT, signVal, ''));
+    if (SECTION_INTROS[`${name}_house`]) parts.push(SECTION_INTROS[`${name}_house`].trim());
+    parts.push(pick(HOUSE_TEXT, houseVal, ''));
+  }
+
+  // Chart ruler
+  if (SECTION_INTROS.chart_ruler) parts.push(SECTION_INTROS.chart_ruler.trim());
+  const chartRulerPlanet = chartDto.chartRulerPlanet || '';
+  const chartRulerHouse = String(chartDto.chartRulerHouse || '');
+  if (chartRulerPlanet && ascSign) {
+    // chart_ruler.json has keys like "Mars:1", "Venus:2" where number is ascendant sign number (1=Aries, 2=Taurus, etc.)
+    const ascSignNum = ZODIAC_SIGNS.indexOf(ascSign) + 1;
+    const keyWithSign = `${chartRulerPlanet}:${ascSignNum}`;
+    const rulerText = pick(CHART_RULER_TEXT, keyWithSign, '');
+    if (rulerText) parts.push(rulerText);
+  }
+  if (chartRulerHouse) {
+    parts.push(pick(CHART_RULER_HOUSE_TEXT, chartRulerHouse, ''));
+  }
+
+  return parts.filter(Boolean).join('\n\n');
 }
 
 // --- best-effort DB save helper (non-fatal on error) ----------
@@ -713,6 +824,8 @@ app.get('/api/reading/:submissionId', async (req, res) => {
     if (!reading) return res.status(404).json({ ok: false, error: 'Reading not found' });
 
     let chartSummary = null;
+    let builtText = null;
+
     if (reading.chartId) {
       const chart = await prisma.chart.findUnique({
         where: { id: reading.chartId },
@@ -754,6 +867,34 @@ app.get('/api/reading/:submissionId', async (req, res) => {
           houseSigns: rc.houseSigns || null,
           houseRulers: rc.houseRulers || null,
         };
+
+        // Build reading text from content files
+        const builderDto = {
+          ascendantSign: angles.ascendantSign || null,
+          sunSign:       planets?.sun?.sign || null,
+          sunHouse:      planets?.sun?.house || null,
+          moonSign:      planets?.moon?.sign || null,
+          moonHouse:     planets?.moon?.house || null,
+          mercurySign:   planets?.mercury?.sign || null,
+          mercuryHouse:  planets?.mercury?.house || null,
+          venusSign:     planets?.venus?.sign || null,
+          venusHouse:    planets?.venus?.house || null,
+          marsSign:      planets?.mars?.sign || null,
+          marsHouse:     planets?.mars?.house || null,
+          jupiterSign:   planets?.jupiter?.sign || null,
+          jupiterHouse:  planets?.jupiter?.house || null,
+          saturnSign:    planets?.saturn?.sign || null,
+          saturnHouse:   planets?.saturn?.house || null,
+          uranusSign:    planets?.uranus?.sign || null,
+          uranusHouse:   planets?.uranus?.house || null,
+          neptuneSign:   planets?.neptune?.sign || null,
+          neptuneHouse:  planets?.neptune?.house || null,
+          plutoSign:     planets?.pluto?.sign || null,
+          plutoHouse:    planets?.pluto?.house || null,
+          chartRulerPlanet: chart.chartRulerPlanet || null,
+          chartRulerHouse:  chart.chartRulerHouse  || null,
+        };
+        builtText = buildReadingFromContent(builderDto);
       }
     }
 
@@ -762,13 +903,18 @@ app.get('/api/reading/:submissionId', async (req, res) => {
       submissionId,
       createdAt: reading.createdAt,
       userEmail: reading.userEmail,
-      reading: { id: reading.id, summary: reading.summary },
+      reading: {
+        id: reading.id,
+        storedSummary: reading.summary,
+        builtText: builtText || null,
+      },
       chart: chartSummary,
     });
   } catch (e) {
     console.error('💥 /api/reading/:submissionId error:', e);
     res.status(500).json({ ok: false, error: e?.message || 'Unknown error' });
   }
+  
 });
 
 // === Server-rendered Reading Page (HTML) ============================
@@ -1094,6 +1240,7 @@ app.get('/reading/:submissionId/html', async (req, res) => {
     if (!reading) return res.status(404).send('Reading not found');
 
     let chartDTO = null;
+    let builtText = null;
     if (reading.chartId) {
       const chart = await prisma.chart.findUnique({
         where: { id: reading.chartId },
@@ -1115,10 +1262,39 @@ app.get('/reading/:submissionId/html', async (req, res) => {
           rawHouses: rc.houses || [],
           planets: planets
         };
+
+        // Build reading text from content files
+        const builderDto = {
+          ascendantSign: angles.ascendantSign || null,
+          sunSign:       planets?.sun?.sign || null,
+          sunHouse:      planets?.sun?.house || null,
+          moonSign:      planets?.moon?.sign || null,
+          moonHouse:     planets?.moon?.house || null,
+          mercurySign:   planets?.mercury?.sign || null,
+          mercuryHouse:  planets?.mercury?.house || null,
+          venusSign:     planets?.venus?.sign || null,
+          venusHouse:    planets?.venus?.house || null,
+          marsSign:      planets?.mars?.sign || null,
+          marsHouse:     planets?.mars?.house || null,
+          jupiterSign:   planets?.jupiter?.sign || null,
+          jupiterHouse:  planets?.jupiter?.house || null,
+          saturnSign:    planets?.saturn?.sign || null,
+          saturnHouse:   planets?.saturn?.house || null,
+          uranusSign:    planets?.uranus?.sign || null,
+          uranusHouse:   planets?.uranus?.house || null,
+          neptuneSign:   planets?.neptune?.sign || null,
+          neptuneHouse:  planets?.neptune?.house || null,
+          plutoSign:     planets?.pluto?.sign || null,
+          plutoHouse:    planets?.pluto?.house || null,
+          chartRulerPlanet: chart.chartRulerPlanet || null,
+          chartRulerHouse:  chart.chartRulerHouse  || null,
+        };
+        builtText = buildReadingFromContent(builderDto);
       }
     }
 
     const chartHTML = chartDTO ? renderChartHTML(chartDTO) : '<p>No chart linked.</p>';
+    const readingText = builtText || reading.summary || 'No reading available.';
     const html = `<!DOCTYPE html>
     <html lang="en">
     <head>
@@ -1146,7 +1322,7 @@ app.get('/reading/:submissionId/html', async (req, res) => {
 
         <section class="card">
           <h2>Summary</h2>
-          <div class="reading">${esc(reading.summary)}</div>
+          <div class="reading">${esc(readingText)}</div>
         </section>
 
         <div class="card">

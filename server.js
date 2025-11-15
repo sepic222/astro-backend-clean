@@ -7,64 +7,7 @@ const cors = require('cors');
 const { DateTime } = require('luxon');
 const swisseph = require('swisseph');
 const { normalizeSurveyPayload } = require('./server/normalizeSurveyPayload');
-const fs = require('fs');
-const path = require('path');
-
-// ---- content cache (reads your JSON once on boot) ----
-// ---- content cache (reads your JSON once on boot) ----
-function loadJson(p) {
-  return JSON.parse(fs.readFileSync(p, 'utf8'));
-}
-
-const CONTENT_DIR = path.join(__dirname, 'content', 'readings');
-
-// Core sections
-const SECTION_INTROS  = loadJson(path.join(CONTENT_DIR, 'section_intros.json'));
-const ASCENDANT_TEXT  = loadJson(path.join(CONTENT_DIR, 'ascendant.json'));
-const SUN_SIGN_TEXT   = loadJson(path.join(CONTENT_DIR, 'sun_sign.json'));
-const SUN_HOUSE_TEXT  = loadJson(path.join(CONTENT_DIR, 'sun_house.json'));
-const MOON_SIGN_TEXT  = loadJson(path.join(CONTENT_DIR, 'moon_sign.json'));
-const MOON_HOUSE_TEXT = loadJson(path.join(CONTENT_DIR, 'moon_house.json'));
-const CHART_RULER_TEXT = loadJson(path.join(CONTENT_DIR, 'chart_ruler.json'));
-const CHART_RULER_HOUSE_TEXT = loadJson(path.join(CONTENT_DIR, 'chart_ruler_house.json'));
-
-const MERCURY_SIGN_TEXT = loadJson(path.join(CONTENT_DIR, 'mercury_sign.json'));
-const MERCURY_HOUSE_TEXT = loadJson(path.join(CONTENT_DIR, 'mercury_house.json'));
-const VENUS_SIGN_TEXT = loadJson(path.join(CONTENT_DIR, 'venus_sign.json'));
-const VENUS_HOUSE_TEXT = loadJson(path.join(CONTENT_DIR, 'venus_house.json'));
-const MARS_SIGN_TEXT = loadJson(path.join(CONTENT_DIR, 'mars_sign.json'));
-const MARS_HOUSE_TEXT = loadJson(path.join(CONTENT_DIR, 'mars_house.json'));
-const JUPITER_SIGN_TEXT = loadJson(path.join(CONTENT_DIR, 'jupiter_sign.json'));
-const JUPITER_HOUSE_TEXT = loadJson(path.join(CONTENT_DIR, 'jupiter_house.json'));
-const SATURN_SIGN_TEXT = loadJson(path.join(CONTENT_DIR, 'saturn_sign.json'));
-const SATURN_HOUSE_TEXT = loadJson(path.join(CONTENT_DIR, 'saturn_house.json'));
-const URANUS_SIGN_TEXT = loadJson(path.join(CONTENT_DIR, 'uranus_sign.json'));
-const URANUS_HOUSE_TEXT = loadJson(path.join(CONTENT_DIR, 'uranus_house.json'));
-const NEPTUNE_SIGN_TEXT = loadJson(path.join(CONTENT_DIR, 'neptune_sign.json'));
-const NEPTUNE_HOUSE_TEXT = loadJson(path.join(CONTENT_DIR, 'neptune_house.json'));
-const PLUTO_SIGN_TEXT = loadJson(path.join(CONTENT_DIR, 'pluto_sign.json'));
-const PLUTO_HOUSE_TEXT = loadJson(path.join(CONTENT_DIR, 'pluto_house.json'));
-
-// House-by-house generic “style” blurbs (sign on the cusp)
-const HOUSE_01 = require('./content/readings/house_01.json');
-const HOUSE_02 = require('./content/readings/house_02.json');
-const HOUSE_03 = require('./content/readings/house_03.json');
-const HOUSE_04 = require('./content/readings/house_04.json');
-const HOUSE_05 = require('./content/readings/house_05.json');
-const HOUSE_06 = require('./content/readings/house_06.json');
-const HOUSE_07 = require('./content/readings/house_07.json');
-const HOUSE_08 = require('./content/readings/house_08.json');
-const HOUSE_09 = require('./content/readings/house_09.json');
-const HOUSE_10 = require('./content/readings/house_10.json');
-const HOUSE_11 = require('./content/readings/house_11.json');
-const HOUSE_12 = require('./content/readings/house_12.json');
-
-const HOUSES_GENERIC = {
-  1: HOUSE_01, 2: HOUSE_02, 3: HOUSE_03, 4: HOUSE_04, 5: HOUSE_05, 6: HOUSE_06,
-  7: HOUSE_07, 8: HOUSE_08, 9: HOUSE_09, 10: HOUSE_10, 11: HOUSE_11, 12: HOUSE_12
-};
-
-
+ 
 // --- Express app (init early so routes can attach) ---
 const app = express();
 app.use(cors());
@@ -109,6 +52,7 @@ if (process.env.OPENAI_API_KEY) {
 
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
+const { readingHtmlHandler, readingSvgHandler, chartSvgAlias } = require('./server/readingRoutes');
 // ---- helpers -------------------------------------------------
 function normalize360(val) {
   let x = Number(val);
@@ -756,26 +700,19 @@ app.post('/api/dev/chart-to-svg', async (req, res) => {
   }
 });
 
-// === Reading DTO by submission id // JSON endpoint =================================
-//1st version of GET handler for /api/reading/:submissionId
+// === Reading DTO by submission id =================================
 app.get('/api/reading/:submissionId', async (req, res) => {
   try {
     const { submissionId } = req.params;
-    if (!submissionId) {
-      return res.status(400).json({ ok: false, error: 'Missing submissionId' });
-    }
+    if (!submissionId) return res.status(400).json({ ok: false, error: 'Missing submissionId' });
 
     const reading = await prisma.reading.findFirst({
       where: { submissionId },
       select: { id: true, summary: true, chartId: true, createdAt: true, userEmail: true },
     });
-    if (!reading) {
-      return res.status(404).json({ ok: false, error: 'Reading not found' });
-    }
+    if (!reading) return res.status(404).json({ ok: false, error: 'Reading not found' });
 
     let chartSummary = null;
-    let builtText = null;
-
     if (reading.chartId) {
       const chart = await prisma.chart.findUnique({
         where: { id: reading.chartId },
@@ -783,22 +720,23 @@ app.get('/api/reading/:submissionId', async (req, res) => {
           id: true,
           chartRulerPlanet: true,
           chartRulerHouse: true,
+          northNodeHouse: true,
+          chironHouse: true,
           rawChart: true,
         },
       });
 
       if (chart) {
-        const rc      = chart.rawChart || {};
-        const angles  = rc.angles  || {};
+        const rc = chart.rawChart || {};
+        const angles = rc.angles || {};
         const planets = rc.planets || {};
-
         chartSummary = {
           id: chart.id,
           ascSign: angles.ascendantSign || null,
-          mcSign:  angles.mcSign || null,
+          mcSign: angles.mcSign || null,
           chartRuler: { planet: chart.chartRulerPlanet || null, house: chart.chartRulerHouse || null },
-          northNodeHouse: rc?.nodesAndChiron?.northNode?.house || null,
-          chironHouse:    rc?.nodesAndChiron?.chiron?.house    || null,
+          northNodeHouse: chart.northNodeHouse || rc?.nodesAndChiron?.northNode?.house || null,
+          chironHouse: chart.chironHouse || rc?.nodesAndChiron?.chiron?.house || null,
           planets: {
             sun:      { sign: planets.sun?.sign,      house: planets.sun?.house },
             moon:     { sign: planets.moon?.sign,     house: planets.moon?.house },
@@ -816,18 +754,6 @@ app.get('/api/reading/:submissionId', async (req, res) => {
           houseSigns: rc.houseSigns || null,
           houseRulers: rc.houseRulers || null,
         };
-
-        const builderDto = {
-          ascendantSign:  angles.ascendantSign || null,
-          sunSign:        planets?.sun?.sign || null,
-          sunHouse:       planets?.sun?.house || null,
-          moonSign:       planets?.moon?.sign || null,
-          moonHouse:      planets?.moon?.house || null,
-          chartRulerPlanet: chart.chartRulerPlanet || null,
-          chartRulerHouse:  chart.chartRulerHouse  || null,
-          planets
-        };
-        builtText = buildReadingFromContent(builderDto);
       }
     }
 
@@ -836,11 +762,7 @@ app.get('/api/reading/:submissionId', async (req, res) => {
       submissionId,
       createdAt: reading.createdAt,
       userEmail: reading.userEmail,
-      reading: {
-        id: reading.id,
-        storedSummary: reading.summary,
-        builtText: builtText || null,
-      },
+      reading: { id: reading.id, summary: reading.summary },
       chart: chartSummary,
     });
   } catch (e) {
@@ -882,14 +804,7 @@ function renderChartHTML(dto) {
         <div class="t"><b>House ${i + 1}</b></div>
         <div>Cusp: ${fmtDeg(dto?.rawHouses?.[i])}</div>
         <div>Sign: ${renderSign(sign)}</div>
-      <div>Ruler: ${
-  esc(
-    (Array.isArray(dto?.houseRulers)
-      ? dto.houseRulers[i]
-      : (dto?.houseRulers ? dto.houseRulers['house' + (i + 1)] : null)
-    ) || '—'
-  )
-}</div>
+        <div>Ruler: ${esc((dto?.houseRulers && dto.houseRulers[i]) || '—')}</div>
       </div>
     `;
   }).join('');
@@ -1138,9 +1053,7 @@ function buildChartSVG(rawChart, opts = {}) {
   svg.push(`</svg>`);
   return svg.join('\n');
 }
-//-2nd GET handler for /reading/:submissionId/html // HTML endpoint
-
-  app.get('/reading/:submissionId/html', async (req, res) => {
+  app.get('/reading/:submissionId/chart.svg', async (req, res) => {
     try {
       const { submissionId } = req.params;
 
@@ -1241,17 +1154,12 @@ function buildChartSVG(rawChart, opts = {}) {
 
       // Normal chart (after birthday or not Nov 14)
       if (!submissionId) return res.status(400).send('Missing submissionId');
-<<<<<<< Updated upstream
 
       // Get reading → chartId
-=======
-  
->>>>>>> Stashed changes
       const reading = await prisma.reading.findFirst({
         where: { submissionId },
-        select: { id: true, summary: true, chartId: true, createdAt: true, userEmail: true }
+        select: { chartId: true }
       });
-<<<<<<< Updated upstream
       if (!reading || !reading.chartId) return res.status(404).send('Chart not found for submission');
 
       // Load raw chart
@@ -1265,197 +1173,98 @@ function buildChartSVG(rawChart, opts = {}) {
       const svg = buildChartSVG(chart.rawChart, { size });
       res.set('Content-Type', 'image/svg+xml; charset=utf-8');
       res.send(svg);
-=======
-      if (!reading) return res.status(404).send('Reading not found');
-  
-      // Load chart + build DTO for the content builder
-      let chartDTO = null;
-      let readingText = null;
-  
-      if (reading.chartId) {
-        const chart = await prisma.chart.findUnique({
-          where: { id: reading.chartId },
-          select: {
-            id: true,
-            chartRulerPlanet: true,
-            chartRulerHouse: true,
-            rawChart: true
-          }
-        });
-  
-        if (chart) {
-          const rc = chart.rawChart || {};
-          const angles  = rc.angles  || {};
-          const planets = rc.planets || {};
-  
-          // DTO used by renderChartHTML (for the wheel/tech section)
-          chartDTO = {
-            id: chart.id,
-            ascSign: angles.ascendantSign || null,
-            mcSign:  angles.mcSign || null,
-            ascDeg:  angles.ascendantDeg,
-            mcDeg:   angles.mcDeg,
-            chartRuler: { planet: chart.chartRulerPlanet || null, house: chart.chartRulerHouse || null },
-            houseSigns: rc.houseSigns || [],
-            houseRulers: rc.houseRulers || [],
-            rawHouses: rc.houses || [],
-            planets
-          };
-  
-          // DTO for the prose reading builder (uses your JSON content)
-          const builderDto = {
-            ascendantSign:  angles.ascendantSign || null,
-            sunSign:        planets?.sun?.sign || null,
-            sunHouse:       planets?.sun?.house || null,
-            moonSign:       planets?.moon?.sign || null,
-            moonHouse:      planets?.moon?.house || null,
-            chartRulerPlanet: chart.chartRulerPlanet || null,
-            chartRulerHouse:  chart.chartRulerHouse  || null,
-            planets
-          };
-  
-          // ← This pulls from content/readings/*.json
-          readingText = buildReadingFromContent(builderDto);
-        }
-      }
-  
-      // Fallback: if we couldn't build, show the stored summary (or a tiny note)
-      if (!readingText) readingText = reading.summary || 'Reading will appear here when chart data is available.';
-  
-      const chartHTML = chartDTO ? renderChartHTML(chartDTO) : '<p>No chart linked.</p>';
-  
-      const html = `<!DOCTYPE html>
-      <html lang="en">
-      <head>
-        <meta charset="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <title>FateFlix Reading – ${esc(submissionId)}</title>
-        <style>
-          body{font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;background:#0e0e0e;color:#eee;margin:0;padding:24px}
-          a{color:#9cd}
-          h1,h2{margin:0 0 8px}
-          .wrap{max-width:1100px;margin:0 auto}
-          .meta{opacity:0.8;margin-bottom:12px}
-          .card{margin-top:16px;padding:12px;border:1px solid #333;border-radius:8px;background:#141414}
-          .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:12px}
-          .tile{padding:8px 10px;background:#1c1c1c;border-radius:6px}
-          .reading{white-space:pre-wrap;line-height:1.5}
-          .t{margin-bottom:4px}
-          footer{margin-top:28px;opacity:0.7}
-        </style>
-      </head>
-      <body>
-        <div class="wrap">
-          <h1>FateFlix Reading</h1>
-          <div class="meta">Submission: ${esc(submissionId)} • ${esc(new Date(reading.createdAt).toLocaleString())}</div>
-  
-          <section class="card">
-            <h2>Summary</h2>
-            <div class="reading">${esc(readingText)}</div>
-          </section>
-  
-          <div class="card">
-            <b>Wheel (SVG preview):</b>
-            <div style="margin-top:8px">
-              <img src="/reading/${esc(submissionId)}/chart.svg" alt="Chart wheel" style="max-width:100%;height:auto;border:1px solid #333;border-radius:8px;background:#111" />
-            </div>
-          </div>
-  
-          ${chartHTML}
-  
-          <footer>
-            <p>© FateFlix • Server-rendered preview. You can also call <code>/api/reading/${esc(submissionId)}</code> for JSON.</p>
-          </footer>
-        </div>
-      </body>
-      </html>`;
-  
-      res.type('html').send(html);
->>>>>>> Stashed changes
     } catch (e) {
-      console.error('💥 /reading/:submissionId/html error:', e);
+      console.error('💥 /reading/:submissionId/chart.svg error:', e);
       res.status(500).send('Internal error');
     }
   });
 
-// ===== Chart SVG Endpoint (with Birthday Surprise!) =====
-app.get('/reading/:submissionId/chart.svg', async (req, res) => {
+app.get('/reading/:submissionId/html', async (req, res) => {
   try {
     const { submissionId } = req.params;
+    if (!submissionId) return res.status(400).send('Missing submissionId');
 
-    // Check if today is November 14th (birthday!)
-    const now = new Date();
-    const month = now.getMonth(); // 0-indexed, so 10 = November
-    const day = now.getDate();
-    const isBirthday = (month === 10 && day === 14);
+    const reading = await prisma.reading.findFirst({
+      where: { submissionId },
+      select: { id: true, summary: true, chartId: true, createdAt: true }
+    });
+    if (!reading) return res.status(404).send('Reading not found');
 
-    if (isBirthday) {
-      // Birthday surprise SVG!
-      const svg = `<?xml version="1.0" encoding="UTF-8"?>
-<svg width="800" height="600" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
-  <!-- Background -->
-  <rect width="800" height="600" fill="#1a1a2e"/>
-
-  <!-- Embedded GIF -->
-  <image x="100" y="150" width="600" height="400"
-         xlink:href="https://result.videoplus.ai/veo2-outputs/output/result/202511/14/34c8e6cd729a44cb8a95487237f6b798.gif"/>
-
-  <!-- Birthday Text Overlay -->
-  <text x="400" y="120"
-        font-family="Arial, sans-serif"
-        font-size="48"
-        font-weight="bold"
-        fill="#FFD700"
-        text-anchor="middle"
-        stroke="#FF6B6B"
-        stroke-width="2">
-    Happy Birthdayyy!
-  </text>
-
-  <!-- Decorative elements -->
-  <circle cx="100" cy="100" r="15" fill="#FF6B6B" opacity="0.8">
-    <animate attributeName="cy" values="100;80;100" dur="2s" repeatCount="indefinite"/>
-  </circle>
-  <circle cx="700" cy="100" r="15" fill="#4ECDC4" opacity="0.8">
-    <animate attributeName="cy" values="100;80;100" dur="2s" begin="0.5s" repeatCount="indefinite"/>
-  </circle>
-  <circle cx="150" cy="80" r="12" fill="#FFD700" opacity="0.8">
-    <animate attributeName="cy" values="80;60;80" dur="2s" begin="1s" repeatCount="indefinite"/>
-  </circle>
-  <circle cx="650" cy="80" r="12" fill="#FF6B6B" opacity="0.8">
-    <animate attributeName="cy" values="80;60;80" dur="2s" begin="1.5s" repeatCount="indefinite"/>
-  </circle>
-</svg>`;
-      res.type('image/svg+xml').send(svg);
-    } else {
-      // Normal chart SVG (after birthday)
-      if (!submissionId) return res.status(400).send('Missing submissionId');
-
-      const reading = await prisma.reading.findFirst({
-        where: { submissionId },
-        select: { chartId: true }
-      });
-
-      if (!reading || !reading.chartId) {
-        return res.status(404).send('Chart not found');
-      }
-
+    let chartDTO = null;
+    if (reading.chartId) {
       const chart = await prisma.chart.findUnique({
         where: { id: reading.chartId },
-        select: { rawChart: true }
+        select: { id: true, chartRulerPlanet: true, chartRulerHouse: true, rawChart: true }
       });
-
-      if (!chart || !chart.rawChart) {
-        return res.status(404).send('Chart data not found');
+      if (chart) {
+        const rc = chart.rawChart || {};
+        const angles = rc.angles || {};
+        const planets = rc.planets || {};
+        chartDTO = {
+          id: chart.id,
+          ascSign: angles.ascendantSign || null,
+          mcSign: angles.mcSign || null,
+          ascDeg: angles.ascendantDeg,
+          mcDeg: angles.mcDeg,
+          chartRuler: { planet: chart.chartRulerPlanet || null, house: chart.chartRulerHouse || null },
+          houseSigns: rc.houseSigns || [],
+          houseRulers: rc.houseRulers || [],
+          rawHouses: rc.houses || [],
+          planets: planets
+        };
       }
-
-      // Generate the actual astrology chart SVG
-      const svgContent = buildChartSVG(chart.rawChart, { size: 720 });
-      res.type('image/svg+xml').send(svgContent);
     }
+
+    const chartHTML = chartDTO ? renderChartHTML(chartDTO) : '<p>No chart linked.</p>';
+    const html = `<!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="utf-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1" />
+      <title>FateFlix Reading – ${esc(submissionId)}</title>
+      <style>
+        body{font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;background:#0e0e0e;color:#eee;margin:0;padding:24px}
+        a{color:#9cd}
+        h1,h2{margin:0 0 8px}
+        .wrap{max-width:1100px;margin:0 auto}
+        .meta{opacity:0.8;margin-bottom:12px}
+        .card{margin-top:16px;padding:12px;border:1px solid #333;border-radius:8px;background:#141414}
+        .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:12px}
+        .tile{padding:8px 10px;background:#1c1c1c;border-radius:6px}
+        .reading{white-space:pre-wrap;line-height:1.5}
+        .t{margin-bottom:4px}
+        footer{margin-top:28px;opacity:0.7}
+      </style>
+    </head>
+    <body>
+      <div class="wrap">
+        <h1>FateFlix Reading</h1>
+        <div class="meta">Submission: ${esc(submissionId)} • ${esc(new Date(reading.createdAt).toLocaleString())}</div>
+
+        <section class="card">
+          <h2>Summary</h2>
+          <div class="reading">${esc(reading.summary)}</div>
+        </section>
+
+        <div class="card">
+          <b>Wheel (SVG preview):</b>
+          <div style="margin-top:8px">
+            <img src="/reading/${esc(submissionId)}/chart.svg" alt="Chart wheel" style="max-width:100%;height:auto;border:1px solid #333;border-radius:8px;background:#111" />
+          </div>
+        </div>
+
+        ${chartHTML}
+
+        <footer>
+          <p>© FateFlix • Server-rendered preview. You can also call <code>/api/reading/${esc(submissionId)}</code> for JSON.</p>
+        </footer>
+      </div>
+    </body>
+    </html>`;
+    res.type('html').send(html);
   } catch (e) {
-    console.error('💥 /reading/:submissionId/chart.svg error:', e);
-    res.status(500).send('Error generating chart');
+    console.error('💥 /reading/:submissionId/html error:', e);
+    res.status(500).send('Internal error');
   }
 });
 
@@ -1543,12 +1352,9 @@ app.post('/api/chart-houses', async (req, res) => {
     return res.status(500).json({ success: false, error: error.message || String(error) });
   }
 });
-<<<<<<< Updated upstream
 app.get('/reading/:id/html', readingHtmlHandler);
 // chart.svg endpoint moved up to line 1056 with birthday logic
 chartSvgAlias(app);  // adds /api/chart/:id/svg redirect  
-=======
->>>>>>> Stashed changes
 
 // === Save survey response (normalized) ========================
 app.post('/api/survey-response', async (req, res) => {
@@ -1780,7 +1586,7 @@ try {
       select: { id: true },
     });
 
-    // 7) Send email asynchronously (don't block the HTTP response)
+    // 7) Send email asynchronously (don’t block the HTTP response)
     (async () => {
       try {
         await sendHtmlEmail({
@@ -1858,122 +1664,3 @@ if (require.main === module) {
 }
 
 module.exports = app;
-
-function pick(map, key, fallback = '') {
-  if (!map || typeof map !== 'object') return fallback;
-  if (key == null) return fallback;
-  const raw = String(key);
-  // try exact first, then case-insensitive (lowercased)
-  if (raw in map) return map[raw];
-  const low = raw.toLowerCase();
-  if (low in map) return map[low];
-  return fallback;
-}
-
-function buildReadingFromContent(chartDto) {
-  const ascSign   = chartDto.ascendantSign || chartDto.risingSign || '';
-  const sunSign   = chartDto.sunSign || '';
-  const sunHouse  = String(chartDto.sunHouse || '');
-  const moonSign  = chartDto.moonSign || chartDto.planets?.moon?.sign || '';
-  const moonHouse = String(chartDto.moonHouse || chartDto.planets?.moon?.house || '');
-  const chartRulerPlanet = chartDto.chartRulerPlanet || chartDto.planets?.chartRulerPlanet || '';
-  const chartRulerHouse  = chartDto.chartRulerHouse  || chartDto.planets?.chartRulerHouse  || '';
-
-  const parts = [];
-
-  // ---- SUMMARY INTRO ----
-  if (SECTION_INTROS.summary) parts.push(SECTION_INTROS.summary.trim());
-
-  // ---- ASCENDANT ----
-  if (SECTION_INTROS.ascendant) parts.push(SECTION_INTROS.ascendant.trim());
-  parts.push(pick(ASCENDANT_TEXT, ascSign, ''));
-
-  // ---- SUN ----
-  if (SECTION_INTROS.sun_sign) parts.push(SECTION_INTROS.sun_sign.trim());
-  parts.push(pick(SUN_SIGN_TEXT, sunSign, ''));
-
-  if (SECTION_INTROS.sun_house) parts.push(SECTION_INTROS.sun_house.trim());
-  parts.push(pick(SUN_HOUSE_TEXT, sunHouse, ''));
-
-  // ---- MOON ----
-  if (SECTION_INTROS.moon_sign) parts.push(SECTION_INTROS.moon_sign.trim());
-  parts.push(pick(MOON_SIGN_TEXT, moonSign, ''));
-
-  if (SECTION_INTROS.moon_house) parts.push(SECTION_INTROS.moon_house.trim());
-  parts.push(pick(MOON_HOUSE_TEXT, moonHouse, ''));
-
-    // ---- CHART RULER (sign + house) ----
-    if (chartRulerPlanet) {
-      const planetKey      = chartRulerPlanet.toLowerCase();
-      const chartRulerSign = chartDto.planets?.[planetKey]?.sign || '';
-  
-      // 1) General CHART RULER explainer — SIGN LEVEL
-      if (SECTION_INTROS.chart_ruler) {
-        parts.push(String(SECTION_INTROS.chart_ruler).trim());
-      }
-  
-      // 2) “Chart Ruler in Aries / Taurus / …” from chart_ruler.json
-      if (chartRulerSign) {
-        const bySign = pick(CHART_RULER_TEXT, chartRulerSign, '');
-        if (bySign) parts.push(bySign);
-      }
-  
-      // 3) CHART RULER IN THE HOUSES intro
-      if (SECTION_INTROS.chart_ruler_houses) {
-        parts.push(String(SECTION_INTROS.chart_ruler_houses).trim());
-      }
-  
-      // 4) Simple house line (this is the old “b)” placeholder made official)
-      if (chartRulerHouse) {
-        parts.push(`Your chart ruler is **${chartRulerPlanet}** in **House ${chartRulerHouse}**.`);
-      }
-    }
-  // 5) Chart Ruler → House interpretation
-if (chartRulerHouse) {
-  const houseKey = String(chartRulerHouse);
-  const houseMeaning = pick(CHART_RULER_HOUSE_TEXT, houseKey, '');
-  if (houseMeaning) parts.push(houseMeaning);
-}
-    // ---- MERCURY → PLUTO ----
-
-  // ---- MERCURY → PLUTO ----
-  const PLANETS = [
-    ['mercury', MERCURY_SIGN_TEXT, MERCURY_HOUSE_TEXT],
-    ['venus',   VENUS_SIGN_TEXT,   VENUS_HOUSE_TEXT],
-    ['mars',    MARS_SIGN_TEXT,    MARS_HOUSE_TEXT],
-    ['jupiter', JUPITER_SIGN_TEXT, JUPITER_HOUSE_TEXT],
-    ['saturn',  SATURN_SIGN_TEXT,  SATURN_HOUSE_TEXT],
-    ['uranus',  URANUS_SIGN_TEXT,  URANUS_HOUSE_TEXT],
-    ['neptune', NEPTUNE_SIGN_TEXT, NEPTUNE_HOUSE_TEXT],
-    ['pluto',   PLUTO_SIGN_TEXT,   PLUTO_HOUSE_TEXT],
-  ];
-
-  for (const [name, SIGN_TEXT, HOUSE_TEXT] of PLANETS) {
-    const signVal  = chartDto[`${name}Sign`]  || chartDto.planets?.[name]?.sign  || '';
-    const houseVal = String(chartDto[`${name}House`] || chartDto.planets?.[name]?.house || '');
-    if (SECTION_INTROS[`${name}_sign`])  parts.push(SECTION_INTROS[`${name}_sign`].trim());
-    parts.push(pick(SIGN_TEXT, signVal, ''));
-    if (SECTION_INTROS[`${name}_house`]) parts.push(SECTION_INTROS[`${name}_house`].trim());
-    parts.push(pick(HOUSE_TEXT, houseVal, ''));
-  }
-
-  // ---- HOUSES IN THE SIGNS (generic set design) ----
-  const houseSigns = chartDto.houseSigns || [];
-  if (houseSigns.length && SECTION_INTROS.houses_in_signs) {
-    // one-time intro
-    parts.push(SECTION_INTROS.houses_in_signs.trim());
-
-    // then each house 1–12, using your house_01..12.json maps
-    for (let i = 0; i < houseSigns.length; i++) {
-      const houseNum = i + 1;
-      const sign     = houseSigns[i];
-      const table    = HOUSES_GENERIC[houseNum];
-      if (!table) continue;
-
-      const blurb = pick(table, sign, '');
-      if (blurb) parts.push(blurb);
-    }
-  }
-
-  return parts.filter(Boolean).join('\n\n');
-}

@@ -1,41 +1,27 @@
 {
-  "summary": "Your Astro-Cinematic Character Map blends core identity (Sun), mood and instincts (Moon), on-screen vibe (Ascendant), and the setting where your story unfolds (Chart Ruler’s house).",
-
-  "ascendant": "ASCENDANT — YOUR VIBE, AESTHETIC & OPENING-SCENE ENERGY → Your Ascendant sign sets the first impression, visual tone, and the way your character enters a scene.",
-
-  "chart_ruler": "CHART RULER — Who’s Directing the Scene\n→ Your chart ruler is the ruling planet of your Ascendant sign. Its sign and house show how your storyline unfolds and who’s directing the vibe behind the scenes.",
-
-  "chart_ruler_house": "CHART RULER IN THE HOUSES — WHERE YOUR STORY UNFOLDS → The house shows the primary stage for your plot. Its sign sets the set design and mood of that stage.",
-
-  "houses_global_intro": "HOUSES IN THE SIGNS — SET DESIGN FOR YOUR COSMIC STAGE\nThe house shows where the story unfolds. But the sign on the cusp tells us with what style. Below, each house takes on a unique aesthetic depending on its sign — aka, the set design of your cosmic stage.",
-
-  "sun_sign": "SUN SIGN — CORE ARCHETYPE → The Sun sign is the central character: your baseline motivation, creative will, and how you like to shine.",
-  "sun_house": "SUN IN THE HOUSES — WHERE YOUR LIGHT LANDS → The house shows the arena of life where your lead character takes center stage.",
-
-  "moon_sign": "MOON SIGN — INNER WORLD & EMOTIONAL TEXTURE → The Moon sign colors your needs, comfort language, and the mood lighting of your character.",
-  "moon_house": "MOON IN THE HOUSES — WHERE YOU SEEK COMFORT → The house shows where your character self-soothes and reacts on instinct.",
-
-  "mercury_sign": "MERCURY SIGN — DIALOGUE & THOUGHT STYLE → Mercury’s sign shapes your voice, timing, and how ideas cut on screen.",
-  "mercury_house": "MERCURY IN THE HOUSES — WHERE THE CONVERSATION HAPPENS → The house points to the setting where messages, learning, and logistics matter most.",
-
-  "venus_sign": "VENUS SIGN — TASTE, PLEASURE & CHEMISTRY → Venus’ sign curates your aesthetic, values, and on-screen attraction style.",
-  "venus_house": "VENUS IN THE HOUSES — WHERE YOU ATTRACT & ENJOY → The house shows the scenes where art, love, and harmony become plot points.",
-
-  "mars_sign": "MARS SIGN — DRIVE, COURAGE & CONFLICT STYLE → Mars’ sign frames how you pursue goals, fight, and move the plot forward.",
-  "mars_house": "MARS IN THE HOUSES — WHERE ACTION HAPPENS → The house reveals the battlegrounds and training montages of your story.",
-
-  "jupiter_sign": "JUPITER SIGN — LUCK, GROWTH & BELIEF → Jupiter’s sign expands your horizons and frames your ‘why not?’ moments.",
-  "jupiter_house": "JUPITER IN THE HOUSES — WHERE YOU GROW → The house shows the domains that open doors, mentors, and opportunities.",
-
-  "saturn_sign": "SATURN SIGN — STRUCTURE, MASTERY & EDITS → Saturn’s sign defines your discipline, boundaries, and the lessons that mature the character.",
-  "saturn_house": "SATURN IN THE HOUSES — WHERE WORK GETS REAL → The house marks the long arc of effort, responsibility, and earned respect.",
-
-  "uranus_sign": "URANUS SIGN — DISRUPTION & ORIGINALITY → Uranus’ sign brings plot twists, independence, and a signature weirdness.",
-  "uranus_house": "URANUS IN THE HOUSES — WHERE YOU BREAK THE SCRIPT → The house shows the set piece for sudden change and innovation.",
-
-  "neptune_sign": "NEPTUNE SIGN — DREAM, MYTH & DISSOLVE → Neptune’s sign adds glamour, empathy, and fog — the montage between reality and fantasy.",
-  "neptune_house": "NEPTUNE IN THE HOUSES — WHERE THINGS BLUR → The house shows the scenes of inspiration, projection, and surrender.",
-
-  "pluto_sign": "PLUTO SIGN — POWER, SHADOW & TRANSFORMATION → Pluto’s sign reveals deep motives, obsessions, and rebirth arcs.",
-  "pluto_house": "PLUTO IN THE HOUSES — WHERE YOU EVOLVE → The house marks the underworld journey that changes the character for good."
+  "summary": "",
+  "ascendant": "ASCENDANT — YOUR VIBE, AESTHETIC & OPENING SCENE ENERGY",
+  "sun_sign": "SUN — YOUR CORE GENRE & MAIN CHARACTER ARCHETYPE",
+  "sun_house": "SUN IN THE HOUSES — Where You Radiate\n→  The house your Sun lands in shows the stage where your soul wants to shine. It's your spotlight zone — the arena of life where you're meant to express your vitality, confidence, and creativity.",
+  "moon_sign": "MOON — YOUR EMOTIONAL CLIMATE & INNER CINEMA",
+  "moon_house": "MOON IN THE HOUSES — Your Emotional Habitat\n→ The house your Moon lives in shows where you seek comfort, safety, and emotional fulfillment. It's your inner world — the secret cinema of your soul.",
+  "chart_ruler": "CHART RULER — WHO’S DIRECTING THE SCENE → Your chart ruler is the ruling planet of your Ascendant sign. Its sign and house show how your storyline unfolds and who’s directing the vibe behind the scenes. Below are the chart rulers in each sign, decoding how your character arc flows:",
+  "chart_ruler_houses": "CHART RULER IN THE HOUSES — WHERE YOUR STORY UNFOLDS → The house shows where the story unfolds. Below, each house takes on a unique aesthetic depending on its sign — aka, the set design of your cosmic stage.",
+  "mercury_sign": "MERCURY — YOUR MENTAL EDITING ROOM & DIALOGUE STYLE",
+  "mercury_house": "MERCURY IN THE HOUSES — Your Mind's Operating System\n→ Mercury shows how you think and speak — but the house shows what you're always thinking about. This is your inner narrator's favorite topic.",
+  "venus_sign": "VENUS — YOUR LOVE AESTHETIC & ATTRACTION STYLE",
+  "venus_house": "VENUS IN THE HOUSES — Your Love Language & Aesthetic Aura\n→ Venus shows what you find beautiful, how you attract love and pleasure, and what makes you feel adored. In each house, Venus reveals where you seek harmony and sparkle.",
+  "mars_sign": "MARS — YOUR DRIVE, DESIRE & ACTION SEQUENCES",
+  "mars_house": "MARS IN THE HOUSES — Your Drive, Fire & Fight\n→ Mars shows where you're bold, gutsy, and determined. This house is your arena of action — where you chase goals and stir up passion (or drama).",
+  "jupiter_sign": "JUPITER — YOUR LUCK, FAITH AND EXPANSION ARCHETYPE",
+  "jupiter_house": "JUPITER IN THE HOUSES — Where You Expand & Inspire\n→ The house shows where you radiate luck, growth, and Big Main Character Energy. Jupiter here says: go big or go cosmic.",
+  "saturn_sign": "SATURN — YOUR TESTS, LIMITS AND LONG-GAME ROLE",
+  "saturn_house": "SATURN IN THE HOUSES — Your Masterclass in Maturity\n→ Saturn shows where you face trials that build grit and wisdom. In this house, you're asked to grow up, do the work, and turn your fears into mastery.",
+  "uranus_sign": "URANUS — YOUR REBEL FREQUENCY AND DISRUPTIVE GENIUS",
+  "uranus_house": "URANUS IN THE HOUSES — Where You're a Cosmic Wild Card\n→ Your inner rebel, genius glitch, and lightning bolt of evolution.",
+  "neptune_sign": "NEPTUNE — YOUR DREAM REALM AND GLAMOUR FIELD",
+  "neptune_house": "NEPTUNE IN THE HOUSES — Where You Dream, Dissolve & Disappear\n→ The dream director in your chart, casting fog, fantasy, and spiritual downloads wherever it lands.",
+  "pluto_sign": "PLUTO — YOUR POWER, DEPTH AND UNDERWORLD PLOT",
+  "pluto_house": "PLUTO IN THE HOUSES — Where You Die & Rebirth, Obsess & Transform\n→ The shadow planet. Your underworld journey. The obsession that becomes your power.",
+  "houses_in_signs": "HOUSES IN THE SIGNS — SET DESIGN FOR YOUR COSMIC STAGE → The house shows where the story unfolds. But the sign on the cusp tells us with what style. Below, each house takes on a unique aesthetic depending on its sign — aka, the set design of your cosmic stage."
 }

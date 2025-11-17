@@ -42,3 +42,15 @@ Content-Type: application/json
     { "questionKey": "casting.movie_role", "optionValues": ["lead"] }
   ]
 }
+
+### Dev helper: Chart to SVG/HTML (one-shot)
+POST http://localhost:3001/api/dev/chart-to-svg
+Content-Type: application/json
+
+{
+  "date": "2000-02-14",
+  "time": "22:11",
+  "latitude": 51.2254,
+  "longitude": 6.7763,
+  "userEmail": "dev@example.com"
+}

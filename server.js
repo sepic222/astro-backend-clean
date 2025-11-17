@@ -160,6 +160,21 @@ function buildReadingFromContent(chartDto) {
   if (SECTION_INTROS.ascendant) parts.push(SECTION_INTROS.ascendant.trim());
   parts.push(pick(ASCENDANT_TEXT, ascSign, ''));
 
+// Chart ruler
+if (SECTION_INTROS.chart_ruler) parts.push(SECTION_INTROS.chart_ruler.trim());
+const chartRulerPlanet = chartDto.chartRulerPlanet || '';
+const chartRulerHouse = String(chartDto.chartRulerHouse || '');
+if (chartRulerPlanet && ascSign) {
+  // chart_ruler.json has keys like "Mars:1", "Venus:2" where number is ascendant sign number (1=Aries, 2=Taurus, etc.)
+  const ascSignNum = ZODIAC_SIGNS.indexOf(ascSign) + 1;
+  const keyWithSign = `${chartRulerPlanet}:${ascSignNum}`;
+  const rulerText = pick(CHART_RULER_TEXT, keyWithSign, '');
+  if (rulerText) parts.push(rulerText);
+}
+if (chartRulerHouse) {
+  parts.push(pick(CHART_RULER_HOUSE_TEXT, chartRulerHouse, ''));
+}
+
   // Sun sign
   if (SECTION_INTROS.sun_sign) parts.push(SECTION_INTROS.sun_sign.trim());
   parts.push(pick(SUN_SIGN_TEXT, sunSign, ''));
@@ -195,21 +210,6 @@ function buildReadingFromContent(chartDto) {
     parts.push(pick(SIGN_TEXT, signVal, ''));
     if (SECTION_INTROS[`${name}_house`]) parts.push(SECTION_INTROS[`${name}_house`].trim());
     parts.push(pick(HOUSE_TEXT, houseVal, ''));
-  }
-
-  // Chart ruler
-  if (SECTION_INTROS.chart_ruler) parts.push(SECTION_INTROS.chart_ruler.trim());
-  const chartRulerPlanet = chartDto.chartRulerPlanet || '';
-  const chartRulerHouse = String(chartDto.chartRulerHouse || '');
-  if (chartRulerPlanet && ascSign) {
-    // chart_ruler.json has keys like "Mars:1", "Venus:2" where number is ascendant sign number (1=Aries, 2=Taurus, etc.)
-    const ascSignNum = ZODIAC_SIGNS.indexOf(ascSign) + 1;
-    const keyWithSign = `${chartRulerPlanet}:${ascSignNum}`;
-    const rulerText = pick(CHART_RULER_TEXT, keyWithSign, '');
-    if (rulerText) parts.push(rulerText);
-  }
-  if (chartRulerHouse) {
-    parts.push(pick(CHART_RULER_HOUSE_TEXT, chartRulerHouse, ''));
   }
 
   return parts.filter(Boolean).join('\n\n');
@@ -1363,6 +1363,8 @@ app.get('/reading/:submissionId/html', async (req, res) => {
         // Build reading text from content files
         const builderDto = {
           ascendantSign: angles.ascendantSign || null,
+          chartRulerPlanet: chart.chartRulerPlanet || null,
+          chartRulerHouse:  chart.chartRulerHouse  || null,
           sunSign:       planets?.sun?.sign || null,
           sunHouse:      planets?.sun?.house || null,
           moonSign:      planets?.moon?.sign || null,
@@ -1383,8 +1385,7 @@ app.get('/reading/:submissionId/html', async (req, res) => {
           neptuneHouse:  planets?.neptune?.house || null,
           plutoSign:     planets?.pluto?.sign || null,
           plutoHouse:    planets?.pluto?.house || null,
-          chartRulerPlanet: chart.chartRulerPlanet || null,
-          chartRulerHouse:  chart.chartRulerHouse  || null,
+    
         };
         builtText = buildReadingFromContent(builderDto);
       }
@@ -1432,7 +1433,7 @@ app.get('/reading/:submissionId/html', async (req, res) => {
         ${chartHTML}
 
         <footer>
-          <p>© FateFlix • Server-rendered preview. You can also call <code>/api/reading/${esc(submissionId)}</code> for JSON.</p>
+          <p>© FateFlix</p>
         </footer>
       </div>
     </body>

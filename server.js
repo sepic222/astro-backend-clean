@@ -39,11 +39,25 @@ const NEPTUNE_SIGN_TEXT = loadJson(path.join(CONTENT_DIR, 'neptune_sign.json'));
 const NEPTUNE_HOUSE_TEXT = loadJson(path.join(CONTENT_DIR, 'neptune_house.json'));
 const PLUTO_SIGN_TEXT = loadJson(path.join(CONTENT_DIR, 'pluto_sign.json'));
 const PLUTO_HOUSE_TEXT = loadJson(path.join(CONTENT_DIR, 'pluto_house.json'));
+const HOUSE_1_TEXT = loadJson(path.join(CONTENT_DIR, 'house_01.json'));
+const HOUSE_2_TEXT = loadJson(path.join(CONTENT_DIR, 'house_02.json'));
+const HOUSE_3_TEXT = loadJson(path.join(CONTENT_DIR, 'house_03.json'));
+const HOUSE_4_TEXT = loadJson(path.join(CONTENT_DIR, 'house_04.json'));
+const HOUSE_5_TEXT = loadJson(path.join(CONTENT_DIR, 'house_05.json'));
+const HOUSE_6_TEXT = loadJson(path.join(CONTENT_DIR, 'house_06.json'));
+const HOUSE_7_TEXT = loadJson(path.join(CONTENT_DIR, 'house_07.json'));
+const HOUSE_8_TEXT = loadJson(path.join(CONTENT_DIR, 'house_08.json'));
+const HOUSE_9_TEXT = loadJson(path.join(CONTENT_DIR, 'house_09.json'));
+const HOUSE_10_TEXT = loadJson(path.join(CONTENT_DIR, 'house_10.json'));
+const HOUSE_11_TEXT = loadJson(path.join(CONTENT_DIR, 'house_11.json'));
+const HOUSE_12_TEXT = loadJson(path.join(CONTENT_DIR, 'house_12.json'));
 
 // --- Express app (init early so routes can attach) ---
 const app = express();
 app.use(cors());
 app.use(express.json());
+app.use(express.static(path.join(__dirname, 'public'))); // Serve static files from public dir
+app.use('/assets', express.static(path.join(__dirname, 'public/assets'))); // Explicitly serve assets
 
 // TEMP sanity route (proves route attachment works)
 app.get('/ping', (_req, res) => res.json({ ok: true, t: Date.now() }));
@@ -84,6 +98,7 @@ if (process.env.OPENAI_API_KEY) {
 
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
+const MOCK_DB = {}; // In-memory cache for testing without DB
 const { readingHtmlHandler, readingSvgHandler, chartSvgAlias } = require('./server/readingRoutes');
 // ---- helpers -------------------------------------------------
 function normalize360(val) {
@@ -277,6 +292,39 @@ async function saveChartToDB(input, output) {
 // --------------------------------------------------------------
 
 // dev-helpers (preview & retry tools)
+app.get('/dev/no-time', (req, res) => {
+  const submissionId = 'dev-no-time-' + Date.now();
+  const chartId = 'dev-chart-' + Date.now();
+  
+  // Insert into mock DB
+  MOCK_DB[submissionId] = {
+    reading: {
+      id: 'mock-reading-notime',
+      submissionId,
+      chartId,
+      createdAt: new Date(),
+      userEmail: 'dev@fateflix.app',
+      summary: 'Mock No-Time Reading',
+      birthDate: '2000-01-01',
+      birthTime: null, // No time
+      birthCity: 'Cosmic Void',
+      birthCountry: 'Milky Way',
+      username: 'StarGazer'
+    },
+    chart: {
+      id: chartId,
+      chartRulerPlanet: null,
+      chartRulerHouse: null,
+      rawChart: {
+        angles: { ascendantSign: null } // Force no ascendant
+      }
+    }
+  };
+  
+  // Redirect to the HTML view (page 2 is where the no-time logic lives)
+  res.redirect(`/reading/${submissionId}/html/2`);
+});
+
 app.get('/dev/email/preview/:outboxId', async (req, res) => {
   const r = await prisma.emailOutbox.findUnique({ where: { id: req.params.outboxId } });
   if (!r) return res.status(404).send('Not found');
@@ -336,9 +384,17 @@ function getJulianDayFromDate(date) {
 // ------------- MAIN CHART ENDPOINT -------------
 app.post('/api/birth-chart-swisseph', async (req, res) => {
   try {
-    const { date, time, latitude, longitude } = req.body || {};
-    if (!date || !time || latitude === undefined || longitude === undefined) {
-      return res.status(400).json({ success: false, error: 'Missing required fields (date, time, latitude, longitude).' });
+    let { date, time, latitude, longitude } = req.body || {};
+    let isUnknownTime = false;
+
+    // Default to 12:00 (noon) if time is missing
+    if (!time) {
+      time = '12:00';
+      isUnknownTime = true;
+    }
+
+    if (!date || latitude === undefined || longitude === undefined) {
+      return res.status(400).json({ success: false, error: 'Missing required fields (date, latitude, longitude).' });
     }
 
     const lat = parseFloat(latitude);
@@ -476,6 +532,35 @@ if (nodesAndChiron.chiron) {
       chartRulerHouse
     };
 
+    if (isUnknownTime) {
+      payload.angles = {
+        ascendantDeg: null,
+        ascendantSign: null,
+        mcDeg: null,
+        mcSign: null,
+        descendantDeg: null,
+        descendantSign: null,
+        icDeg: null,
+        icSign: null
+      };
+      payload.houses = [];
+      payload.houseSigns = [];
+      payload.houseRulers = {};
+      payload.planetsInHouses = {};
+      payload.chartRulerPlanet = null;
+      payload.chartRulerHouse = null;
+      if (payload.planets) {
+        for (const k in payload.planets) {
+          if (payload.planets[k]) payload.planets[k].house = null;
+        }
+      }
+      if (payload.nodesAndChiron) {
+        for (const k in payload.nodesAndChiron) {
+          if (payload.nodesAndChiron[k]) payload.nodesAndChiron[k].house = null;
+        }
+      }
+    }
+
     // ensure a meta bag exists
     payload.meta = payload.meta || {};
     payload.meta.timeAccuracy = req.body?.timeAccuracy ?? null;
@@ -522,9 +607,17 @@ try {
 // Optional GET variant for convenience (reads from query params)
 app.get('/api/birth-chart-swisseph', async (req, res) => {
   try {
-    const { date, time, latitude, longitude } = req.query || {};
-    if (!date || !time || latitude === undefined || longitude === undefined) {
-      return res.status(400).json({ success: false, error: 'Missing required fields (date, time, latitude, longitude).' });
+    let { date, time, latitude, longitude } = req.query || {};
+    let isUnknownTime = false;
+
+    // Default to 12:00 (noon) if time is missing
+    if (!time) {
+      time = '12:00';
+      isUnknownTime = true;
+    }
+
+    if (!date || latitude === undefined || longitude === undefined) {
+      return res.status(400).json({ success: false, error: 'Missing required fields (date, latitude, longitude).' });
     }
 
     const lat = parseFloat(latitude);
@@ -657,6 +750,36 @@ app.get('/api/birth-chart-swisseph', async (req, res) => {
       chartRulerHouse
     };
 
+    // Mask if unknown time
+    if (isUnknownTime) {
+      payload.angles = {
+        ascendantDeg: null,
+        ascendantSign: null,
+        mcDeg: null,
+        mcSign: null,
+        descendantDeg: null,
+        descendantSign: null,
+        icDeg: null,
+        icSign: null
+      };
+      payload.houses = [];
+      payload.houseSigns = [];
+      payload.houseRulers = {};
+      payload.planetsInHouses = {};
+      payload.chartRulerPlanet = null;
+      payload.chartRulerHouse = null;
+      if (payload.planets) {
+        for (const k in payload.planets) {
+          if (payload.planets[k]) payload.planets[k].house = null;
+        }
+      }
+      if (payload.nodesAndChiron) {
+        for (const k in payload.nodesAndChiron) {
+          if (payload.nodesAndChiron[k]) payload.nodesAndChiron[k].house = null;
+        }
+      }
+    }
+
     // meta + best-effort save
     payload.meta = payload.meta || {};
     payload.meta.timeAccuracy = req.query?.timeAccuracy ?? null;
@@ -760,9 +883,10 @@ app.get('/api/chart/summary', async (req, res) => {
 // === Dev helper: one-shot compute -> save -> return SVG/HTML URLs ===========
 app.post('/api/dev/chart-to-svg', async (req, res) => {
   try {
-    const { date, time, latitude, longitude, userEmail } = req.body || {};
-    if (!date || !time || latitude == null || longitude == null) {
-      return res.status(400).json({ ok: false, error: 'Missing date, time, latitude, or longitude' });
+    let { date, time, latitude, longitude, userEmail, city, country, username } = req.body || {};
+
+    if (!date || latitude == null || longitude == null) {
+      return res.status(400).json({ ok: false, error: 'Missing date, latitude, or longitude' });
     }
 
     // Build absolute base URL that works in Railway (no localhost)
@@ -781,30 +905,62 @@ app.post('/api/dev/chart-to-svg', async (req, res) => {
       return res.status(502).json({ ok: false, step: 'chart', error: err || rChart.statusText });
     }
     const chartPayload = await rChart.json();
-    const chartId = chartPayload.savedChartId || null;
-    if (!chartId) return res.status(500).json({ ok: false, error: 'Chart computed but not saved' });
+    let chartId = chartPayload.savedChartId || null;
+    let submissionId = null;
 
-    // 2) Create submission + reading directly (bypass survey/submit to avoid empty answers requirement)
-    const submission = await prisma.surveySubmission.create({
-      data: { userEmail: userEmail || null, chart: { connect: { id: chartId } } },
-      select: { id: true }
-    });
+    if (chartId) {
+      // 2) Create submission + reading directly (bypass survey/submit to avoid empty answers requirement)
+      const submission = await prisma.surveySubmission.create({
+        data: { userEmail: userEmail || null, chart: { connect: { id: chartId } } },
+        select: { id: true }
+      });
+      submissionId = submission.id;
 
-    const reading = await prisma.reading.create({
-      data: {
-        submissionId: submission.id,
-        chartId,
-        userEmail: userEmail || null,
-        summary: 'Auto-generated placeholder reading for dev preview.'
-      },
-      select: { id: true }
-    });
+      const reading = await prisma.reading.create({
+        data: {
+          submissionId: submission.id,
+          chartId,
+          userEmail: userEmail || null,
+          summary: 'Auto-generated placeholder reading for dev preview.'
+        },
+        select: { id: true }
+      });
+    } else {
+      // Fallback: Mock flow if DB save failed
+      console.warn('⚠️ DB save failed, using in-memory mock for visualization.');
+      submissionId = 'test-submission-' + Date.now();
+      chartId = 'mock-chart-' + Date.now();
+      MOCK_DB[submissionId] = {
+        reading: {
+          id: 'mock-reading',
+          submissionId,
+          chartId,
+          createdAt: new Date(),
+          userEmail: userEmail || 'test@example.com',
+          summary: 'Mock reading',
+          // Mock data for HTML rendering
+          birthDate: date,
+          birthTime: time,
+          birthCity: city || 'Unknown City',
+          birthCountry: country || 'Unknown Country',
+          username: username || 'Anonymous'
+        },
+        chart: {
+          id: chartId,
+          chartRulerPlanet: chartPayload.chartRulerPlanet,
+          chartRulerHouse: chartPayload.chartRulerHouse,
+          northNodeHouse: chartPayload.nodesAndChiron?.northNode?.house,
+          chironHouse: chartPayload.nodesAndChiron?.chiron?.house,
+          rawChart: chartPayload
+        }
+      };
+    }
 
     // 3) Hand back URLs your FE can use immediately
-    const svgUrl  = `${base}/reading/${submission.id}/chart.svg`;
-    const htmlUrl = `${base}/reading/${submission.id}/html`;
+    const svgUrl  = `${base}/reading/${submissionId}/chart.svg`;
+    const htmlUrl = `${base}/reading/${submissionId}/html`;
 
-    return res.json({ ok: true, chartId, submissionId: submission.id, svgUrl, htmlUrl });
+    return res.json({ ok: true, chartId, submissionId: submissionId, svgUrl, htmlUrl });
   } catch (e) {
     console.error('💥 /api/dev/chart-to-svg error:', e);
     return res.status(500).json({ ok: false, error: e?.message || 'Unknown error' });
@@ -1330,20 +1486,30 @@ app.get('/reading/:submissionId/html', async (req, res) => {
     const { submissionId } = req.params;
     if (!submissionId) return res.status(400).send('Missing submissionId');
 
-    const reading = await prisma.reading.findFirst({
-      where: { submissionId },
-      select: { id: true, summary: true, chartId: true, createdAt: true }
-    });
+    let reading, chart;
+    
+    // Check mock DB first
+    if (MOCK_DB[submissionId]) {
+      reading = MOCK_DB[submissionId].reading;
+      chart = MOCK_DB[submissionId].chart;
+    } else {
+      reading = await prisma.reading.findFirst({
+        where: { submissionId },
+        select: { id: true, summary: true, chartId: true, createdAt: true, userEmail: true }
+      });
+      if (reading && reading.chartId) {
+        chart = await prisma.chart.findUnique({
+          where: { id: reading.chartId },
+          select: { id: true, chartRulerPlanet: true, chartRulerHouse: true, rawChart: true }
+        });
+      }
+    }
+
     if (!reading) return res.status(404).send('Reading not found');
 
     let chartDTO = null;
     let builtText = null;
-    if (reading.chartId) {
-      const chart = await prisma.chart.findUnique({
-        where: { id: reading.chartId },
-        select: { id: true, chartRulerPlanet: true, chartRulerHouse: true, rawChart: true }
-      });
-      if (chart) {
+    if (chart) {
         const rc = chart.rawChart || {};
         const angles = rc.angles || {};
         const planets = rc.planets || {};
@@ -1360,7 +1526,6 @@ app.get('/reading/:submissionId/html', async (req, res) => {
           planets: planets
         };
 
-        // Build reading text from content files
         const builderDto = {
           ascendantSign: angles.ascendantSign || null,
           chartRulerPlanet: chart.chartRulerPlanet || null,
@@ -1385,60 +1550,485 @@ app.get('/reading/:submissionId/html', async (req, res) => {
           neptuneHouse:  planets?.neptune?.house || null,
           plutoSign:     planets?.pluto?.sign || null,
           plutoHouse:    planets?.pluto?.house || null,
-    
+          chartRulerPlanet: chart.chartRulerPlanet || null,
+          chartRulerHouse:  chart.chartRulerHouse  || null,
         };
         builtText = buildReadingFromContent(builderDto);
       }
+
+    // Helpers
+    const esc = (s) => String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const pickVal = (map, key) => (map && map[key]) ? map[key] : '';
+
+    // Styles
+    const styles = `
+      body { background-color: #090011; color: #FFFFFF; font-family: "Graphic Web", "Futura", sans-serif; margin: 0; padding: 0; display: flex; justify-content: center; }
+      .wrap { width: 100%; max-width: 480px; padding: 20px; box-sizing: border-box; }
+      h1, h2, h3, .header-font { font-family: "Futura", sans-serif; text-transform: uppercase; margin: 0; }
+      .card { border: 1px solid #8FBCFF; border-radius: 12px; padding: 20px; margin-bottom: 16px; background: transparent; }
+      .card-gold { border-color: #FFD18F; }
+      .section-header { color: #F3DCBC; font-size: 14px; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; }
+      .content-text { font-size: 16px; line-height: 1.5; }
+      .intro-text { color: #F3DCBC; text-align: center; font-style: italic; margin: 30px 0; font-size: 18px; }
+      .disclaimer { color: #B3B3B3; font-size: 12px; text-align: left; margin-top: 40px; line-height: 1.4; }
+      .no-time { color: #B6DAF7; text-align: center; margin: 40px 0; font-size: 14px; line-height: 1.6; }
+      .ruler-header { color: #DFCDF5; font-size: 16px; margin-bottom: 10px; }
+      .ruler-eq { color: #A2C5E2; margin-bottom: 20px; font-weight: bold; }
+      
+      /* Badge Styles */
+      .badge { 
+        background: linear-gradient(135deg, #e0c3fc 0%, #8ec5fc 100%); 
+        color: #000; 
+        border-radius: 20px; 
+        padding: 0; 
+        overflow: hidden; 
+        margin-bottom: 30px; 
+        text-align: center; 
+        font-family: "Futura", sans-serif;
+      }
+      .badge-top { padding: 40px 20px; background: rgba(255,255,255,0.2); position: relative; }
+      .badge-bottom { background: #f0f0f0; padding: 20px; font-size: 12px; color: #333; font-family: monospace; text-align: left; }
+      .fateflix-title { font-size: 40px; font-weight: 800; letter-spacing: -1px; margin-bottom: 5px; }
+      .early-access { font-size: 12px; letter-spacing: 1px; margin-bottom: 10px; }
+      .tagline { font-family: "Graphic Web", sans-serif; font-style: italic; font-size: 16px; margin: 15px 0; }
+      .row { display: flex; border-bottom: 1px solid #ccc; padding: 8px 0; }
+      .col { flex: 1; padding: 0 5px; }
+      .border-left { border-left: 1px solid #ccc; }
+    `;
+
+    let contentHtml = '';
+
+    if (chartDTO) {
+       // 1. Badge Screen
+       contentHtml += `
+         <div class="badge">
+           <div class="badge-top">
+             <div style="font-size:24px">🪐</div>
+             <div class="fateflix-title">FateFlix</div>
+             <div class="early-access">+ EARLY ACCESS BADGE</div>
+             <div class="tagline">You had taste before the app even dropped.</div>
+             <div style="font-size:10px; margin-top:10px">EST. 2025</div>
+             <div style="font-size:10px">The Future of Intuitive Entertainment</div>
+           </div>
+           <div class="badge-bottom">
+             <div style="border-bottom:1px solid #aaa; padding-bottom:5px; margin-bottom:5px">
+               <strong>EVENT</strong><br/>FATEFLIX SURVEY COMPLETION
+             </div>
+             <div class="row">
+               <div class="col">DATE<br/><strong>${new Date(reading.createdAt).toLocaleDateString()}</strong></div>
+               <div class="col border-left"></div>
+             </div>
+             <div class="row">
+               <div class="col">TASTE LEVEL <strong>A</strong><br/>COSMIC CURATOR</div>
+               <div class="col border-left">CATEGORY<br/>ALPHA TESTER</div>
+             </div>
+             <div class="row" style="border-bottom:none">
+               <div class="col" style="padding-top:8px; border-top:1px solid #aaa">
+                 ADMIT ONE — UNIVERSE: CINEMATIC
+               </div>
+             </div>
+             <div style="margin-top:15px; font-size:9px; text-align:center; opacity:0.7">
+               UNAUTHORIZED RESALE PROHIBITED<br/>COSMIC APPROVAL GRANTED BY FATEFLIX
+             </div>
+           </div>
+         </div>
+       `;
+
+       // 2. My Astro-Cinematic-Chart
+       const bDate = reading.birthDate ? new Date(reading.birthDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'Unknown Date';
+       const bTime = reading.birthTime || 'Unknown Time';
+       const bPlace = (reading.birthCity && reading.birthCountry) ? `${reading.birthCity}, ${reading.birthCountry}` : (reading.birthCity || 'Unknown Place');
+       const uName = reading.username || 'Unknown';
+       const uEmail = reading.userEmail || 'Unknown';
+
+       contentHtml += `
+         <div style="position: relative; margin: 30px 0;">
+           <h1 style="font-family:'Futura',sans-serif; color:#FFFFFF; text-transform:uppercase; font-size: 24px; text-align:center; margin-bottom:30px">My Astro-Cinematic Chart</h1>
+           
+           <div style="display: flex; justify-content: space-between; align-items: center;">
+             <div style="font-size: 12px; color: #fff; line-height: 1.6; width: 25%; text-align: left;">
+                Date: ${bDate}<br/>
+                Time: ${bTime}<br/>
+                Place: ${bPlace}
+             </div>
+
+             <div style="flex: 1; text-align: center;">
+                <img src="/assets/header_chart_wheel.png" class="img-responsive" style="max-width:100%; width: 220px; height: auto;" alt="Chart Wheel" />
+             </div>
+
+             <div style="width: 25%;"></div>
+           </div>
+
+           <div style="text-align: right; font-size: 12px; margin-top: -20px; margin-bottom: 20px; color: #fff;">
+               username: ${uName}<br/>
+               email: ${uEmail}
+           </div>
+
+           <div style="position: relative; width: 320px; margin: 0 auto 30px auto;">
+               <img src="/assets/planet_purple.png" style="display: block; width: 100%; height: auto; opacity: 0.9;" alt="" />
+               
+               <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 100%; text-align: center; z-index: 10; font-family: 'Futura', sans-serif; font-style: italic; font-size: 18px; color: #F3DCBC; line-height: 1.4; text-shadow: 0 2px 10px rgba(0,0,0,0.7);">
+                  <span style="position: relative; top: -8px; margin-right: 4px;">
+                    <img src="/assets/starglow_large.png" style="width: 18px;" alt="" />
+                  </span>
+                  Your planets = the cast.
+                  <br/>
+                  Your signs = the characters they play.
+                  <span style="position: relative; top: 8px; margin-left: 4px;">
+                    <img src="/assets/starglow_large.png" style="width: 22px;" alt="" />
+                  </span>
+               </div>
+           </div>
+         </div>
+       `;
+
+       const p = chartDTO.planets || {};
+       const list = [
+         // Only include Rising/Ascendant if we have an ascendant sign
+         ...(chartDTO.ascSign ? [{ name: 'Rising / Ascendant', sign: chartDTO.ascSign, intro: SECTION_INTROS.ascendant, text: pickVal(ASCENDANT_TEXT, chartDTO.ascSign) }] : []),
+         { name: 'Sun', sign: p.sun?.sign, intro: SECTION_INTROS.sun_sign, text: pickVal(SUN_SIGN_TEXT, p.sun?.sign) },
+         { name: 'Moon', sign: p.moon?.sign, intro: SECTION_INTROS.moon_sign, text: pickVal(MOON_SIGN_TEXT, p.moon?.sign) },
+         { name: 'Mercury', sign: p.mercury?.sign, intro: SECTION_INTROS.mercury_sign, text: pickVal(MERCURY_SIGN_TEXT, p.mercury?.sign) },
+         { name: 'Venus', sign: p.venus?.sign, intro: SECTION_INTROS.venus_sign, text: pickVal(VENUS_SIGN_TEXT, p.venus?.sign) },
+         { name: 'Mars', sign: p.mars?.sign, intro: SECTION_INTROS.mars_sign, text: pickVal(MARS_SIGN_TEXT, p.mars?.sign) },
+         { name: 'Jupiter', sign: p.jupiter?.sign, intro: SECTION_INTROS.jupiter_sign, text: pickVal(JUPITER_SIGN_TEXT, p.jupiter?.sign) },
+         { name: 'Saturn', sign: p.saturn?.sign, intro: SECTION_INTROS.saturn_sign, text: pickVal(SATURN_SIGN_TEXT, p.saturn?.sign) },
+         { name: 'Pluto', sign: p.pluto?.sign, intro: SECTION_INTROS.pluto_sign, text: pickVal(PLUTO_SIGN_TEXT, p.pluto?.sign) },
+         { name: 'Uranus', sign: p.uranus?.sign, intro: SECTION_INTROS.uranus_sign, text: pickVal(URANUS_SIGN_TEXT, p.uranus?.sign) },
+         { name: 'Neptune', sign: p.neptune?.sign, intro: SECTION_INTROS.neptune_sign, text: pickVal(NEPTUNE_SIGN_TEXT, p.neptune?.sign) },
+       ];
+
+       list.forEach(item => {
+         contentHtml += `
+        <div class="card">
+             <h2 class="section-header">${esc(item.name)}</h2>
+             <div style="font-size:12px; opacity:0.7; margin-bottom:8px">${esc(item.intro || '')}</div>
+             <div class="content-text">${esc(item.text || `${item.name} in ${item.sign}`)}</div>
+          </div>
+         `;
+       });
+
+       // Footer Text inserted before Button
+       contentHtml += `
+         <div style="text-align:center; margin: 40px 0; padding: 0 20px;">
+           <img src="/assets/starglow_large.png" class="star-decoration" alt="" />
+           <p style="color:#F3DCBC; font-family:'Futura',sans-serif; font-style:italic; font-size:16px; line-height:1.5;">
+             You’re now part of Fateflix’s origin story. And<br/>
+             that’s legendary. Thank you for building the<br/>
+             future of intuitive entertainment with us.
+           </p>
+           <img src="/assets/starglow_large.png" class="star-decoration" alt="" />
+         </div>
+       `;
+
+       // Button to next page
+       contentHtml += `
+         <div style="text-align:center; margin: 40px 0;">
+           <a href="/reading/${submissionId}/html/2" style="display:inline-block; background:linear-gradient(90deg, #e0c3fc, #8ec5fc); color:#000; padding:15px 30px; border-radius:30px; text-decoration:none; font-family:'Futura',sans-serif; font-weight:bold; text-transform:uppercase; box-shadow: 0 4px 15px rgba(142, 197, 252, 0.4);">
+             Click to see who‘s directing the scene
+           </a>
+         </div>
+       `;
+
+    } else {
+       contentHtml = '<p>No chart data available.</p>';
     }
 
-    const chartHTML = chartDTO ? renderChartHTML(chartDTO) : '<p>No chart linked.</p>';
-    const readingText = builtText || reading.summary || 'No reading available.';
     const html = `<!DOCTYPE html>
     <html lang="en">
     <head>
       <meta charset="utf-8" />
       <meta name="viewport" content="width=device-width, initial-scale=1" />
       <title>FateFlix Reading – ${esc(submissionId)}</title>
-      <style>
-        body{font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;background:#0e0e0e;color:#eee;margin:0;padding:24px}
-        a{color:#9cd}
-        h1,h2{margin:0 0 8px}
-        .wrap{max-width:1100px;margin:0 auto}
-        .meta{opacity:0.8;margin-bottom:12px}
-        .card{margin-top:16px;padding:12px;border:1px solid #333;border-radius:8px;background:#141414}
-        .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:12px}
-        .tile{padding:8px 10px;background:#1c1c1c;border-radius:6px}
-        .reading{white-space:pre-wrap;line-height:1.5}
-        .t{margin-bottom:4px}
-        footer{margin-top:28px;opacity:0.7}
-      </style>
+      <style>${styles}</style>
     </head>
     <body>
       <div class="wrap">
-        <h1>FateFlix Reading</h1>
-        <div class="meta">Submission: ${esc(submissionId)} • ${esc(new Date(reading.createdAt).toLocaleString())}</div>
-
-        <section class="card">
-          <h2>Summary</h2>
-          <div class="reading">${esc(readingText)}</div>
-        </section>
-
-        <div class="card">
-          <b>Wheel (SVG preview):</b>
-          <div style="margin-top:8px">
-            <img src="/reading/${esc(submissionId)}/chart.svg" alt="Chart wheel" style="max-width:100%;height:auto;border:1px solid #333;border-radius:8px;background:#111" />
-          </div>
-        </div>
-
-        ${chartHTML}
-
-        <footer>
-          <p>© FateFlix</p>
-        </footer>
+        ${contentHtml}
       </div>
     </body>
     </html>`;
+
     res.type('html').send(html);
+
+  } catch (e) {
+    console.error('💥 /reading/:submissionId/html error:', e);
+    res.status(500).send('Internal error');
+  }
+});
+
+// Page 2: Chart Ruler + Houses + Footer
+app.get('/reading/:submissionId/html/2', async (req, res) => {
+  try {
+    const { submissionId } = req.params;
+    if (!submissionId) return res.status(400).send('Missing submissionId');
+
+    let reading, chart;
+    
+    // Check mock DB first
+    if (MOCK_DB[submissionId]) {
+      reading = MOCK_DB[submissionId].reading;
+      chart = MOCK_DB[submissionId].chart;
+    } else {
+      reading = await prisma.reading.findFirst({
+        where: { submissionId },
+        select: { id: true, summary: true, chartId: true, createdAt: true, userEmail: true }
+      });
+      if (reading && reading.chartId) {
+        chart = await prisma.chart.findUnique({
+          where: { id: reading.chartId },
+          select: { id: true, chartRulerPlanet: true, chartRulerHouse: true, rawChart: true }
+        });
+      }
+    }
+
+    if (!reading) return res.status(404).send('Reading not found');
+
+    let chartDTO = null;
+    if (chart) {
+        const rc = chart.rawChart || {};
+        const angles = rc.angles || {};
+        const planets = rc.planets || {};
+        chartDTO = {
+          id: chart.id,
+          ascSign: angles.ascendantSign || null,
+          mcSign: angles.mcSign || null,
+          ascDeg: angles.ascendantDeg,
+          mcDeg: angles.mcDeg,
+          chartRuler: { planet: chart.chartRulerPlanet || null, house: chart.chartRulerHouse || null },
+          houseSigns: rc.houseSigns || [],
+          houseRulers: rc.houseRulers || [],
+          rawHouses: rc.houses || [],
+          planets: planets
+        };
+    }
+
+    // Helpers
+    const esc = (s) => String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const pickVal = (map, key) => (map && map[key]) ? map[key] : '';
+
+    // Styles (Same as page 1)
+    const styles = `
+      body { background-color: #090011; color: #FFFFFF; font-family: "Graphic Web", "Futura", sans-serif; margin: 0; padding: 0; display: flex; justify-content: center; }
+      .wrap { width: 100%; max-width: 480px; padding: 20px; box-sizing: border-box; }
+      h1, h2, h3, .header-font { font-family: "Futura", sans-serif; text-transform: uppercase; margin: 0; }
+      .card { border: 1px solid #8FBCFF; border-radius: 12px; padding: 20px; margin-bottom: 16px; background: transparent; }
+      .card-gold { border-color: #FFD18F; }
+      .section-header { color: #F3DCBC; font-size: 14px; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; }
+      .content-text { font-size: 16px; line-height: 1.5; }
+      .intro-text { color: #F3DCBC; text-align: center; font-style: italic; margin: 30px 0; font-size: 18px; }
+      .disclaimer { color: #B3B3B3; font-size: 12px; text-align: left; margin-top: 40px; line-height: 1.4; }
+      .no-time { color: #B6DAF7; text-align: center; margin: 40px 0; font-size: 14px; line-height: 1.6; }
+      .ruler-header { color: #DFCDF5; font-size: 16px; margin-bottom: 10px; }
+      .ruler-eq { color: #A2C5E2; margin-bottom: 20px; font-weight: bold; }
+      .page-break { margin-top: 50px; margin-bottom: 50px; }
+      .img-responsive { max-width: 100%; height: auto; display: block; margin: 0 auto; }
+      .star-decoration { width: 20px; height: 20px; display: inline-block; vertical-align: middle; margin: 0 5px; }
+    `;
+
+    let contentHtml = '';
+
+    if (chartDTO) {
+       const p = chartDTO.planets || {};
+       const ascendant = chartDTO.ascSign; // Identify variable
+
+       // Refactored "No Time" Template
+       const noTimeHtml = `
+          <div class="no-time" style="position: relative; padding-top: 40px; overflow: visible;">
+             <!-- Top Section: Text -->
+             <div style="position: relative; margin-bottom: 20px; padding: 0 20px; text-align: center;">
+                <img src="/assets/starglow_large.png" style="position:absolute; left: 10%; top: -20px; width: 18px; opacity: 0.8;" alt="" />
+                
+                <p style="color:#F3DCBC; font-family:'Futura', sans-serif; font-style: italic; line-height: 1.6; font-size: 18px; margin: 0; position: relative; z-index: 2; text-shadow: 0 2px 4px rgba(0,0,0,0.5);">
+                  No exact birth time?<br/>
+                  Then your Rising sign, chart ruler, and house<br/>
+                  placements will stay a mystery<br/>
+                  ...for now
+                </p>
+                
+                <!-- Purple Ring & Glow: Positioned BELOW the text, right aligned -->
+                <!-- Purple Ring & Glow: Positioned BELOW the text, right aligned -->
+                <img src="/assets/planet_purple_ring.png" style="width:200px; position:absolute; right: -40px; top: 60px; z-index: 0; opacity: 0.9;" alt="" />
+                <img src="/assets/starglow_large.png" style="position:absolute; right: 25%; top: 140px; width: 12px; opacity: 0.6;" alt="" />
+                <!-- New star: slightly right and underneath the planet -->
+                <img src="/assets/starglow_large.png" style="position:absolute; right: 20px; top: 200px; width: 20px; opacity: 0.9;" alt="" />
+             </div>
+
+             <!-- Center Image (Blue Planet) - Large -->
+             <div style="text-align: center; margin: 10px 0 -120px; position: relative; z-index: 1;">
+                <img src="/assets/blue%20planet.png" class="img-responsive" style="max-width: 800px; width: 120%; filter: drop-shadow(0 0 30px rgba(78, 205, 196, 0.3)); margin-left: -10%;" alt="Earth" />
+             </div>
+
+             <!-- Bottom Section: Green Glow Background -->
+             <div style="position: relative; padding: 40px 20px; text-align: center; margin-top: -40px;">
+                
+                <!-- Responsive Glow Background (Large, Spilling Out) -->
+                <div style="
+                   position: absolute;
+                   top: -30%;
+                   bottom: -30%;
+                   left: -20%;
+                   right: -20%;
+                   background: url('/assets/greenglow.png') center center / contain no-repeat;
+                   z-index: 0;
+                   opacity: 0.5;
+                   filter: blur(10px);
+                   pointer-events: none;
+                "></div>
+
+                <!-- Content -->
+                <div style="position: relative; z-index: 1;">
+                   <img src="/assets/starglow_large.png" style="position:absolute; left: 0; top: 0; width: 22px;" alt="" />
+
+                   <p style="color: #B6DAF7; font-family: 'Futura', sans-serif; font-style: italic; font-size: 17px; margin-bottom: 20px; line-height: 1.5; text-shadow: 0 1px 2px rgba(0,0,0,0.8);">
+                     If you don't know the timecode from<br/>
+                     when you entered this planet earth, do<br/>
+                     yourself a favour
+                   </p>
+                   
+                   <p style="color: #B6DAF7; font-family: 'Futura', sans-serif; font-style: italic; font-size: 17px; line-height: 1.6; text-shadow: 0 1px 2px rgba(0,0,0,0.8);">
+                     Call your mom.<br/>
+                     Check your birth certificate.<br/>
+                     Or contact the galaxy you came from<br/>
+                     for the correct digits.
+                   </p>
+
+                   <img src="/assets/starglow_large.png" style="position:absolute; right: 0; bottom: -10px; width: 28px;" alt="" />
+                </div>
+             </div>
+          </div>
+       `;
+
+       // Rule 1: No Time
+       if (!ascendant) {
+           contentHtml += noTimeHtml;
+       } else {
+           // Rule 2 & 3 Logic
+           const CO_RULERS = { Scorpio: 'Pluto', Aquarius: 'Uranus', Pisces: 'Neptune', Virgo: 'Chiron' };
+           const coRulerSigns = ['Taurus', 'Virgo', 'Scorpio', 'Aquarius', 'Pisces'];
+           const isCoRuler = coRulerSigns.includes(ascendant);
+           
+           const ruler1 = chartDTO.chartRuler?.planet;
+           const ruler2 = CO_RULERS[ascendant] || null;
+           
+           let crSignText = '', crHouseText = '';
+           if (ruler2) {
+             const r2 = ruler2.toLowerCase();
+             const mapSign = { pluto: PLUTO_SIGN_TEXT, uranus: URANUS_SIGN_TEXT, neptune: NEPTUNE_SIGN_TEXT };
+             const mapHouse = { pluto: PLUTO_HOUSE_TEXT, uranus: URANUS_HOUSE_TEXT, neptune: NEPTUNE_HOUSE_TEXT };
+             crSignText = pickVal(mapSign[r2], p[r2]?.sign);
+             crHouseText = pickVal(mapHouse[r2], String(p[r2]?.house));
+           }
+
+           // Title for the Ruler Section
+           contentHtml += `
+             <div class="page-break"></div>
+             <div style="text-align:center; margin: 40px 0 20px">
+               <img src="/assets/planet_purple_ring.png" style="width:40px; margin-bottom:10px;" alt="Saturn" />
+               <h2 style="color:#FFD7F3; font-family:'Futura',sans-serif; text-transform:uppercase;">Chart Ruler</h2>
+               <div style="color:#FFFFFF; font-family:'Futura',sans-serif; font-size:12px; margin-top:5px;">
+                 Who's Directing the Scene
+               </div>
+             </div>
+           `;
+
+           // Rule 2: Co-Ruler
+           if (isCoRuler) {
+              contentHtml += `
+                <div class="card card-gold" style="text-align:center">
+                   <div class="ruler-eq">Your Chart Ruler + Co-Chart Ruler = ${ruler2 || 'Unknown'} + ${ruler1}</div>
+                   
+                   <div class="ruler-header">Chart Ruler in the Sign</div>
+                   <div class="card" style="border-color:#8FBCFF">${esc(pickVal(CHART_RULER_TEXT, `${ruler1}:${ZODIAC_SIGNS.indexOf(ascendant)+1}`) || `${ruler1} as Ruler`)}</div>
+                   
+                   <div class="ruler-header">Chart Ruler in the House</div>
+                   <div class="card" style="border-color:#8FBCFF">${esc(pickVal(CHART_RULER_HOUSE_TEXT, String(chartDTO.chartRuler?.house)) || `House ${chartDTO.chartRuler?.house}`)}</div>
+
+                   <div class="ruler-header">Co-Chart Ruler in the Sign</div>
+                   <div class="card" style="border-color:#8FBCFF">${esc(crSignText || `${ruler2} in ${p[ruler2?.toLowerCase()]?.sign}`)}</div>
+
+                   <div class="ruler-header">Co-Chart Ruler in the House</div>
+                   <div class="card" style="border-color:#8FBCFF">${esc(crHouseText || `House ${p[ruler2?.toLowerCase()]?.house}`)}</div>
+                </div>
+              `;
+           } else {
+              // Rule 3: Single Ruler
+              contentHtml += `
+                <div class="card card-gold" style="text-align:center">
+                   <div class="ruler-eq">Your Chart Ruler = ${ruler1}</div>
+                   <div class="ruler-header">Chart Ruler in the Sign</div>
+                   <div class="card" style="border-color:#8FBCFF">${esc(pickVal(CHART_RULER_TEXT, `${ruler1}:${ZODIAC_SIGNS.indexOf(ascendant)+1}`) || `${ruler1} as Ruler`)}</div>
+                   
+                   <div class="ruler-header">Chart Ruler in the House</div>
+                   <div class="card" style="border-color:#8FBCFF">${esc(pickVal(CHART_RULER_HOUSE_TEXT, String(chartDTO.chartRuler?.house)) || `House ${chartDTO.chartRuler?.house}`)}</div>
+                </div>
+              `;
+           }
+           
+           // Astrological Houses - only show if we have house signs (which we should if ascendant exists)
+           if (chartDTO.houseSigns && chartDTO.houseSigns.length > 0 && chartDTO.houseSigns.some(s => s !== null && s !== undefined)) {
+             contentHtml += `
+               <div class="page-break"></div>
+               <div style="text-align:center; margin:40px 0 20px">
+                 <h2 style="color:#FFD7F3; font-family:'Futura',sans-serif; text-transform:uppercase;">Astrological Houses</h2>
+                 <div style="font-size:14px; color:#FAF1E4; font-family:'Futura',sans-serif; font-style:italic; margin-top:10px; line-height:1.4;">
+                   Every house is a different part of your life: identity, money, love, glow-ups, chaos, karma — all of it.<br/>
+                   The sign on each house shows how you express yourself in that area. It's not the "what," it's the vibe.
+                 </div>
+                 <img src="/assets/starglow_medium.png" style="width:30px; margin-top:15px;" alt="Glow" />
+               </div>
+             `;
+             const HOUSE_TEXTS = [HOUSE_1_TEXT, HOUSE_2_TEXT, HOUSE_3_TEXT, HOUSE_4_TEXT, HOUSE_5_TEXT, HOUSE_6_TEXT, HOUSE_7_TEXT, HOUSE_8_TEXT, HOUSE_9_TEXT, HOUSE_10_TEXT, HOUSE_11_TEXT, HOUSE_12_TEXT];
+             
+             chartDTO.houseSigns.forEach((sign, i) => {
+               if (sign !== null && sign !== undefined) {
+                 const txt = pickVal(HOUSE_TEXTS[i], sign) || `${i+1} House in ${sign}`;
+                 contentHtml += `
+                    <div class="card" style="border-color:#8FBCFF">
+                       <div style="font-weight:bold; color:#DFCDF5; margin-bottom:5px">${i+1} House</div>
+                       <div style="font-size:14px; opacity:0.8; margin-bottom:8px">${sign}</div>
+                       <div class="content-text">${esc(txt)}</div>
+                    </div>
+                 `;
+               }
+             });
+           }
+       }
+
+       // Always render footer/disclaimer
+       contentHtml += `
+          <div class="disclaimer" style="text-align: left; margin-top: 40px;">
+             <strong>MINI-DISCLAIMER</strong><br/>
+             We’ll use your birth info to match you with movie recs based on planetary vibes.<br/>
+             Your data is sacred. Like a vintage VHS. It’s not sold, rented, or streamed.
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 30px; font-size: 14px;">
+             <a href="https://www.fateflix.app" style="color:#fff; text-decoration:none">www.fateflix.app</a>
+             <span>@fateflixapp</span>
+          </div>
+       `;
+
+    } else {
+       contentHtml = '<p>No chart data available.</p>';
+    }
+
+    const html = `<!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="utf-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1" />
+      <title>FateFlix Reading – ${esc(submissionId)}</title>
+      <style>${styles}</style>
+    </head>
+    <body>
+      <div class="wrap">
+        ${contentHtml}
+      </div>
+    </body>
+    </html>`;
+
+    res.type('html').send(html);
+
   } catch (e) {
     console.error('💥 /reading/:submissionId/html error:', e);
     res.status(500).send('Internal error');
@@ -1448,9 +2038,17 @@ app.get('/reading/:submissionId/html', async (req, res) => {
 // ===== House rulers & planets-in-houses (compact endpoint) =====
 app.post('/api/chart-houses', async (req, res) => {
   try {
-    const { date, time, latitude, longitude } = req.body || {};
-    if (!date || !time || latitude === undefined || longitude === undefined) {
-      return res.status(400).json({ success: false, error: 'Missing required fields (date, time, latitude, longitude).' });
+    let { date, time, latitude, longitude } = req.body || {};
+    let isUnknownTime = false;
+
+    // Default to 12:00 (noon) if time is missing
+    if (!time) {
+      time = '12:00';
+      isUnknownTime = true;
+    }
+
+    if (!date || latitude === undefined || longitude === undefined) {
+      return res.status(400).json({ success: false, error: 'Missing required fields (date, latitude, longitude).' });
     }
     const lat = parseFloat(latitude);
     const lng = parseFloat(longitude);
@@ -1518,9 +2116,36 @@ app.post('/api/chart-houses', async (req, res) => {
       p.house = planetsInHouses[name];
     }
 
+    // Mask if unknown time
+    if (isUnknownTime) {
+      // angles
+      angles.ascendantDeg = null;
+      angles.ascendantSign = null;
+      angles.mcDeg = null;
+      angles.mcSign = null;
+      angles.descendantDeg = null;
+      angles.descendantSign = null;
+      angles.icDeg = null;
+      angles.icSign = null;
+      
+      // houses
+      // houseCusps is an array of numbers
+      for (let i=0; i<houseCusps.length; i++) houseCusps[i] = null;
+      
+      for (let i=0; i<houseSigns.length; i++) houseSigns[i] = null;
+      for (let i=0; i<houseRulers.length; i++) houseRulers[i] = null;
+      
+      for (const k in planetsInHouses) planetsInHouses[k] = null;
+      for (let i=0; i<planetsByHouse.length; i++) planetsByHouse[i] = [];
+      
+      for (const k in planets) {
+        if (planets[k]) planets[k].house = null;
+      }
+    }
+
     return res.json({
       success: true,
-      jd, ascendant, mc, angles,
+      jd, ascendant: isUnknownTime ? null : ascendant, mc: isUnknownTime ? null : mc, angles,
       houses: houseCusps, houseSigns, houseRulers,
       planetsInHouses, planetsByHouse, planets
     });

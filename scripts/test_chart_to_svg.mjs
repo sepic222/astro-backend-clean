@@ -1,17 +1,20 @@
 // scripts/test_chart_to_svg.mjs
 // Test the /api/dev/chart-to-svg endpoint
 
-const API_URL = 'http://localhost:3001';
+const API_URL = 'http://localhost:3009';
 
 async function testChartToSvg() {
   console.log('🧪 Testing /api/dev/chart-to-svg endpoint...\n');
 
-  const payload = {
+    const payload = {
     date: '2000-02-14',
     time: '22:11',
     latitude: 51.2254,
     longitude: 6.7763,
-    userEmail: 'test@example.com'
+    city: 'Munich',
+    country: 'Germany',
+    userEmail: 'test@example.com',
+    username: 'testuser'
   };
 
   try {

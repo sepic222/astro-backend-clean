@@ -1,0 +1,7 @@
+✅ Running server.js from: /Users/saraellenpicard/Documents/fateflix-code/astro-backend-clean-main
+[dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  suppress all logs with { quiet: true }
+⚠️ OpenAI API key missing — AI routes disabled.
+Schema Env Error: Error: EPERM: operation not permitted, open '/Users/saraellenpicard/Documents/fateflix-code/astro-backend-clean-main/.env'
+Schema Env Error: Error: EPERM: operation not permitted, open '/Users/saraellenpicard/Documents/fateflix-code/astro-backend-clean-main/.env'
+Schema Env Error: Error: EPERM: operation not permitted, open '/Users/saraellenpicard/Documents/fateflix-code/astro-backend-clean-main/.env'
+Swiss Ephemeris backend running on http://localhost:3001

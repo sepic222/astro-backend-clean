@@ -1,0 +1,89 @@
+{
+    "success": true,
+    "method": "swisseph",
+    "jd": 2447892.9583333335,
+    "angles": {
+        "ascendantDeg": null,
+        "ascendantSign": null,
+        "mcDeg": null,
+        "mcSign": null,
+        "descendantDeg": null,
+        "descendantSign": null,
+        "icDeg": null,
+        "icSign": null
+    },
+    "houses": [],
+    "houseSigns": [],
+    "houseRulers": {},
+    "planets": {
+        "sun": {
+            "longitude": 280.7717772571632,
+            "sign": "Capricorn",
+            "house": null
+        },
+        "moon": {
+            "longitude": 332.7066061329171,
+            "sign": "Pisces",
+            "house": null
+        },
+        "mercury": {
+            "longitude": 295.6849070021374,
+            "sign": "Capricorn",
+            "house": null
+        },
+        "venus": {
+            "longitude": 306.22722565277775,
+            "sign": "Aquarius",
+            "house": null
+        },
+        "mars": {
+            "longitude": 249.97076384448496,
+            "sign": "Sagittarius",
+            "house": null
+        },
+        "jupiter": {
+            "longitude": 95.15432946646445,
+            "sign": "Cancer",
+            "house": null
+        },
+        "saturn": {
+            "longitude": 285.6525941893438,
+            "sign": "Capricorn",
+            "house": null
+        },
+        "uranus": {
+            "longitude": 275.7829748261861,
+            "sign": "Capricorn",
+            "house": null
+        },
+        "neptune": {
+            "longitude": 282.03653994075256,
+            "sign": "Capricorn",
+            "house": null
+        },
+        "pluto": {
+            "longitude": 227.09202774660648,
+            "sign": "Scorpio",
+            "house": null
+        },
+        "northNode": {
+            "longitude": 316.8677096767241,
+            "sign": "Aquarius",
+            "house": null
+        }
+    },
+    "planetsInHouses": {},
+    "nodesAndChiron": {
+        "northNode": {
+            "longitude": 316.8677096767241,
+            "sign": "Aquarius",
+            "house": null
+        }
+    },
+    "chartRulerPlanet": null,
+    "chartRulerHouse": null,
+    "meta": {
+        "timeAccuracy": null
+    },
+    "savedChartId": "cmi84lrf40000f6h5e4xpb8zs"
+}

@@ -325,6 +325,59 @@ app.get('/dev/no-time', (req, res) => {
   res.redirect(`/reading/${submissionId}/html/2`);
 });
 
+app.get('/dev/chart-ruler', (req, res) => {
+  const submissionId = 'dev-chart-ruler-' + Date.now();
+  const chartId = 'dev-chart-ruler-' + Date.now();
+  
+  // Mock chart with ascendant (Cancer) to show Chart Ruler section
+  // Cancer's ruler is the Moon
+  MOCK_DB[submissionId] = {
+    reading: {
+      id: 'mock-reading-ruler',
+      submissionId,
+      chartId,
+      createdAt: new Date(),
+      userEmail: 'dev@fateflix.app',
+      summary: 'Mock Chart Ruler Reading',
+      birthDate: '1979-06-21',
+      birthTime: '16:31',
+      birthCity: 'Test City',
+      birthCountry: 'Test Country',
+      username: 'ScorpioTest'
+    },
+    chart: {
+      id: chartId,
+      chartRulerPlanet: 'Mars',
+      chartRulerHouse: 8,
+      // For Scorpio Rising, Mars is traditional ruler, Pluto is modern co-ruler
+      rawChart: {
+        angles: { 
+          ascendantSign: 'Scorpio',
+          ascendantDeg: 210,
+          mcSign: 'Leo',
+          mcDeg: 120
+        },
+        planets: {
+          sun: { sign: 'Gemini', house: 8, longitude: 90 },
+          moon: { sign: 'Taurus', house: 7, longitude: 45 },
+          mercury: { sign: 'Cancer', house: 9, longitude: 100 },
+          venus: { sign: 'Gemini', house: 8, longitude: 85 },
+          mars: { sign: 'Taurus', house: 7, longitude: 50 }, // Ruler 1
+          jupiter: { sign: 'Leo', house: 10, longitude: 130 },
+          saturn: { sign: 'Virgo', house: 11, longitude: 160 },
+          uranus: { sign: 'Scorpio', house: 1, longitude: 220 },
+          neptune: { sign: 'Sagittarius', house: 2, longitude: 260 },
+          pluto: { sign: 'Libra', house: 11, longitude: 190 } // Ruler 2 (Co-ruler)
+        },
+        houseSigns: ['Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces', 'Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo', 'Libra']
+      }
+    }
+  };
+  
+  // Redirect to the HTML view (page 2 is where the chart ruler logic lives)
+  res.redirect(`/reading/${submissionId}/html/2`);
+});
+
 app.get('/dev/email/preview/:outboxId', async (req, res) => {
   const r = await prisma.emailOutbox.findUnique({ where: { id: req.params.outboxId } });
   if (!r) return res.status(404).send('Not found');
@@ -1924,43 +1977,108 @@ app.get('/reading/:submissionId/html/2', async (req, res) => {
            contentHtml += `
              <div class="page-break"></div>
              <div style="text-align:center; margin: 40px 0 20px">
-               <img src="/assets/planet_purple_ring.png" style="width:40px; margin-bottom:10px;" alt="Saturn" />
+               <h1 style="font-family:'Futura',sans-serif; color:#FFFFFF; font-size:28px; font-weight:bold; font-style:italic; text-transform:uppercase; margin-bottom:30px;">My Astro-Cinematic Chart II</h1>
+               <img src="/assets/planet_ring_pinkish.png" style="width:80px; margin-bottom:10px;" alt="Planet" />
                <h2 style="color:#FFD7F3; font-family:'Futura',sans-serif; text-transform:uppercase;">Chart Ruler</h2>
-               <div style="color:#FFFFFF; font-family:'Futura',sans-serif; font-size:12px; margin-top:5px;">
-                 Who's Directing the Scene
+               <div style="color:#FAF1E4; font-family:'Futura',sans-serif; font-size:14px; margin-top:15px; font-style:italic; line-height:1.5; padding:0 20px;">
+                 Your chart ruler is the ruling planet of your<br/>
+                 Ascendant sign. Its sign and house show how your<br/>
+                 storyline unfolds and who's directing the vibe<br/>
+                 behind the scenes.
                </div>
              </div>
            `;
 
+           // Pre-calculate Ruler 1 details (needed for both Rule 2 & 3)
+           const ruler1Lower = ruler1?.toLowerCase();
+           const rulerSign = p[ruler1Lower]?.sign || '';
+           const rulerHouse = chartDTO.chartRuler?.house || '';
+           const rulerSignText = pickVal(CHART_RULER_TEXT, rulerSign) || `Chart Ruler in ${rulerSign}`;
+           const rulerHouseText = pickVal(CHART_RULER_HOUSE_TEXT, String(rulerHouse)) || `House ${rulerHouse}`;
+
            // Rule 2: Co-Ruler
            if (isCoRuler) {
+              const crSign = p[ruler2?.toLowerCase()]?.sign || '';
+              const crHouse = p[ruler2?.toLowerCase()]?.house || '';
+
               contentHtml += `
-                <div class="card card-gold" style="text-align:center">
-                   <div class="ruler-eq">Your Chart Ruler + Co-Chart Ruler = ${ruler2 || 'Unknown'} + ${ruler1}</div>
+                <div style="text-align:center; margin: 30px 0;">
+                   <div class="ruler-eq" style="color:#A2C5E2; font-family:'Futura',sans-serif; font-weight:bold; font-size:18px; margin-bottom:20px;">Your Chart Ruler + Co-Chart Ruler = ${ruler2 || 'Unknown'} + ${ruler1}</div>
+                   <img src="/assets/star_pink.png" style="width:140px; margin: 20px auto; display:block;" alt="Star" />
+                </div>
+                
+                <!-- Primary Ruler -->
+                <div style="display: flex; gap: 15px; margin: 30px 0; flex-wrap: wrap; align-items: stretch;">
+                   <!-- Left Box: Chart Ruler in the Sign -->
+                   <div style="flex: 1; min-width: 200px; display: flex; flex-direction: column;">
+                      <h2 style="color:#FFD7F3; font-family:'Futura',sans-serif; text-transform:uppercase; margin-bottom:10px; text-align:center;">Chart Ruler in the Sign</h2>
+                      <div style="color:#B6DAF7; font-family:'Futura',sans-serif; font-size:12px; margin-bottom:15px; text-align:center; font-style:italic;">Who's Directing the Scene</div>
+                      <div class="card" style="border-color:#8FBCFF; text-align:center; padding:20px; flex: 1; display: flex; flex-direction: column;">
+                         <div style="font-weight:bold; color:#FFFFFF; font-family:'Futura',sans-serif; margin-bottom:10px;">Chart Ruler in ${rulerSign}</div>
+                         <div style="color:#B6DAF7; font-family:'Futura',sans-serif; font-size:14px; line-height:1.5; flex: 1;">${esc(rulerSignText)}</div>
+                      </div>
+                   </div>
                    
-                   <div class="ruler-header">Chart Ruler in the Sign</div>
-                   <div class="card" style="border-color:#8FBCFF">${esc(pickVal(CHART_RULER_TEXT, `${ruler1}:${ZODIAC_SIGNS.indexOf(ascendant)+1}`) || `${ruler1} as Ruler`)}</div>
+                   <!-- Right Box: Chart Ruler in the House -->
+                   <div style="flex: 1; min-width: 200px; display: flex; flex-direction: column;">
+                      <h2 style="color:#FFD7F3; font-family:'Futura',sans-serif; text-transform:uppercase; margin-bottom:10px; text-align:center;">Chart Ruler in the House</h2>
+                      <div style="color:#B6DAF7; font-family:'Futura',sans-serif; font-size:12px; margin-bottom:15px; text-align:center; font-style:italic;">Where Your Story Unfolds</div>
+                      <div class="card" style="border-color:#8FBCFF; text-align:center; padding:20px; flex: 1; display: flex; flex-direction: column;">
+                         <div style="font-weight:bold; color:#FFFFFF; font-family:'Futura',sans-serif; margin-bottom:10px;">Chart Ruler in the ${rulerHouse}${rulerHouse ? (rulerHouse === 1 ? 'st' : rulerHouse === 2 ? 'nd' : rulerHouse === 3 ? 'rd' : 'th') : ''} House</div>
+                         <div style="color:#B6DAF7; font-family:'Futura',sans-serif; font-size:14px; line-height:1.5; flex: 1;">${esc(rulerHouseText)}</div>
+                      </div>
+                   </div>
+                </div>
+
+                <!-- Co-Ruler -->
+                <div style="display: flex; gap: 15px; margin: 30px 0; flex-wrap: wrap; align-items: stretch;">
+                   <!-- Left Box: Co-Ruler in the Sign -->
+                   <div style="flex: 1; min-width: 200px; display: flex; flex-direction: column;">
+                      <h2 style="color:#FFD7F3; font-family:'Futura',sans-serif; text-transform:uppercase; margin-bottom:10px; text-align:center;">Co-Chart Ruler in the Sign</h2>
+                      <div class="card" style="border-color:#8FBCFF; text-align:center; padding:20px; flex: 1; display: flex; flex-direction: column;">
+                         <div style="font-weight:bold; color:#FFFFFF; font-family:'Futura',sans-serif; margin-bottom:10px;">${ruler2} in ${crSign}</div>
+                         <div style="color:#B6DAF7; font-family:'Futura',sans-serif; font-size:14px; line-height:1.5; flex: 1;">${esc(crSignText)}</div>
+                      </div>
+                   </div>
                    
-                   <div class="ruler-header">Chart Ruler in the House</div>
-                   <div class="card" style="border-color:#8FBCFF">${esc(pickVal(CHART_RULER_HOUSE_TEXT, String(chartDTO.chartRuler?.house)) || `House ${chartDTO.chartRuler?.house}`)}</div>
-
-                   <div class="ruler-header">Co-Chart Ruler in the Sign</div>
-                   <div class="card" style="border-color:#8FBCFF">${esc(crSignText || `${ruler2} in ${p[ruler2?.toLowerCase()]?.sign}`)}</div>
-
-                   <div class="ruler-header">Co-Chart Ruler in the House</div>
-                   <div class="card" style="border-color:#8FBCFF">${esc(crHouseText || `House ${p[ruler2?.toLowerCase()]?.house}`)}</div>
+                   <!-- Right Box: Co-Ruler in the House -->
+                   <div style="flex: 1; min-width: 200px; display: flex; flex-direction: column;">
+                      <h2 style="color:#FFD7F3; font-family:'Futura',sans-serif; text-transform:uppercase; margin-bottom:10px; text-align:center;">Co-Chart Ruler in the House</h2>
+                      <div class="card" style="border-color:#8FBCFF; text-align:center; padding:20px; flex: 1; display: flex; flex-direction: column;">
+                         <div style="font-weight:bold; color:#FFFFFF; font-family:'Futura',sans-serif; margin-bottom:10px;">${ruler2} in the ${crHouse}${crHouse ? (crHouse === 1 ? 'st' : crHouse === 2 ? 'nd' : crHouse === 3 ? 'rd' : 'th') : ''} House</div>
+                         <div style="color:#B6DAF7; font-family:'Futura',sans-serif; font-size:14px; line-height:1.5; flex: 1;">${esc(crHouseText)}</div>
+                      </div>
+                   </div>
                 </div>
               `;
            } else {
               // Rule 3: Single Ruler
               contentHtml += `
-                <div class="card card-gold" style="text-align:center">
-                   <div class="ruler-eq">Your Chart Ruler = ${ruler1}</div>
-                   <div class="ruler-header">Chart Ruler in the Sign</div>
-                   <div class="card" style="border-color:#8FBCFF">${esc(pickVal(CHART_RULER_TEXT, `${ruler1}:${ZODIAC_SIGNS.indexOf(ascendant)+1}`) || `${ruler1} as Ruler`)}</div>
+                <div style="text-align:center; margin: 30px 0;">
+                   <div class="ruler-eq" style="color:#A2C5E2; font-family:'Futura',sans-serif; font-weight:bold; font-size:18px; margin-bottom:20px;">Your Chart Ruler = ${ruler1}</div>
+                   <img src="/assets/star_pink.png" style="width:140px; margin: 20px auto; display:block;" alt="Star" />
+                </div>
+                
+                <div style="display: flex; gap: 15px; margin: 30px 0; flex-wrap: wrap; align-items: stretch;">
+                   <!-- Left Box: Chart Ruler in the Sign -->
+                   <div style="flex: 1; min-width: 200px; display: flex; flex-direction: column;">
+                      <h2 style="color:#FFD7F3; font-family:'Futura',sans-serif; text-transform:uppercase; margin-bottom:10px; text-align:center;">Chart Ruler in the Sign</h2>
+                      <div style="color:#B6DAF7; font-family:'Futura',sans-serif; font-size:12px; margin-bottom:15px; text-align:center; font-style:italic;">Who's Directing the Scene</div>
+                      <div class="card" style="border-color:#8FBCFF; text-align:center; padding:20px; flex: 1; display: flex; flex-direction: column;">
+                         <div style="font-weight:bold; color:#FFFFFF; font-family:'Futura',sans-serif; margin-bottom:10px;">Chart Ruler in ${rulerSign}</div>
+                         <div style="color:#B6DAF7; font-family:'Futura',sans-serif; font-size:14px; line-height:1.5; flex: 1;">${esc(rulerSignText)}</div>
+                      </div>
+                   </div>
                    
-                   <div class="ruler-header">Chart Ruler in the House</div>
-                   <div class="card" style="border-color:#8FBCFF">${esc(pickVal(CHART_RULER_HOUSE_TEXT, String(chartDTO.chartRuler?.house)) || `House ${chartDTO.chartRuler?.house}`)}</div>
+                   <!-- Right Box: Chart Ruler in the House -->
+                   <div style="flex: 1; min-width: 200px; display: flex; flex-direction: column;">
+                      <h2 style="color:#FFD7F3; font-family:'Futura',sans-serif; text-transform:uppercase; margin-bottom:10px; text-align:center;">Chart Ruler in the House</h2>
+                      <div style="color:#B6DAF7; font-family:'Futura',sans-serif; font-size:12px; margin-bottom:15px; text-align:center; font-style:italic;">Where Your Story Unfolds</div>
+                      <div class="card" style="border-color:#8FBCFF; text-align:center; padding:20px; flex: 1; display: flex; flex-direction: column;">
+                         <div style="font-weight:bold; color:#FFFFFF; font-family:'Futura',sans-serif; margin-bottom:10px;">Chart Ruler in the ${rulerHouse}${rulerHouse ? (rulerHouse === 1 ? 'st' : rulerHouse === 2 ? 'nd' : rulerHouse === 3 ? 'rd' : 'th') : ''} House</div>
+                         <div style="color:#B6DAF7; font-family:'Futura',sans-serif; font-size:14px; line-height:1.5; flex: 1;">${esc(rulerHouseText)}</div>
+                      </div>
+                   </div>
                 </div>
               `;
            }
@@ -1980,19 +2098,134 @@ app.get('/reading/:submissionId/html/2', async (req, res) => {
              `;
              const HOUSE_TEXTS = [HOUSE_1_TEXT, HOUSE_2_TEXT, HOUSE_3_TEXT, HOUSE_4_TEXT, HOUSE_5_TEXT, HOUSE_6_TEXT, HOUSE_7_TEXT, HOUSE_8_TEXT, HOUSE_9_TEXT, HOUSE_10_TEXT, HOUSE_11_TEXT, HOUSE_12_TEXT];
              
+             // Archetypes for sub-headers
+             const HOUSES_ARCHETYPES = [
+               "Identity, Persona, Physical Body - AC",
+               "Money, Values, Self-Worth", 
+               "Communication, Siblings, Daily Environment", 
+               "Home, Family, Roots", 
+               "Creativity, Romance, Play", 
+               "Work, Health, Daily Routines - IC", 
+               "Partnerships, Love, Mirrors - DC", 
+               "Sex, Transformation, Power", 
+               "Travel, Philosophy, Belief", 
+               "Career, Reputation, Legacy - MC", 
+               "Friends, Future, Community", 
+               "Subconscious, Dreams, Secrets"
+             ];
+
+             // Start Grid Wrapper
+             contentHtml += `<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">`;
+             
              chartDTO.houseSigns.forEach((sign, i) => {
                if (sign !== null && sign !== undefined) {
                  const txt = pickVal(HOUSE_TEXTS[i], sign) || `${i+1} House in ${sign}`;
+                 const archetype = HOUSES_ARCHETYPES[i] || "";
+                 
+                 const suffix = (n) => {
+                     const j = n % 10, k = n % 100;
+                     if (j == 1 && k != 11) return n + "st";
+                     if (j == 2 && k != 12) return n + "nd";
+                     if (j == 3 && k != 13) return n + "rd";
+                     return n + "th";
+                 };
+
                  contentHtml += `
-                    <div class="card" style="border-color:#8FBCFF">
-                       <div style="font-weight:bold; color:#DFCDF5; margin-bottom:5px">${i+1} House</div>
-                       <div style="font-size:14px; opacity:0.8; margin-bottom:8px">${sign}</div>
-                       <div class="content-text">${esc(txt)}</div>
+                    <div style="display: flex; flex-direction: column;">
+                       <h3 style="color:#FFFFFF; font-family:'Futura',sans-serif; font-size:20px; font-weight:bold; margin:0 0 5px 0;">${suffix(i+1)} House</h3>
+                       <div style="color:#B6DAF7; font-family:'Futura',sans-serif; font-size:12px; font-style:italic; margin-bottom:10px; opacity:0.8;">${archetype}</div>
+                       
+                       <div class="card" style="border:1px solid #8FBCFF; border-radius:12px; padding:20px; background:transparent; flex: 1; box-sizing: border-box; display: flex; flex-direction: column;">
+                          <div style="font-size:14px; opacity:0.8; margin-bottom:8px; font-weight:bold; color:#DFCDF5;">${sign}</div>
+                          <div class="content-text" style="font-size:14px; color:#FFFFFF; line-height:1.5; flex: 1;">${esc(txt)}</div>
+                       </div>
                     </div>
                  `;
                }
              });
+             
+             // End Grid Wrapper
+             contentHtml += `</div>`;
            }
+
+           
+           // --- Planets in Houses (Vertical Stack) ---
+           const PLANETS_ORDER = ['Sun', 'Moon', 'Mercury', 'Venus', 'Mars', 'Jupiter', 'Saturn', 'Uranus', 'Neptune', 'Pluto'];
+           const PLANET_Keys = ['sun', 'moon', 'mercury', 'venus', 'mars', 'jupiter', 'saturn', 'uranus', 'neptune', 'pluto'];
+           const PLANET_TEXTS = [SUN_HOUSE_TEXT, MOON_HOUSE_TEXT, MERCURY_HOUSE_TEXT, VENUS_HOUSE_TEXT, MARS_HOUSE_TEXT, JUPITER_HOUSE_TEXT, SATURN_HOUSE_TEXT, URANUS_HOUSE_TEXT, NEPTUNE_HOUSE_TEXT, PLUTO_HOUSE_TEXT];
+           
+           const PLANET_ARCHETYPES = {
+             Sun: "Where You Radiate",
+             Moon: "Your Emotional Habitat",
+             Mercury: "Your Mind's Operating System",
+             Venus: "Love Language & Aesthetic Aura",
+             Mars: "Your Drive & Action Style",
+             Jupiter: "Where You Expand & Grow",
+             Saturn: "Your Responsibilities & Lessons",
+             Uranus: "Where You Innovate",
+             Neptune: "Your Imagination & Dreams",
+             Pluto: "Your Power & Transformation"
+           };
+           
+
+          contentHtml += `
+            <div class="page-break"></div>
+             <div style="text-align:center; margin:40px 0 40px">
+               <img src="/assets/starglow_large.png" style="width:20px; vertical-align:middle; margin-right:10px;" alt="" />
+               <h2 style="display:inline; color:#FFD7F3; font-family:'Futura',sans-serif; text-transform:uppercase; font-style:normal;">Planets in the Houses</h2>
+               <img src="/assets/starglow_large.png" style="width:20px; vertical-align:middle; margin-left:10px;" alt="" />
+               
+               <div style="font-size:14px; color:#FAF1E4; font-family:'Futura',sans-serif; font-style:italic; margin-top:20px; line-height:1.5;">
+                 Planets show what the energy is.<br/>
+                 Houses show where it hits.<br/>
+                 Put them together and you<br/>
+                 get the true plot of your chart.
+               </div>
+             </div>
+             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
+           `;
+           
+           PLANETS_ORDER.forEach((pName, idx) => {
+             const pKey = PLANET_Keys[idx];
+             const houseNum = chartDTO.planets?.[pKey]?.house;
+             if (houseNum) {
+               const textMap = PLANET_TEXTS[idx];
+               let rawText = pickVal(textMap, String(houseNum));
+               
+               const suffix = (n) => {
+                   const j = n % 10, k = n % 100;
+                   if (j == 1 && k != 11) return n + "st";
+                   if (j == 2 && k != 12) return n + "nd";
+                   if (j == 3 && k != 13) return n + "rd";
+                   return n + "th";
+               };
+               
+               let title = `${pName} in the ${suffix(houseNum)} House`;
+               let body = rawText;
+               
+               if (rawText.includes('—')) {
+                   const parts = rawText.split('—');
+                   if (parts.length > 1) body = parts.slice(1).join('—').trim();
+               } else if (rawText.includes(' - ')) { 
+                   const parts = rawText.split(' - ');
+                   if (parts.length > 1) body = parts.slice(1).join(' - ').trim();
+               }
+               
+               contentHtml += `
+                 <div style="display: flex; flex-direction: column;">
+                    <h3 style="color:#FFFFFF; font-family:'Futura',sans-serif; font-size:20px; font-weight:bold; margin:0 0 5px 0;">${pName} in the House</h3>
+                    <div style="color:#B6DAF7; font-family:'Futura',sans-serif; font-size:12px; font-style:italic; margin-bottom:10px; opacity:0.8;">${PLANET_ARCHETYPES[pName] || ''}</div>
+                    
+                    <div class="card" style="border:1px solid #FFD18F; border-radius:12px; padding:20px; background:transparent; flex: 1; box-sizing: border-box; display: flex; flex-direction: column;">
+                       <div style="font-weight:bold; color:#FFFFFF; font-family:'Futura',sans-serif; margin-bottom:8px; font-size:16px;">${title}</div>
+                       <div class="content-text" style="font-size:14px; color:#FFFFFF; line-height:1.5; flex: 1;">${esc(body)}</div>
+                    </div>
+                 </div>
+               `;
+             }
+           });
+           
+           contentHtml += `</div>`; // Close grid
        }
 
        // Always render footer/disclaimer

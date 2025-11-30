@@ -758,13 +758,13 @@ function buildChartWheelHtml(chartDTO) {
         { name: 'Gemini', symbol: '♊︎' }, { name: 'Taurus', symbol: '♉︎' },
       ];
 
-      const size = 800; 
+      const size = 880; // Increased by 10% from 800 for better visibility (mobile-friendly)
       const center = size / 2;
-      const outerRadius = 320;
-      const ringThickness = 52; 
+      const outerRadius = 352; // Scaled proportionally (320 * 1.1 = 352)
+      const ringThickness = 57; // Scaled proportionally (52 * 1.1 = 57.2, rounded to 57)
       const innerRadius = outerRadius - ringThickness;
       const textRadius = outerRadius - (ringThickness / 2);
-      const contentRadius = innerRadius - 20; 
+      const contentRadius = innerRadius - 22; // Scaled proportionally 
 
       const cRing = "#2563EB"; 
       const cLine = "rgba(255, 255, 255, 0.12)";
@@ -2307,7 +2307,7 @@ app.get('/reading/:submissionId/html', async (req, res) => {
 
     // Styles
     const styles = `
-      @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;500;600;700&display=swap');
+      @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Oswald:wght@500;700&family=Inter:wght@400;500;600;700&display=swap');
       
       body { 
         background: linear-gradient(135deg, #0a0118 0%, #1a0b2e 50%, #0a0118 100%);
@@ -2440,7 +2440,7 @@ app.get('/reading/:submissionId/html', async (req, res) => {
          <div style="position: relative; margin: 30px 0;">
            <!-- Header with subtle glow -->
            <div style="text-align: center; margin-bottom: 40px;">
-             <h1 style="font-family: 'Oswald', sans-serif; color: #FFFFFF; text-transform: uppercase; font-size: 26px; font-weight: 700; letter-spacing: 0.2em; margin: 0; text-shadow: 0 0 20px rgba(142, 197, 252, 0.6), 0 0 40px rgba(142, 197, 252, 0.3), 0 2px 4px rgba(0, 0, 0, 0.5);">
+             <h1 style="font-family: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #FFFFFF; text-transform: uppercase; font-size: 28px; font-weight: 600; letter-spacing: 0.15em; margin: 0; text-shadow: 0 0 20px rgba(142, 197, 252, 0.6), 0 0 40px rgba(142, 197, 252, 0.3), 0 2px 4px rgba(0, 0, 0, 0.5);">
                My Astro-Cinematic Chart
              </h1>
            </div>
@@ -2451,7 +2451,7 @@ app.get('/reading/:submissionId/html', async (req, res) => {
            </div>
 
            <!-- Metadata below the chart -->
-           <div style="display: flex; justify-content: space-between; font-size: 12px; color: #fff; margin-top: 20px;">
+           <div style="display: none; justify-content: space-between; font-size: 12px; color: #fff; margin-top: 20px;">
              <div style="text-align: left;">
                 Date: ${bDate}<br/>
                 Time: ${bTime}<br/>
@@ -2512,9 +2512,9 @@ app.get('/reading/:submissionId/html', async (req, res) => {
          <div style="text-align:center; margin: 40px 0; padding: 0 20px;">
            <img src="/assets/starglow_large.png" class="star-decoration" alt="" />
            <p style="color:#F3DCBC; font-family:'Inter',sans-serif; font-style:italic; font-size:16px; line-height:1.5;">
-             You’re now part of Fateflix’s origin story. And<br/>
-             that’s legendary. Thank you for building the<br/>
-             future of intuitive entertainment with us.
+             You’re now part of Fateflix’s origin story. <br/>
+             And that’s legendary. Thank you for building<br/>
+             the future of intuitive entertainment with us.
            </p>
            <img src="/assets/starglow_large.png" class="star-decoration" alt="" />
          </div>
@@ -2549,7 +2549,7 @@ app.get('/reading/:submissionId/html', async (req, res) => {
          </style>
          <div style="display: flex; justify-content: space-between; align-items: center; margin: 40px 0; gap: 20px;">
            <a href="/reading/${submissionId}/badge" class="nav-button">
-             ← Back
+             ← My Badge
            </a>
            <a href="/reading/${submissionId}/html/2" class="nav-button">
              Who's directing the scene? →
@@ -2636,7 +2636,7 @@ app.get('/reading/:submissionId/html/2', async (req, res) => {
 
     // Styles (Same as page 1)
     const styles = `
-      @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;500;600;700&display=swap');
+      @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Oswald:wght@500;700&family=Inter:wght@400;500;600;700&display=swap');
       
       body { 
         background: linear-gradient(135deg, #0a0118 0%, #1a0b2e 50%, #0a0118 100%);
@@ -2837,7 +2837,7 @@ app.get('/reading/:submissionId/html/2', async (req, res) => {
              <div class="page-break"></div>
              <!-- Header with subtle glow -->
              <div style="text-align: center; margin: 40px 0 20px;">
-               <h1 style="font-family: 'Oswald', sans-serif; color: #FFFFFF; text-transform: uppercase; font-size: 26px; font-weight: 700; letter-spacing: 0.2em; margin: 0 0 20px 0; text-shadow: 0 0 20px rgba(142, 197, 252, 0.6), 0 0 40px rgba(142, 197, 252, 0.3), 0 2px 4px rgba(0, 0, 0, 0.5);">
+               <h1 style="font-family: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #FFFFFF; text-transform: uppercase; font-size: 28px; font-weight: 600; letter-spacing: 0.15em; margin: 0 0 20px 0; text-shadow: 0 0 20px rgba(142, 197, 252, 0.6), 0 0 40px rgba(142, 197, 252, 0.3), 0 2px 4px rgba(0, 0, 0, 0.5);">
                  My Astro-Cinematic Chart II
                </h1>
                <img src="/assets/planet_ring_pinkish.png" style="width:80px; margin-bottom:10px;" alt="Planet" />

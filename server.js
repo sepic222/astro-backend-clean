@@ -758,13 +758,13 @@ function buildChartWheelHtml(chartDTO) {
         { name: 'Gemini', symbol: '♊︎' }, { name: 'Taurus', symbol: '♉︎' },
       ];
 
-      const size = 880; // Increased by 10% from 800 for better visibility (mobile-friendly)
+      const size = 1000; // Increased for better visibility (25% larger than original 800px)
       const center = size / 2;
-      const outerRadius = 352; // Scaled proportionally (320 * 1.1 = 352)
-      const ringThickness = 57; // Scaled proportionally (52 * 1.1 = 57.2, rounded to 57)
+      const outerRadius = 400; // Scaled proportionally (320 * 1.25 = 400)
+      const ringThickness = 65; // Scaled proportionally (52 * 1.25 = 65)
       const innerRadius = outerRadius - ringThickness;
       const textRadius = outerRadius - (ringThickness / 2);
-      const contentRadius = innerRadius - 22; // Scaled proportionally 
+      const contentRadius = innerRadius - 25; // Scaled proportionally 
 
       const cRing = "#2563EB"; 
       const cLine = "rgba(255, 255, 255, 0.12)";
@@ -2513,8 +2513,8 @@ app.get('/reading/:submissionId/html', async (req, res) => {
            <img src="/assets/starglow_large.png" class="star-decoration" alt="" />
            <p style="color:#F3DCBC; font-family:'Inter',sans-serif; font-style:italic; font-size:16px; line-height:1.5;">
              You’re now part of Fateflix’s origin story. <br/>
-             And that’s legendary. Thank you for building<br/>
-             the future of intuitive entertainment with us.
+             And that’s legendary. <br/>Thank you for building
+             the future of<br/>intuitive entertainment with us.
            </p>
            <img src="/assets/starglow_large.png" class="star-decoration" alt="" />
          </div>

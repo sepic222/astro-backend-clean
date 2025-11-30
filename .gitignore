@@ -21,3 +21,6 @@ dist
 .vscode/
 .idea/
 node_modules/
+
+# Experimental/test projects
+fateflix-badge-app/

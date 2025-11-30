@@ -9,8 +9,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --badge-width: 360px;
-            --badge-height: 600px;
+            --badge-width: 320px; /* Reduced from 360px for better mobile fit */
+            --badge-height: 382px; /* Cropped half the distance from top to planet icon (18px reduction) */
             --text-color: #050505; /* Deep black but not absolute 0 */
             --line-color: #050505;
             --font-condensed: 'Oswald', sans-serif;
@@ -151,7 +151,7 @@
 
         /* --- HEADER --- */
         .badge-header {
-            padding: 35px 20px 15px;
+            padding: 17px 20px 15px; /* Reduced top padding by 18px (half of original 35px) */
             display: flex;
             flex-direction: column;
             align-items: center;

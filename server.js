@@ -182,6 +182,66 @@ const MOCK_DB = {
         }
       }
     }
+  },
+  'bonn-test-1982': {
+    submissionId: 'bonn-test-1982',
+    reading: {
+      id: 'mock-reading-bonn',
+      submissionId: 'bonn-test-1982',
+      createdAt: new Date('2025-11-30'),
+      birthDate: new Date('1982-08-18'),
+      birthTime: '18:54',
+      birthCity: 'Bonn',
+      birthCountry: 'Germany',
+      username: 'test-user-bonn',
+      userEmail: 'bonn-test@fateflix.app',
+      chartId: 'mock-chart-bonn'
+    },
+    chart: {
+      id: 'mock-chart-bonn',
+      chartRulerPlanet: 'Saturn',
+      chartRulerHouse: 8,
+      rawChart: {
+        angles: {
+          ascendantSign: 'Capricorn',
+          ascendantDeg: 285.4888995786447,
+          mcSign: 'Scorpio',
+          mcDeg: 229.77153166523078,
+          descendantSign: 'Cancer',
+          descendantDeg: 105.48889957864469,
+          icSign: 'Taurus',
+          icDeg: 49.77153166523078
+        },
+        houses: [285.4888995786447, 338.93384852657005, 22.673947650902537, 49.77153166523078, 69.22821693280252, 86.35102604567419, 105.48889957864469, 158.93384852657005, 202.67394765090253, 229.77153166523078, 249.22821693280255, 266.3510260456742],
+        houseSigns: ['Capricorn', 'Pisces', 'Aries', 'Taurus', 'Gemini', 'Gemini', 'Cancer', 'Virgo', 'Libra', 'Scorpio', 'Sagittarius', 'Sagittarius'],
+        houseRulers: {
+          house1: 'Capricorn',
+          house2: 'Pisces',
+          house3: 'Aries',
+          house4: 'Taurus',
+          house5: 'Gemini',
+          house6: 'Gemini',
+          house7: 'Cancer',
+          house8: 'Virgo',
+          house9: 'Libra',
+          house10: 'Scorpio',
+          house11: 'Sagittarius',
+          house12: 'Sagittarius'
+        },
+        planets: {
+          sun: { longitude: 145.41043944635712, sign: 'Leo', house: 7 },
+          moon: { longitude: 139.8000428306842, sign: 'Leo', house: 7 },
+          mercury: { longitude: 166.72771491453616, sign: 'Virgo', house: 8 },
+          venus: { longitude: 125.17743111170672, sign: 'Leo', house: 7 },
+          mars: { longitude: 218.99814015479816, sign: 'Scorpio', house: 9 },
+          jupiter: { longitude: 214.17640464582973, sign: 'Scorpio', house: 9 },
+          saturn: { longitude: 198.40904525059474, sign: 'Libra', house: 8 },
+          uranus: { longitude: 240.6132970847294, sign: 'Sagittarius', house: 10 },
+          neptune: { longitude: 264.3617600209152, sign: 'Sagittarius', house: 11 },
+          pluto: { longitude: 204.6797242230068, sign: 'Libra', house: 9 }
+        }
+      }
+    }
   }
 }; // In-memory cache for testing without DB
 const { readingHtmlHandler, readingSvgHandler, chartSvgAlias } = require('./server/readingRoutes');
@@ -2492,7 +2552,7 @@ app.get('/reading/:submissionId/html', async (req, res) => {
              ← Back
            </a>
            <a href="/reading/${submissionId}/html/2" class="nav-button">
-             Who's Directing the Scene? →
+             Who's directing the scene? →
            </a>
          </div>
        `;

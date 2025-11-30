@@ -59,6 +59,10 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public'))); // Serve static files from public dir
 app.use('/assets', express.static(path.join(__dirname, 'public/assets'))); // Explicitly serve assets
 
+// --- EJS view engine setup ---
+app.set('view engine', 'ejs');
+app.set('views', path.join(__dirname, 'views'));
+
 // TEMP sanity route (proves route attachment works)
 app.get('/ping', (_req, res) => res.json({ ok: true, t: Date.now() }));
 // Single source of truth for PORT
@@ -98,7 +102,88 @@ if (process.env.OPENAI_API_KEY) {
 
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
-const MOCK_DB = {}; // In-memory cache for testing without DB
+const MOCK_DB = {
+  'dev-badge-test': { 
+    submissionId: 'dev-badge-test', 
+    reading: { 
+      id: 'mock-reading-1',
+      submissionId: 'dev-badge-test',
+      createdAt: new Date('2025-11-30'),
+      birthDate: new Date('1990-06-15'),
+      birthTime: '14:30',
+      birthCity: 'Los Angeles',
+      birthCountry: 'USA',
+      username: 'cosmic-tester',
+      userEmail: 'test@fateflix.app',
+      chartId: 'mock-chart-1'
+    }, 
+    chart: {
+      id: 'mock-chart-1',
+      chartRulerPlanet: 'Mercury',
+      chartRulerHouse: 3,
+      rawChart: {
+        angles: {
+          ascendantSign: 'Gemini',
+          ascendantDeg: 95.5,
+          mcSign: 'Aquarius',
+          mcDeg: 305.2
+        },
+        planets: {
+          sun: { longitude: 84.3, sign: 'Gemini', house: 12 },
+          moon: { longitude: 225.7, sign: 'Scorpio', house: 5 },
+          mercury: { longitude: 95.2, sign: 'Cancer', house: 1 },
+          venus: { longitude: 62.8, sign: 'Taurus', house: 11 },
+          mars: { longitude: 157.4, sign: 'Virgo', house: 3 },
+          jupiter: { longitude: 198.9, sign: 'Libra', house: 4 },
+          saturn: { longitude: 280.1, sign: 'Capricorn', house: 7 },
+          uranus: { longitude: 12.5, sign: 'Aries', house: 10 },
+          neptune: { longitude: 305.8, sign: 'Aquarius', house: 8 },
+          pluto: { longitude: 230.2, sign: 'Scorpio', house: 5 }
+        }
+      }
+    }
+  },
+  'no-time-test': {
+    submissionId: 'no-time-test',
+    reading: {
+      id: 'mock-reading-notime',
+      submissionId: 'no-time-test',
+      createdAt: new Date('2025-11-30'),
+      birthDate: new Date('1995-03-20'),
+      birthTime: null, // No time provided
+      birthCity: 'New York',
+      birthCountry: 'USA',
+      username: 'mystery-user',
+      userEmail: 'notime@fateflix.app',
+      chartId: 'mock-chart-notime'
+    },
+    chart: {
+      id: 'mock-chart-notime',
+      chartRulerPlanet: null,
+      chartRulerHouse: null,
+      rawChart: {
+        angles: {
+          ascendantSign: null, // No ascendant without birth time
+          ascendantDeg: null,
+          mcSign: null,
+          mcDeg: null
+        },
+        planets: {
+          sun: { longitude: 359.5, sign: 'Pisces', house: null },
+          moon: { longitude: 145.2, sign: 'Leo', house: null },
+          mercury: { longitude: 15.8, sign: 'Aries', house: null },
+          venus: { longitude: 330.4, sign: 'Aquarius', house: null },
+          mars: { longitude: 195.6, sign: 'Libra', house: null },
+          jupiter: { longitude: 245.1, sign: 'Sagittarius', house: null },
+          saturn: { longitude: 310.7, sign: 'Pisces', house: null },
+          uranus: { longitude: 280.3, sign: 'Capricorn', house: null },
+          neptune: { longitude: 295.9, sign: 'Capricorn', house: null },
+          pluto: { longitude: 225.4, sign: 'Scorpio', house: null }
+        }
+      }
+    }
+  }
+}; // In-memory cache for testing without DB
 const { readingHtmlHandler, readingSvgHandler, chartSvgAlias } = require('./server/readingRoutes');
 // ---- helpers -------------------------------------------------
 function normalize360(val) {
@@ -290,6 +375,441 @@ async function saveChartToDB(input, output) {
 }
 
 // --------------------------------------------------------------
+// BADGE HTML BUILDER
+// --------------------------------------------------------------
+function buildBadgeHtml(reading) {
+  const creationDate = reading.createdAt 
+    ? new Date(reading.createdAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+    : 'Unknown Date';
+  const submissionID = reading.submissionId || reading.id || 'N/A';
+
+  return `
+    <style>
+      .badge-container {
+        width: 320px;
+        max-width: 100%;
+        background-color: #fff;
+        border-radius: 25px;
+        overflow: hidden;
+        box-shadow: 0 15px 30px rgba(0, 0, 0, 0.25), 0 5px 10px rgba(0, 0, 0, 0.15);
+        display: flex;
+        flex-direction: column;
+        position: relative;
+        transform-style: preserve-3d;
+        animation: badge-float 3s ease-in-out infinite;
+        margin: 0 auto 30px auto;
+        font-family: 'Open Sans', sans-serif;
+      }
+      @keyframes badge-float {
+        0% { transform: translateY(0) rotateX(0deg) rotateY(0deg); }
+        50% { transform: translateY(-5px) rotateX(0.5deg) rotateY(-0.5deg); }
+        100% { transform: translateY(0) rotateX(0deg) rotateY(0deg); }
+      }
+      .badge-header {
+        flex: 0 0 55%;
+        background: linear-gradient(135deg, #a8edea 0%, #fcd8d8 20%, #fbc6be 40%, #fff8b6 60%, #c1d5f5 80%, #a8edea 100%);
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        padding: 20px;
+        text-align: center;
+        color: #333;
+        border-bottom: 2px dashed rgba(0, 0, 0, 0.1);
+        box-sizing: border-box;
+      }
+      .badge-planet-icon {
+        width: 40px;
+        height: 40px;
+        margin-bottom: 10px;
+        background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23333"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm0 18c-4.411 0-8-3.589-8-8s3.589-8 8-8 8 3.589 8 8-3.589 8-8 8zm0-16c-3.309 0-6 2.691-6 6h12c0-3.309-2.691-6-6-6z"/></svg>');
+        background-size: contain;
+        background-repeat: no-repeat;
+        filter: drop-shadow(0 2px 2px rgba(0,0,0,0.1));
+      }
+      .badge-logo {
+        font-family: 'SF Pro Display', 'Futura', sans-serif;
+        font-weight: 700;
+        font-size: 2.5em;
+        letter-spacing: 2px;
+        margin-bottom: 5px;
+        text-transform: uppercase;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.15);
+      }
+      .badge-subheader {
+        font-size: 0.9em;
+        margin-bottom: 5px;
+        font-weight: 700;
+      }
+      .badge-slogan {
+        font-size: 0.8em;
+        margin-bottom: 10px;
+        max-width: 80%;
+        line-height: 1.3;
+      }
+      .badge-est {
+        font-size: 0.7em;
+        font-weight: 700;
+        margin-bottom: 5px;
+        letter-spacing: 0.5px;
+      }
+      .badge-future-text {
+        font-size: 0.7em;
+        max-width: 80%;
+      }
+      .badge-body {
+        flex: 1;
+        background-color: #f8f8f8;
+        padding: 20px;
+        color: #333;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-around;
+        box-sizing: border-box;
+        font-size: 0.85em;
+      }
+      .badge-field-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 10px;
+      }
+      .badge-field-label {
+        font-weight: 700;
+        color: #555;
+        text-transform: uppercase;
+        font-size: 0.75em;
+        letter-spacing: 0.5px;
+      }
+      .badge-field-value {
+        font-weight: 400;
+        color: #333;
+        text-align: right;
+        border-bottom: 1px solid #ccc;
+        padding-bottom: 2px;
+        flex-grow: 1;
+        margin-left: 10px;
+      }
+      .badge-section-title {
+        font-weight: 700;
+        text-transform: uppercase;
+        font-size: 0.9em;
+        margin-bottom: 15px;
+        color: #333;
+        border-bottom: 1px solid #ccc;
+        padding-bottom: 5px;
+      }
+      .badge-admit-one {
+        font-weight: 700;
+        font-size: 1.1em;
+        text-align: center;
+        margin: 15px 0;
+        letter-spacing: 1px;
+        color: #333;
+      }
+      .badge-footer-text {
+        font-size: 0.65em;
+        text-align: center;
+        color: #555;
+        line-height: 1.4;
+        margin-top: auto;
+        padding-top: 10px;
+        border-top: 1px dashed rgba(0, 0, 0, 0.1);
+      }
+      .badge-cosmic-approval {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-top: 5px;
+      }
+      .badge-cosmic-approval .badge-field-value {
+        border-bottom: none;
+        margin-left: 5px;
+        text-align: left;
+        flex-grow: 0;
+      }
+      .badge-cosmic-icon {
+        width: 20px;
+        height: 20px;
+        margin-left: 5px;
+        background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23555"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm0 18c-4.411 0-8-3.589-8-8s3.589-8 8-8 8 3.589 8 8-3.589 8-8 8zM12 6.5c-.276 0-.5.224-.5.5s.224.5.5.5.5-.224.5-.5-.224-.5-.5-.5zm0 2c-.276 0-.5.224-.5.5s.224.5.5.5.5-.224.5-.5-.224-.5-.5-.5zm0 2c-.276 0-.5.224-.5.5s.224.5.5.5.5-.224.5-.5-.224-.5-.5-.5zm-3.5 1c-.276 0-.5.224-.5.5s.224.5.5.5.5-.224.5-.5-.224-.5-.5-.5zm7 0c-.276 0-.5.224-.5.5s.224.5.5.5.5-.224.5-.5-.224-.5-.5-.5zM12 14c-1.381 0-2.5 1.119-2.5 2.5h5c0-1.381-1.119-2.5-2.5-2.5z"/></svg>');
+        background-size: contain;
+        background-repeat: no-repeat;
+        opacity: 0.7;
+      }
+    </style>
+    <div class="badge-container">
+      <div class="badge-header">
+        <div class="badge-planet-icon"></div>
+        <div class="badge-logo">FATEFLIX</div>
+        <div class="badge-subheader">+ EARLY ACCESS BADGE</div>
+        <p class="badge-slogan">You had taste before<br>the app even dropped.</p>
+        <div class="badge-est">EST. 2025</div>
+        <p class="badge-future-text">The Future of Intuitive Entertainment</p>
+      </div>
+      <div class="badge-body">
+        <div class="badge-section-title">EVENT: FATEFLIX SURVEY COMPLETION</div>
+        <div class="badge-field-row">
+          <span class="badge-field-label">DATE:</span>
+          <span class="badge-field-value">${creationDate}</span>
+        </div>
+        <div class="badge-field-row">
+          <span class="badge-field-label">TASTE LEVEL A</span>
+          <span class="badge-field-value">COSMIC CURATOR</span>
+        </div>
+        <div class="badge-field-row">
+          <span class="badge-field-label">CATEGORY</span>
+          <span class="badge-field-value">ALPHA TESTER</span>
+        </div>
+        <div class="badge-field-row">
+          <span class="badge-field-label">SUBMISSION ID</span>
+          <span class="badge-field-value">${submissionID}</span>
+        </div>
+        <div class="badge-admit-one">ADMIT ONE — UNIVERSE: CINEMATIC</div>
+        <div class="badge-footer-text">
+          UNAUTHORIZED RESALE PROHIBITED
+          <div class="badge-cosmic-approval">
+            <span class="badge-field-value">COSMIC APPROVAL GRANTED BY FATEFLIX</span>
+            <div class="badge-cosmic-icon"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// --------------------------------------------------------------
+// CHART WHEEL HTML BUILDER
+// --------------------------------------------------------------
+const PLANET_SYMBOLS = {
+  sun: '☉', moon: '☽', mercury: '☿', venus: '♀', mars: '♂',
+  jupiter: '♃', saturn: '♄', uranus: '⛢', neptune: '♆', pluto: '♇'
+};
+
+function buildChartWheelHtml(chartDTO) {
+  // Convert chartDTO.planets to the format expected by the chart wheel
+  const planets = chartDTO.planets || {};
+  const planetData = Object.entries(planets).map(([name, data]) => ({
+    name: name.charAt(0).toUpperCase() + name.slice(1),
+    symbol: PLANET_SYMBOLS[name] || '?',
+    degree: data.longitude || 0
+  }));
+
+  // Calculate aspects between planets
+  const aspectData = [];
+  const planetList = Object.entries(planets);
+  
+  for (let i = 0; i < planetList.length; i++) {
+    for (let j = i + 1; j < planetList.length; j++) {
+      const [name1, data1] = planetList[i];
+      const [name2, data2] = planetList[j];
+      const deg1 = data1.longitude || 0;
+      const deg2 = data2.longitude || 0;
+      
+      // Calculate angular distance
+      let diff = Math.abs(deg1 - deg2);
+      if (diff > 180) diff = 360 - diff;
+      
+      // Check for major aspects (with 8-degree orb)
+      const orb = 8;
+      let aspectType = null;
+      
+      if (Math.abs(diff - 0) <= orb) aspectType = 'Conjunction';
+      else if (Math.abs(diff - 60) <= orb) aspectType = 'Sextile';
+      else if (Math.abs(diff - 90) <= orb) aspectType = 'Square';
+      else if (Math.abs(diff - 120) <= orb) aspectType = 'Trine';
+      else if (Math.abs(diff - 180) <= orb) aspectType = 'Opposition';
+      
+      if (aspectType) {
+        aspectData.push({
+          p1: name1.charAt(0).toUpperCase() + name1.slice(1),
+          p2: name2.charAt(0).toUpperCase() + name2.slice(1),
+          type: aspectType
+        });
+      }
+    }
+  }
+
+  const planetDataJson = JSON.stringify(planetData);
+  const aspectDataJson = JSON.stringify(aspectData);
+
+  return `
+    <style>
+      .chart-wheel-container {
+        width: 100%;
+        max-width: 100%;
+        margin: 0 auto;
+        opacity: 0;
+        animation: chart-fade-scale 1.5s cubic-bezier(0.16, 1, 0.3, 1) 0.1s forwards;
+      }
+      @keyframes chart-fade-scale {
+        0% { opacity: 0; transform: scale(0.98); }
+        100% { opacity: 1; transform: scale(1); }
+      }
+      .chart-wheel-logo-text {
+        font-size: 28px;
+        letter-spacing: 0.35em;
+        font-weight: 200;
+        opacity: 0.95;
+        fill: white;
+        text-anchor: middle;
+        dominant-baseline: middle;
+      }
+    </style>
+    <div id="chart-wheel-root" class="chart-wheel-container"></div>
+    <script>
+    (function() {
+      // --- CORE GEOMETRY FUNCTIONS ---
+      const degToRad = (deg) => (deg * Math.PI) / 180;
+      
+      const polarToCartesian = (centerX, centerY, radius, angleInDegrees) => {
+        const angleInRadians = degToRad(angleInDegrees - 90);
+        return {
+          x: centerX + radius * Math.cos(angleInRadians),
+          y: centerY + radius * Math.sin(angleInRadians)
+        };
+      };
+
+      const describeArc = (x, y, innerRadius, outerRadius, startAngle, endAngle) => {
+        if (endAngle - startAngle >= 360) endAngle = startAngle + 359.99;
+        
+        const start = polarToCartesian(x, y, outerRadius, endAngle);
+        const end = polarToCartesian(x, y, outerRadius, startAngle);
+        const startInner = polarToCartesian(x, y, innerRadius, endAngle);
+        const endInner = polarToCartesian(x, y, innerRadius, startAngle);
+        const largeArcFlag = endAngle - startAngle <= 180 ? "0" : "1";
+
+        return [
+          "M", start.x, start.y,
+          "A", outerRadius, outerRadius, 0, largeArcFlag, 0, end.x, end.y,
+          "L", endInner.x, endInner.y,
+          "A", innerRadius, innerRadius, 0, largeArcFlag, 1, startInner.x, startInner.y,
+          "Z"
+        ].join(" ");
+      };
+
+      // --- CONSTANTS AND DIMENSIONS ---
+      const ZODIACS = [
+        { name: 'Aries', symbol: '♈︎' }, { name: 'Pisces', symbol: '♓︎' },
+        { name: 'Aquarius', symbol: '♒︎' }, { name: 'Capricorn', symbol: '♑︎' },
+        { name: 'Sagittarius', symbol: '♐︎' }, { name: 'Scorpio', symbol: '♏︎' },
+        { name: 'Libra', symbol: '♎︎' }, { name: 'Virgo', symbol: '♍︎' },
+        { name: 'Leo', symbol: '♌︎' }, { name: 'Cancer', symbol: '♋︎' },
+        { name: 'Gemini', symbol: '♊︎' }, { name: 'Taurus', symbol: '♉︎' },
+      ];
+
+      const size = 800; 
+      const center = size / 2;
+      const outerRadius = 320;
+      const ringThickness = 52; 
+      const innerRadius = outerRadius - ringThickness;
+      const textRadius = outerRadius - (ringThickness / 2);
+      const contentRadius = innerRadius - 20; 
+
+      const cRing = "#2563EB"; 
+      const cLine = "rgba(255, 255, 255, 0.12)";
+
+      function renderChartWheel(planetData, aspectData) {
+        const chartRoot = document.getElementById('chart-wheel-root');
+        if (!chartRoot) return;
+        
+        let svgContent = '';
+
+        // --- 1. ZODIAC RING ---
+        let zodiacRing = '';
+        ZODIACS.forEach((sign, index) => {
+          const startAngle = index * 30;
+          const endAngle = (index + 1) * 30;
+          const midAngle = startAngle + 15;
+          
+          const pathData = describeArc(center, center, innerRadius, outerRadius, startAngle, endAngle);
+          const textPos = polarToCartesian(center, center, textRadius, midAngle);
+          const lineStart = polarToCartesian(center, center, innerRadius, startAngle);
+          const lineEnd = polarToCartesian(center, center, outerRadius, startAngle);
+
+          let rotation = midAngle;
+          if (midAngle > 90 && midAngle < 270) {
+            rotation += 180;
+          }
+
+          zodiacRing += '<path d="' + pathData + '" fill="' + cRing + '" stroke="none" />';
+          zodiacRing += '<line x1="' + lineStart.x + '" y1="' + lineStart.y + '" x2="' + lineEnd.x + '" y2="' + lineEnd.y + '" stroke="rgba(255,255,255,0.15)" stroke-width="0.5" />';
+          zodiacRing += '<text x="' + textPos.x + '" y="' + textPos.y + '" fill="white" text-anchor="middle" dominant-baseline="central" transform="rotate(' + rotation + ', ' + textPos.x + ', ' + textPos.y + ')" style="font-size: 11px; letter-spacing: 0.2em; font-weight: 500; text-transform: uppercase;">' + sign.name + '</text>';
+        });
+        
+        zodiacRing += '<circle cx="' + center + '" cy="' + center + '" r="' + outerRadius + '" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="0.5" />';
+        zodiacRing += '<circle cx="' + center + '" cy="' + center + '" r="' + innerRadius + '" fill="none" stroke="white" stroke-width="1.2" opacity="0.9" />';
+        svgContent += '<g class="zodiac-ring">' + zodiacRing + '</g>';
+
+        // --- 2. ASPECTS ---
+        let aspectsSvg = '';
+        aspectData.forEach((aspect) => {
+          const p1 = planetData.find(p => p.name === aspect.p1);
+          const p2 = planetData.find(p => p.name === aspect.p2);
+          if (!p1 || !p2) return;
+
+          const pos1 = polarToCartesian(center, center, contentRadius, p1.degree);
+          const pos2 = polarToCartesian(center, center, contentRadius, p2.degree);
+
+          aspectsSvg += '<line x1="' + pos1.x + '" y1="' + pos1.y + '" x2="' + pos2.x + '" y2="' + pos2.y + '" stroke="url(#chartWheelGradient)" stroke-width="0.6" opacity="0.9" />';
+        });
+        svgContent += '<g class="aspects">' + aspectsSvg + '</g>';
+
+        // --- 3. PLANETS ---
+        let planetsSvg = '';
+        planetData.forEach((planet) => {
+          const pos = polarToCartesian(center, center, contentRadius, planet.degree);
+          const tickStart = polarToCartesian(center, center, innerRadius, planet.degree);
+          
+          planetsSvg += '<g class="planet-group" data-planet-name="' + planet.name + '">';
+          planetsSvg += '<line x1="' + pos.x + '" y1="' + pos.y + '" x2="' + tickStart.x + '" y2="' + tickStart.y + '" stroke="white" stroke-width="0.5" opacity="0.5" />';
+          planetsSvg += '<circle cx="' + pos.x + '" cy="' + pos.y + '" r="12" fill="black" stroke="white" stroke-width="0.8" />';
+          planetsSvg += '<text x="' + pos.x + '" y="' + pos.y + '" fill="white" font-size="14" dy="0.5" text-anchor="middle" dominant-baseline="central">' + planet.symbol + '</text>';
+          planetsSvg += '</g>';
+        });
+        svgContent += '<g class="planets">' + planetsSvg + '</g>';
+
+        // --- 4. INNER MECHANICS & AXIS ---
+        svgContent += '<g class="inner-mechanics">';
+        svgContent += '<circle cx="' + center + '" cy="' + center + '" r="' + contentRadius + '" fill="none" stroke="' + cLine + '" stroke-width="0.5" />';
+        svgContent += '<path d="' + describeArc(center, center, contentRadius, innerRadius, 0, 359.99) + '" fill="rgba(255,255,255,0.03)" stroke="none" />';
+        svgContent += '</g>';
+        svgContent += '<g class="axis">';
+        svgContent += '<text x="' + (center - outerRadius - 20) + '" y="' + center + '" text-anchor="end" dominant-baseline="middle" style="font-size: 10px; letter-spacing: 0.2em; fill: rgba(255,255,255,0.5);">AC</text>';
+        svgContent += '<text x="' + (center + outerRadius + 20) + '" y="' + center + '" text-anchor="start" dominant-baseline="middle" style="font-size: 10px; letter-spacing: 0.2em; fill: rgba(255,255,255,0.5);">DC</text>';
+        svgContent += '</g>';
+
+        // --- 5. LOGO ---
+        svgContent += '<g transform="translate(' + center + ', ' + center + ')">';
+        svgContent += '<text x="0" y="0" class="chart-wheel-logo-text">FATEFLIX</text>';
+        svgContent += '</g>';
+
+        // Final SVG structure
+        const finalSvg = '<svg viewBox="0 0 ' + size + ' ' + size + '" style="width:100%;height:auto;overflow:visible;">' +
+          '<defs><linearGradient id="chartWheelGradient" x1="0%" y1="0%" x2="100%" y2="100%">' +
+          '<stop offset="0%" stop-color="rgba(255,255,255,0.02)" />' +
+          '<stop offset="50%" stop-color="rgba(255,255,255,0.5)" />' +
+          '<stop offset="100%" stop-color="rgba(255,255,255,0.02)" />' +
+          '</linearGradient></defs>' + svgContent + '</svg>';
+
+        chartRoot.innerHTML = finalSvg;
+      }
+
+      // Inject dynamic data from server
+      const PLANET_DATA = ${planetDataJson};
+      const ASPECT_DATA = ${aspectDataJson};
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function() { renderChartWheel(PLANET_DATA, ASPECT_DATA); });
+      } else {
+        renderChartWheel(PLANET_DATA, ASPECT_DATA);
+      }
+    })();
+    </script>
+  `;
+}
+
+// --------------------------------------------------------------
 
 // dev-helpers (preview & retry tools)
 app.get('/dev/no-time', (req, res) => {
@@ -339,43 +859,107 @@ app.get('/dev/chart-ruler', (req, res) => {
       createdAt: new Date(),
       userEmail: 'dev@fateflix.app',
       summary: 'Mock Chart Ruler Reading',
-      birthDate: '1979-06-21',
-      birthTime: '16:31',
-      birthCity: 'Test City',
-      birthCountry: 'Test Country',
-      username: 'ScorpioTest'
+      birthDate: '2000-01-01',
+      birthTime: '12:00',
+      birthCity: 'Cosmic Void',
+      birthCountry: 'Milky Way',
+      username: 'StarGazer'
     },
     chart: {
       id: chartId,
-      chartRulerPlanet: 'Mars',
-      chartRulerHouse: 8,
-      // For Scorpio Rising, Mars is traditional ruler, Pluto is modern co-ruler
+      chartRulerPlanet: 'Moon',
+      chartRulerHouse: 11,
       rawChart: {
         angles: { 
-          ascendantSign: 'Scorpio',
-          ascendantDeg: 210,
-          mcSign: 'Leo',
-          mcDeg: 120
+          ascendantSign: 'Cancer',
+          ascendantDeg: 120,
+          mcSign: 'Aries',
+          mcDeg: 30
         },
         planets: {
-          sun: { sign: 'Gemini', house: 8, longitude: 90 },
-          moon: { sign: 'Taurus', house: 7, longitude: 45 },
-          mercury: { sign: 'Cancer', house: 9, longitude: 100 },
-          venus: { sign: 'Gemini', house: 8, longitude: 85 },
-          mars: { sign: 'Taurus', house: 7, longitude: 50 }, // Ruler 1
-          jupiter: { sign: 'Leo', house: 10, longitude: 130 },
-          saturn: { sign: 'Virgo', house: 11, longitude: 160 },
-          uranus: { sign: 'Scorpio', house: 1, longitude: 220 },
-          neptune: { sign: 'Sagittarius', house: 2, longitude: 260 },
-          pluto: { sign: 'Libra', house: 11, longitude: 190 } // Ruler 2 (Co-ruler)
+          moon: { sign: 'Taurus', house: 11, longitude: 45 },
+          sun: { sign: 'Aquarius', house: 8, longitude: 315 },
+          mercury: { sign: 'Pisces', house: 9, longitude: 330 },
+          venus: { sign: 'Capricorn', house: 7, longitude: 280 },
+          mars: { sign: 'Aries', house: 10, longitude: 15 },
+          jupiter: { sign: 'Aries', house: 10, longitude: 20 },
+          saturn: { sign: 'Taurus', house: 11, longitude: 50 },
+          uranus: { sign: 'Aquarius', house: 8, longitude: 310 },
+          neptune: { sign: 'Aquarius', house: 8, longitude: 305 },
+          pluto: { sign: 'Sagittarius', house: 6, longitude: 240 }
         },
-        houseSigns: ['Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces', 'Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo', 'Libra']
+        houseSigns: ['Cancer', 'Leo', 'Virgo', 'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces', 'Aries', 'Taurus', 'Gemini']
       }
     }
   };
   
   // Redirect to the HTML view (page 2 is where the chart ruler logic lives)
   res.redirect(`/reading/${submissionId}/html/2`);
+});
+
+// Dev route for Badge preview (uses EJS template)
+app.get('/dev/badge', (req, res) => {
+  const creationDate = new Date().toLocaleDateString('en-US', { 
+    month: 'long', 
+    day: 'numeric', 
+    year: 'numeric' 
+  });
+  const submissionID = 'dev-badge-' + Date.now();
+  
+  res.render('badge', { creationDate, submissionID });
+});
+
+// Dev route for Chart Wheel preview
+app.get('/dev/chart-wheel', (req, res) => {
+  const mockChartDTO = {
+    planets: {
+      sun: { longitude: 45, sign: 'Taurus' },
+      moon: { longitude: 340, sign: 'Pisces' },
+      mercury: { longitude: 65, sign: 'Gemini' },
+      venus: { longitude: 25, sign: 'Aries' },
+      mars: { longitude: 280, sign: 'Capricorn' },
+      jupiter: { longitude: 120, sign: 'Leo' },
+      saturn: { longitude: 310, sign: 'Aquarius' },
+      uranus: { longitude: 200, sign: 'Libra' },
+      neptune: { longitude: 230, sign: 'Scorpio' },
+      pluto: { longitude: 185, sign: 'Libra' }
+    }
+  };
+  
+  const html = `<!DOCTYPE html>
+  <html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>FateFlix Chart Wheel Preview</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500&display=swap" rel="stylesheet">
+    <style>
+      body { 
+        background-color: #000; 
+        margin: 0; 
+        padding: 40px 20px; 
+        display: flex; 
+        justify-content: center; 
+        align-items: center; 
+        min-height: 100vh; 
+        box-sizing: border-box;
+        font-family: 'Inter', sans-serif;
+      }
+      .preview-container {
+        max-width: 600px;
+        width: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="preview-container">
+      ${buildChartWheelHtml(mockChartDTO)}
+    </div>
+  </body>
+  </html>`;
+  
+  res.set('Content-Type', 'text/html; charset=utf-8');
+  res.send(html);
 });
 
 app.get('/dev/email/preview/:outboxId', async (req, res) => {
@@ -1534,6 +2118,54 @@ function buildChartSVG(rawChart, opts = {}) {
     }
   });
 
+// === Screen 1: The Badge (Entry Ticket) =========================
+app.get('/reading/:submissionId/badge', async (req, res) => {
+  try {
+    const { submissionId } = req.params;
+    if (!submissionId) return res.status(400).send('Missing submissionId');
+
+    let createdAt;
+    
+    // Check mock DB first
+    if (MOCK_DB[submissionId]) {
+      // Mock entries usually don't have a createdAt, so we fake it
+      createdAt = new Date();
+    } else {
+      // Try to find submission first
+      const submission = await prisma.surveySubmission.findUnique({
+        where: { id: submissionId },
+        select: { createdAt: true }
+      });
+      
+      if (submission) {
+        createdAt = submission.createdAt;
+      } else {
+        // Fallback: try finding by reading if submission not found directly (though unlikely)
+        const reading = await prisma.reading.findFirst({
+          where: { submissionId },
+          select: { createdAt: true }
+        });
+        if (reading) createdAt = reading.createdAt;
+      }
+    }
+
+    if (!createdAt) return res.status(404).send('Submission not found');
+
+    // Format Date: "October 24, 2025"
+    const creationDate = new Date(createdAt).toLocaleDateString('en-US', { 
+      month: 'long', 
+      day: 'numeric', 
+      year: 'numeric' 
+    });
+
+    res.render('badge', { submissionID: submissionId, creationDate });
+
+  } catch (e) {
+    console.error('💥 /reading/:submissionId/badge error:', e);
+    res.status(500).send('Internal error');
+  }
+});
+
 app.get('/reading/:submissionId/html', async (req, res) => {
   try {
     const { submissionId } = req.params;
@@ -1615,18 +2247,103 @@ app.get('/reading/:submissionId/html', async (req, res) => {
 
     // Styles
     const styles = `
-      body { background-color: #090011; color: #FFFFFF; font-family: "Graphic Web", "Futura", sans-serif; margin: 0; padding: 0; display: flex; justify-content: center; }
-      .wrap { width: 100%; max-width: 480px; padding: 20px; box-sizing: border-box; }
-      h1, h2, h3, .header-font { font-family: "Futura", sans-serif; text-transform: uppercase; margin: 0; }
-      .card { border: 1px solid #8FBCFF; border-radius: 12px; padding: 20px; margin-bottom: 16px; background: transparent; }
-      .card-gold { border-color: #FFD18F; }
-      .section-header { color: #F3DCBC; font-size: 14px; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; }
-      .content-text { font-size: 16px; line-height: 1.5; }
-      .intro-text { color: #F3DCBC; text-align: center; font-style: italic; margin: 30px 0; font-size: 18px; }
-      .disclaimer { color: #B3B3B3; font-size: 12px; text-align: left; margin-top: 40px; line-height: 1.4; }
-      .no-time { color: #B6DAF7; text-align: center; margin: 40px 0; font-size: 14px; line-height: 1.6; }
-      .ruler-header { color: #DFCDF5; font-size: 16px; margin-bottom: 10px; }
-      .ruler-eq { color: #A2C5E2; margin-bottom: 20px; font-weight: bold; }
+      @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;500;600;700&display=swap');
+      
+      body { 
+        background: linear-gradient(135deg, #0a0118 0%, #1a0b2e 50%, #0a0118 100%);
+        color: #FFFFFF; 
+        font-family: 'Inter', sans-serif; 
+        margin: 0; 
+        padding: 0; 
+        display: flex; 
+        justify-content: center;
+        min-height: 100vh;
+      }
+      .wrap { 
+        width: 100%; 
+        max-width: 480px; 
+        padding: 20px; 
+        box-sizing: border-box; 
+      }
+      h1, h2, h3, .header-font { 
+        font-family: 'Oswald', sans-serif; 
+        text-transform: uppercase; 
+        margin: 0;
+        letter-spacing: 0.05em;
+      }
+      .card { 
+        border: 2px solid rgba(142, 197, 252, 0.6);
+        border-radius: 16px; 
+        padding: 20px; 
+        margin-bottom: 16px; 
+        background: transparent;
+        backdrop-filter: blur(10px);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+        transition: all 0.3s ease;
+      }
+      .card:hover {
+        background: rgba(142, 197, 252, 0.05);
+        border-color: rgba(142, 197, 252, 0.9);
+        box-shadow: 0 12px 48px rgba(142, 197, 252, 0.2),
+                    0 0 20px rgba(142, 197, 252, 0.3),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+      }
+      .card-gold { 
+        border: 2px solid rgba(255, 209, 143, 0.6);
+      }
+      .card-gold:hover {
+        border-color: rgba(255, 209, 143, 0.9);
+        box-shadow: 0 12px 48px rgba(255, 209, 143, 0.2),
+                    0 0 20px rgba(255, 209, 143, 0.3),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+      }
+      .section-header { 
+        color: #F3DCBC; 
+        font-size: 14px; 
+        margin-bottom: 8px; 
+        text-transform: uppercase; 
+        letter-spacing: 1px;
+        font-family: 'Oswald', sans-serif;
+        font-weight: 600;
+      }
+      .content-text { 
+        font-size: 16px; 
+        line-height: 1.6;
+        color: rgba(255, 255, 255, 0.9);
+      }
+      .intro-text { 
+        color: #F3DCBC; 
+        text-align: center; 
+        font-style: italic; 
+        margin: 30px 0; 
+        font-size: 18px; 
+      }
+      .disclaimer { 
+        color: rgba(255, 255, 255, 0.5); 
+        font-size: 12px; 
+        text-align: left; 
+        margin-top: 40px; 
+        line-height: 1.4; 
+      }
+      .no-time { 
+        color: #B6DAF7; 
+        text-align: center; 
+        margin: 40px 0; 
+        font-size: 14px; 
+        line-height: 1.6; 
+      }
+      .ruler-header { 
+        color: #DFCDF5; 
+        font-size: 16px; 
+        margin-bottom: 10px;
+        font-family: 'Oswald', sans-serif;
+      }
+      .ruler-eq { 
+        color: #A2C5E2; 
+        margin-bottom: 20px; 
+        font-weight: bold; 
+      }
       
       /* Badge Styles */
       .badge { 
@@ -1652,42 +2369,7 @@ app.get('/reading/:submissionId/html', async (req, res) => {
     let contentHtml = '';
 
     if (chartDTO) {
-       // 1. Badge Screen
-       contentHtml += `
-         <div class="badge">
-           <div class="badge-top">
-             <div style="font-size:24px">🪐</div>
-             <div class="fateflix-title">FateFlix</div>
-             <div class="early-access">+ EARLY ACCESS BADGE</div>
-             <div class="tagline">You had taste before the app even dropped.</div>
-             <div style="font-size:10px; margin-top:10px">EST. 2025</div>
-             <div style="font-size:10px">The Future of Intuitive Entertainment</div>
-           </div>
-           <div class="badge-bottom">
-             <div style="border-bottom:1px solid #aaa; padding-bottom:5px; margin-bottom:5px">
-               <strong>EVENT</strong><br/>FATEFLIX SURVEY COMPLETION
-             </div>
-             <div class="row">
-               <div class="col">DATE<br/><strong>${new Date(reading.createdAt).toLocaleDateString()}</strong></div>
-               <div class="col border-left"></div>
-             </div>
-             <div class="row">
-               <div class="col">TASTE LEVEL <strong>A</strong><br/>COSMIC CURATOR</div>
-               <div class="col border-left">CATEGORY<br/>ALPHA TESTER</div>
-             </div>
-             <div class="row" style="border-bottom:none">
-               <div class="col" style="padding-top:8px; border-top:1px solid #aaa">
-                 ADMIT ONE — UNIVERSE: CINEMATIC
-               </div>
-             </div>
-             <div style="margin-top:15px; font-size:9px; text-align:center; opacity:0.7">
-               UNAUTHORIZED RESALE PROHIBITED<br/>COSMIC APPROVAL GRANTED BY FATEFLIX
-             </div>
-           </div>
-         </div>
-       `;
-
-       // 2. My Astro-Cinematic-Chart
+       // My Astro-Cinematic-Chart
        const bDate = reading.birthDate ? new Date(reading.birthDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'Unknown Date';
        const bTime = reading.birthTime || 'Unknown Time';
        const bPlace = (reading.birthCity && reading.birthCountry) ? `${reading.birthCity}, ${reading.birthCountry}` : (reading.birthCity || 'Unknown Place');
@@ -1696,31 +2378,35 @@ app.get('/reading/:submissionId/html', async (req, res) => {
 
        contentHtml += `
          <div style="position: relative; margin: 30px 0;">
-           <h1 style="font-family:'Futura',sans-serif; color:#FFFFFF; text-transform:uppercase; font-size: 24px; text-align:center; margin-bottom:30px">My Astro-Cinematic Chart</h1>
+           <!-- Header with subtle glow -->
+           <div style="text-align: center; margin-bottom: 40px;">
+             <h1 style="font-family: 'Oswald', sans-serif; color: #FFFFFF; text-transform: uppercase; font-size: 26px; font-weight: 700; letter-spacing: 0.2em; margin: 0; text-shadow: 0 0 20px rgba(142, 197, 252, 0.6), 0 0 40px rgba(142, 197, 252, 0.3), 0 2px 4px rgba(0, 0, 0, 0.5);">
+               My Astro-Cinematic Chart
+             </h1>
+           </div>
            
-           <div style="display: flex; justify-content: space-between; align-items: center;">
-             <div style="font-size: 12px; color: #fff; line-height: 1.6; width: 25%; text-align: left;">
+           <!-- Chart Wheel - Full Width -->
+           <div style="text-align: center; margin-bottom: 20px;">
+                ${buildChartWheelHtml(chartDTO)}
+           </div>
+
+           <!-- Metadata below the chart -->
+           <div style="display: flex; justify-content: space-between; font-size: 12px; color: #fff; margin-top: 20px;">
+             <div style="text-align: left;">
                 Date: ${bDate}<br/>
                 Time: ${bTime}<br/>
                 Place: ${bPlace}
              </div>
-
-             <div style="flex: 1; text-align: center;">
-                <img src="/assets/header_chart_wheel.png" class="img-responsive" style="max-width:100%; width: 220px; height: auto;" alt="Chart Wheel" />
+             <div style="text-align: right;">
+                username: ${uName}<br/>
+                email: ${uEmail}
              </div>
-
-             <div style="width: 25%;"></div>
-           </div>
-
-           <div style="text-align: right; font-size: 12px; margin-top: -20px; margin-bottom: 20px; color: #fff;">
-               username: ${uName}<br/>
-               email: ${uEmail}
            </div>
 
            <div style="position: relative; width: 320px; margin: 0 auto 30px auto;">
                <img src="/assets/planet_purple.png" style="display: block; width: 100%; height: auto; opacity: 0.9;" alt="" />
                
-               <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 100%; text-align: center; z-index: 10; font-family: 'Futura', sans-serif; font-style: italic; font-size: 18px; color: #F3DCBC; line-height: 1.4; text-shadow: 0 2px 10px rgba(0,0,0,0.7);">
+               <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 100%; text-align: center; z-index: 10; font-family: 'Futura', sans-serif; font-style: italic; font-size: 20px; color: #F3DCBC; line-height: 1.4; text-shadow: 0 2px 10px rgba(0,0,0,0.7); white-space: nowrap;">
                   <span style="position: relative; top: -8px; margin-right: 4px;">
                     <img src="/assets/starglow_large.png" style="width: 18px;" alt="" />
                   </span>
@@ -1765,7 +2451,7 @@ app.get('/reading/:submissionId/html', async (req, res) => {
        contentHtml += `
          <div style="text-align:center; margin: 40px 0; padding: 0 20px;">
            <img src="/assets/starglow_large.png" class="star-decoration" alt="" />
-           <p style="color:#F3DCBC; font-family:'Futura',sans-serif; font-style:italic; font-size:16px; line-height:1.5;">
+           <p style="color:#F3DCBC; font-family:'Inter',sans-serif; font-style:italic; font-size:16px; line-height:1.5;">
              You’re now part of Fateflix’s origin story. And<br/>
              that’s legendary. Thank you for building the<br/>
              future of intuitive entertainment with us.
@@ -1774,11 +2460,39 @@ app.get('/reading/:submissionId/html', async (req, res) => {
          </div>
        `;
 
-       // Button to next page
+       // Navigation buttons
        contentHtml += `
-         <div style="text-align:center; margin: 40px 0;">
-           <a href="/reading/${submissionId}/html/2" style="display:inline-block; background:linear-gradient(90deg, #e0c3fc, #8ec5fc); color:#000; padding:15px 30px; border-radius:30px; text-decoration:none; font-family:'Futura',sans-serif; font-weight:bold; text-transform:uppercase; box-shadow: 0 4px 15px rgba(142, 197, 252, 0.4);">
-             Click to see who‘s directing the scene
+         <style>
+           .nav-button {
+             display: inline-block;
+             padding: 12px 24px;
+             font-family: 'Oswald', sans-serif;
+             font-size: 0.9rem;
+             font-weight: 700;
+             letter-spacing: 0.1em;
+             color: rgba(255, 255, 255, 0.9);
+             background: transparent;
+             border: 1px solid rgba(255, 255, 255, 0.3);
+             border-radius: 30px;
+             text-decoration: none;
+             text-transform: uppercase;
+             transition: all 0.3s ease;
+             backdrop-filter: blur(4px);
+             white-space: nowrap;
+           }
+           .nav-button:hover {
+             background: rgba(255, 255, 255, 0.1);
+             border-color: rgba(255, 255, 255, 0.6);
+             box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
+             transform: translateY(-2px);
+           }
+         </style>
+         <div style="display: flex; justify-content: space-between; align-items: center; margin: 40px 0; gap: 20px;">
+           <a href="/reading/${submissionId}/badge" class="nav-button">
+             ← Back
+           </a>
+           <a href="/reading/${submissionId}/html/2" class="nav-button">
+             Who's Directing the Scene? →
            </a>
          </div>
        `;
@@ -1862,18 +2576,103 @@ app.get('/reading/:submissionId/html/2', async (req, res) => {
 
     // Styles (Same as page 1)
     const styles = `
-      body { background-color: #090011; color: #FFFFFF; font-family: "Graphic Web", "Futura", sans-serif; margin: 0; padding: 0; display: flex; justify-content: center; }
-      .wrap { width: 100%; max-width: 480px; padding: 20px; box-sizing: border-box; }
-      h1, h2, h3, .header-font { font-family: "Futura", sans-serif; text-transform: uppercase; margin: 0; }
-      .card { border: 1px solid #8FBCFF; border-radius: 12px; padding: 20px; margin-bottom: 16px; background: transparent; }
-      .card-gold { border-color: #FFD18F; }
-      .section-header { color: #F3DCBC; font-size: 14px; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; }
-      .content-text { font-size: 16px; line-height: 1.5; }
-      .intro-text { color: #F3DCBC; text-align: center; font-style: italic; margin: 30px 0; font-size: 18px; }
-      .disclaimer { color: #B3B3B3; font-size: 12px; text-align: left; margin-top: 40px; line-height: 1.4; }
-      .no-time { color: #B6DAF7; text-align: center; margin: 40px 0; font-size: 14px; line-height: 1.6; }
-      .ruler-header { color: #DFCDF5; font-size: 16px; margin-bottom: 10px; }
-      .ruler-eq { color: #A2C5E2; margin-bottom: 20px; font-weight: bold; }
+      @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;500;600;700&display=swap');
+      
+      body { 
+        background: linear-gradient(135deg, #0a0118 0%, #1a0b2e 50%, #0a0118 100%);
+        color: #FFFFFF; 
+        font-family: 'Inter', sans-serif; 
+        margin: 0; 
+        padding: 0; 
+        display: flex; 
+        justify-content: center;
+        min-height: 100vh;
+      }
+      .wrap { 
+        width: 100%; 
+        max-width: 480px; 
+        padding: 20px; 
+        box-sizing: border-box; 
+      }
+      h1, h2, h3, .header-font { 
+        font-family: 'Oswald', sans-serif; 
+        text-transform: uppercase; 
+        margin: 0;
+        letter-spacing: 0.05em;
+      }
+      .card { 
+        border: 2px solid rgba(142, 197, 252, 0.6);
+        border-radius: 16px; 
+        padding: 20px; 
+        margin-bottom: 16px; 
+        background: transparent;
+        backdrop-filter: blur(10px);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+        transition: all 0.3s ease;
+      }
+      .card:hover {
+        background: rgba(142, 197, 252, 0.05);
+        border-color: rgba(142, 197, 252, 0.9);
+        box-shadow: 0 12px 48px rgba(142, 197, 252, 0.2),
+                    0 0 20px rgba(142, 197, 252, 0.3),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+      }
+      .card-gold { 
+        border: 2px solid rgba(255, 209, 143, 0.6);
+      }
+      .card-gold:hover {
+        border-color: rgba(255, 209, 143, 0.9);
+        box-shadow: 0 12px 48px rgba(255, 209, 143, 0.2),
+                    0 0 20px rgba(255, 209, 143, 0.3),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+      }
+      .section-header { 
+        color: #F3DCBC; 
+        font-size: 14px; 
+        margin-bottom: 8px; 
+        text-transform: uppercase; 
+        letter-spacing: 1px;
+        font-family: 'Oswald', sans-serif;
+        font-weight: 600;
+      }
+      .content-text { 
+        font-size: 16px; 
+        line-height: 1.6;
+        color: rgba(255, 255, 255, 0.9);
+      }
+      .intro-text { 
+        color: #F3DCBC; 
+        text-align: center; 
+        font-style: italic; 
+        margin: 30px 0; 
+        font-size: 18px; 
+      }
+      .disclaimer { 
+        color: rgba(255, 255, 255, 0.5); 
+        font-size: 12px; 
+        text-align: left; 
+        margin-top: 40px; 
+        line-height: 1.4; 
+      }
+      .no-time { 
+        color: #B6DAF7; 
+        text-align: center; 
+        margin: 40px 0; 
+        font-size: 14px; 
+        line-height: 1.6; 
+      }
+      .ruler-header { 
+        color: #DFCDF5; 
+        font-size: 16px; 
+        margin-bottom: 10px;
+        font-family: 'Oswald', sans-serif;
+      }
+      .ruler-eq { 
+        color: #A2C5E2; 
+        margin-bottom: 20px; 
+        font-weight: bold; 
+      }
       .page-break { margin-top: 50px; margin-bottom: 50px; }
       .img-responsive { max-width: 100%; height: auto; display: block; margin: 0 auto; }
       .star-decoration { width: 20px; height: 20px; display: inline-block; vertical-align: middle; margin: 0 5px; }
@@ -1892,13 +2691,13 @@ app.get('/reading/:submissionId/html/2', async (req, res) => {
              <div style="position: relative; margin-bottom: 20px; padding: 0 20px; text-align: center;">
                 <img src="/assets/starglow_large.png" style="position:absolute; left: 10%; top: -20px; width: 18px; opacity: 0.8;" alt="" />
                 
-                <p style="color:#F3DCBC; font-family:'Futura', sans-serif; font-style: italic; line-height: 1.6; font-size: 18px; margin: 0; position: relative; z-index: 2; text-shadow: 0 2px 4px rgba(0,0,0,0.5);">
+                <p style="color:#F3DCBC; font-family:'Inter', sans-serif; font-style: italic; line-height: 1.6; font-size: 18px; margin: 0; position: relative; z-index: 2; text-shadow: 0 2px 4px rgba(0,0,0,0.5);">
                   No exact birth time?<br/>
                   Then your Rising sign, chart ruler, and house<br/>
                   placements will stay a mystery<br/>
                   ...for now
                 </p>
-                
+
                 <!-- Purple Ring & Glow: Positioned BELOW the text, right aligned -->
                 <!-- Purple Ring & Glow: Positioned BELOW the text, right aligned -->
                 <img src="/assets/planet_purple_ring.png" style="width:200px; position:absolute; right: -40px; top: 60px; z-index: 0; opacity: 0.9;" alt="" />
@@ -1916,7 +2715,7 @@ app.get('/reading/:submissionId/html/2', async (req, res) => {
              <div style="position: relative; padding: 40px 20px; text-align: center; margin-top: -40px;">
                 
                 <!-- Responsive Glow Background (Large, Spilling Out) -->
-                <div style="
+             <div style="
                    position: absolute;
                    top: -30%;
                    bottom: -30%;
@@ -1933,18 +2732,18 @@ app.get('/reading/:submissionId/html/2', async (req, res) => {
                 <div style="position: relative; z-index: 1;">
                    <img src="/assets/starglow_large.png" style="position:absolute; left: 0; top: 0; width: 22px;" alt="" />
 
-                   <p style="color: #B6DAF7; font-family: 'Futura', sans-serif; font-style: italic; font-size: 17px; margin-bottom: 20px; line-height: 1.5; text-shadow: 0 1px 2px rgba(0,0,0,0.8);">
-                     If you don't know the timecode from<br/>
-                     when you entered this planet earth, do<br/>
-                     yourself a favour
-                   </p>
-                   
-                   <p style="color: #B6DAF7; font-family: 'Futura', sans-serif; font-style: italic; font-size: 17px; line-height: 1.6; text-shadow: 0 1px 2px rgba(0,0,0,0.8);">
-                     Call your mom.<br/>
-                     Check your birth certificate.<br/>
-                     Or contact the galaxy you came from<br/>
-                     for the correct digits.
-                   </p>
+                   <p style="color: #B6DAF7; font-family: 'Inter', sans-serif; font-style: italic; font-size: 17px; margin-bottom: 20px; line-height: 1.5; text-shadow: 0 1px 2px rgba(0,0,0,0.8);">
+                  If you don't know the timecode from<br/>
+                  when you entered this planet earth, do<br/>
+                  yourself a favour
+                </p>
+                
+                   <p style="color: #B6DAF7; font-family: 'Inter', sans-serif; font-style: italic; font-size: 17px; line-height: 1.6; text-shadow: 0 1px 2px rgba(0,0,0,0.8);">
+                  Call your mom.<br/>
+                  Check your birth certificate.<br/>
+                  Or contact the galaxy you came from<br/>
+                  for the correct digits.
+                </p>
 
                    <img src="/assets/starglow_large.png" style="position:absolute; right: 0; bottom: -10px; width: 28px;" alt="" />
                 </div>
@@ -1976,11 +2775,14 @@ app.get('/reading/:submissionId/html/2', async (req, res) => {
            // Title for the Ruler Section
            contentHtml += `
              <div class="page-break"></div>
-             <div style="text-align:center; margin: 40px 0 20px">
-               <h1 style="font-family:'Futura',sans-serif; color:#FFFFFF; font-size:28px; font-weight:bold; font-style:italic; text-transform:uppercase; margin-bottom:30px;">My Astro-Cinematic Chart II</h1>
+             <!-- Header with subtle glow -->
+             <div style="text-align: center; margin: 40px 0 20px;">
+               <h1 style="font-family: 'Oswald', sans-serif; color: #FFFFFF; text-transform: uppercase; font-size: 26px; font-weight: 700; letter-spacing: 0.2em; margin: 0 0 20px 0; text-shadow: 0 0 20px rgba(142, 197, 252, 0.6), 0 0 40px rgba(142, 197, 252, 0.3), 0 2px 4px rgba(0, 0, 0, 0.5);">
+                 My Astro-Cinematic Chart II
+               </h1>
                <img src="/assets/planet_ring_pinkish.png" style="width:80px; margin-bottom:10px;" alt="Planet" />
-               <h2 style="color:#FFD7F3; font-family:'Futura',sans-serif; text-transform:uppercase;">Chart Ruler</h2>
-               <div style="color:#FAF1E4; font-family:'Futura',sans-serif; font-size:14px; margin-top:15px; font-style:italic; line-height:1.5; padding:0 20px;">
+               <h2 style="color:#FFD7F3; font-family:'Oswald',sans-serif; text-transform:uppercase; font-weight: 600;">Chart Ruler</h2>
+               <div style="color:#FAF1E4; font-family:'Inter',sans-serif; font-size:14px; margin-top:15px; font-style:italic; line-height:1.5; padding:0 20px;">
                  Your chart ruler is the ruling planet of your<br/>
                  Ascendant sign. Its sign and house show how your<br/>
                  storyline unfolds and who's directing the vibe<br/>
@@ -1989,94 +2791,58 @@ app.get('/reading/:submissionId/html/2', async (req, res) => {
              </div>
            `;
 
-           // Pre-calculate Ruler 1 details (needed for both Rule 2 & 3)
-           const ruler1Lower = ruler1?.toLowerCase();
-           const rulerSign = p[ruler1Lower]?.sign || '';
-           const rulerHouse = chartDTO.chartRuler?.house || '';
-           const rulerSignText = pickVal(CHART_RULER_TEXT, rulerSign) || `Chart Ruler in ${rulerSign}`;
-           const rulerHouseText = pickVal(CHART_RULER_HOUSE_TEXT, String(rulerHouse)) || `House ${rulerHouse}`;
-
            // Rule 2: Co-Ruler
            if (isCoRuler) {
-              const crSign = p[ruler2?.toLowerCase()]?.sign || '';
-              const crHouse = p[ruler2?.toLowerCase()]?.house || '';
-
               contentHtml += `
-                <div style="text-align:center; margin: 30px 0;">
-                   <div class="ruler-eq" style="color:#A2C5E2; font-family:'Futura',sans-serif; font-weight:bold; font-size:18px; margin-bottom:20px;">Your Chart Ruler + Co-Chart Ruler = ${ruler2 || 'Unknown'} + ${ruler1}</div>
-                   <img src="/assets/star_pink.png" style="width:140px; margin: 20px auto; display:block;" alt="Star" />
-                </div>
-                
-                <!-- Primary Ruler -->
-                <div style="display: flex; gap: 15px; margin: 30px 0; flex-wrap: wrap; align-items: stretch;">
-                   <!-- Left Box: Chart Ruler in the Sign -->
-                   <div style="flex: 1; min-width: 200px; display: flex; flex-direction: column;">
-                      <h2 style="color:#FFD7F3; font-family:'Futura',sans-serif; text-transform:uppercase; margin-bottom:10px; text-align:center;">Chart Ruler in the Sign</h2>
-                      <div style="color:#B6DAF7; font-family:'Futura',sans-serif; font-size:12px; margin-bottom:15px; text-align:center; font-style:italic;">Who's Directing the Scene</div>
-                      <div class="card" style="border-color:#8FBCFF; text-align:center; padding:20px; flex: 1; display: flex; flex-direction: column;">
-                         <div style="font-weight:bold; color:#FFFFFF; font-family:'Futura',sans-serif; margin-bottom:10px;">Chart Ruler in ${rulerSign}</div>
-                         <div style="color:#B6DAF7; font-family:'Futura',sans-serif; font-size:14px; line-height:1.5; flex: 1;">${esc(rulerSignText)}</div>
-                      </div>
-                   </div>
+                <div class="card card-gold" style="text-align:center">
+                   <div class="ruler-eq">Your Chart Ruler + Co-Chart Ruler = ${ruler2 || 'Unknown'} + ${ruler1}</div>
                    
-                   <!-- Right Box: Chart Ruler in the House -->
-                   <div style="flex: 1; min-width: 200px; display: flex; flex-direction: column;">
-                      <h2 style="color:#FFD7F3; font-family:'Futura',sans-serif; text-transform:uppercase; margin-bottom:10px; text-align:center;">Chart Ruler in the House</h2>
-                      <div style="color:#B6DAF7; font-family:'Futura',sans-serif; font-size:12px; margin-bottom:15px; text-align:center; font-style:italic;">Where Your Story Unfolds</div>
-                      <div class="card" style="border-color:#8FBCFF; text-align:center; padding:20px; flex: 1; display: flex; flex-direction: column;">
-                         <div style="font-weight:bold; color:#FFFFFF; font-family:'Futura',sans-serif; margin-bottom:10px;">Chart Ruler in the ${rulerHouse}${rulerHouse ? (rulerHouse === 1 ? 'st' : rulerHouse === 2 ? 'nd' : rulerHouse === 3 ? 'rd' : 'th') : ''} House</div>
-                         <div style="color:#B6DAF7; font-family:'Futura',sans-serif; font-size:14px; line-height:1.5; flex: 1;">${esc(rulerHouseText)}</div>
-                      </div>
-                   </div>
-                </div>
+                   <div class="ruler-header">Chart Ruler in the Sign</div>
+                   <div class="card" style="border-color:#8FBCFF">${esc(pickVal(CHART_RULER_TEXT, `${ruler1}:${ZODIAC_SIGNS.indexOf(ascendant)+1}`) || `${ruler1} as Ruler`)}</div>
+                   
+                   <div class="ruler-header">Chart Ruler in the House</div>
+                   <div class="card" style="border-color:#8FBCFF">${esc(pickVal(CHART_RULER_HOUSE_TEXT, String(chartDTO.chartRuler?.house)) || `House ${chartDTO.chartRuler?.house}`)}</div>
 
-                <!-- Co-Ruler -->
-                <div style="display: flex; gap: 15px; margin: 30px 0; flex-wrap: wrap; align-items: stretch;">
-                   <!-- Left Box: Co-Ruler in the Sign -->
-                   <div style="flex: 1; min-width: 200px; display: flex; flex-direction: column;">
-                      <h2 style="color:#FFD7F3; font-family:'Futura',sans-serif; text-transform:uppercase; margin-bottom:10px; text-align:center;">Co-Chart Ruler in the Sign</h2>
-                      <div class="card" style="border-color:#8FBCFF; text-align:center; padding:20px; flex: 1; display: flex; flex-direction: column;">
-                         <div style="font-weight:bold; color:#FFFFFF; font-family:'Futura',sans-serif; margin-bottom:10px;">${ruler2} in ${crSign}</div>
-                         <div style="color:#B6DAF7; font-family:'Futura',sans-serif; font-size:14px; line-height:1.5; flex: 1;">${esc(crSignText)}</div>
-                      </div>
-                   </div>
-                   
-                   <!-- Right Box: Co-Ruler in the House -->
-                   <div style="flex: 1; min-width: 200px; display: flex; flex-direction: column;">
-                      <h2 style="color:#FFD7F3; font-family:'Futura',sans-serif; text-transform:uppercase; margin-bottom:10px; text-align:center;">Co-Chart Ruler in the House</h2>
-                      <div class="card" style="border-color:#8FBCFF; text-align:center; padding:20px; flex: 1; display: flex; flex-direction: column;">
-                         <div style="font-weight:bold; color:#FFFFFF; font-family:'Futura',sans-serif; margin-bottom:10px;">${ruler2} in the ${crHouse}${crHouse ? (crHouse === 1 ? 'st' : crHouse === 2 ? 'nd' : crHouse === 3 ? 'rd' : 'th') : ''} House</div>
-                         <div style="color:#B6DAF7; font-family:'Futura',sans-serif; font-size:14px; line-height:1.5; flex: 1;">${esc(crHouseText)}</div>
-                      </div>
-                   </div>
+                   <div class="ruler-header">Co-Chart Ruler in the Sign</div>
+                   <div class="card" style="border-color:#8FBCFF">${esc(crSignText || `${ruler2} in ${p[ruler2?.toLowerCase()]?.sign}`)}</div>
+
+                   <div class="ruler-header">Co-Chart Ruler in the House</div>
+                   <div class="card" style="border-color:#8FBCFF">${esc(crHouseText || `House ${p[ruler2?.toLowerCase()]?.house}`)}</div>
                 </div>
               `;
            } else {
               // Rule 3: Single Ruler
+              const ruler1Lower = ruler1?.toLowerCase();
+              const rulerSign = p[ruler1Lower]?.sign || '';
+              const rulerHouse = chartDTO.chartRuler?.house || '';
+              
+              const rulerSignText = pickVal(CHART_RULER_TEXT, rulerSign) || `Chart Ruler in ${rulerSign}`;
+              const rulerHouseText = pickVal(CHART_RULER_HOUSE_TEXT, String(rulerHouse)) || `House ${rulerHouse}`;
+              
               contentHtml += `
                 <div style="text-align:center; margin: 30px 0;">
-                   <div class="ruler-eq" style="color:#A2C5E2; font-family:'Futura',sans-serif; font-weight:bold; font-size:18px; margin-bottom:20px;">Your Chart Ruler = ${ruler1}</div>
+                   <div class="ruler-eq" style="color:#A2C5E2; font-family:'Oswald',sans-serif; font-weight:bold; font-size:18px; margin-bottom:20px;">Your Chart Ruler = ${ruler1}</div>
                    <img src="/assets/star_pink.png" style="width:140px; margin: 20px auto; display:block;" alt="Star" />
                 </div>
                 
                 <div style="display: flex; gap: 15px; margin: 30px 0; flex-wrap: wrap; align-items: stretch;">
                    <!-- Left Box: Chart Ruler in the Sign -->
                    <div style="flex: 1; min-width: 200px; display: flex; flex-direction: column;">
-                      <h2 style="color:#FFD7F3; font-family:'Futura',sans-serif; text-transform:uppercase; margin-bottom:10px; text-align:center;">Chart Ruler in the Sign</h2>
-                      <div style="color:#B6DAF7; font-family:'Futura',sans-serif; font-size:12px; margin-bottom:15px; text-align:center; font-style:italic;">Who's Directing the Scene</div>
+                      <h2 style="color:#FFD7F3; font-family:'Oswald',sans-serif; text-transform:uppercase; margin-bottom:10px; text-align:center;">Chart Ruler in the Sign</h2>
+                      <div style="color:#B6DAF7; font-family:'Inter',sans-serif; font-size:12px; margin-bottom:15px; text-align:center; font-style:italic;">Who's Directing the Scene</div>
                       <div class="card" style="border-color:#8FBCFF; text-align:center; padding:20px; flex: 1; display: flex; flex-direction: column;">
-                         <div style="font-weight:bold; color:#FFFFFF; font-family:'Futura',sans-serif; margin-bottom:10px;">Chart Ruler in ${rulerSign}</div>
-                         <div style="color:#B6DAF7; font-family:'Futura',sans-serif; font-size:14px; line-height:1.5; flex: 1;">${esc(rulerSignText)}</div>
+                         <div style="font-weight:bold; color:#FFFFFF; font-family:'Oswald',sans-serif; margin-bottom:10px;">Chart Ruler in ${rulerSign}</div>
+                         <div style="color:#B6DAF7; font-family:'Inter',sans-serif; font-size:14px; line-height:1.5; flex: 1;">${esc(rulerSignText)}</div>
                       </div>
                    </div>
                    
                    <!-- Right Box: Chart Ruler in the House -->
                    <div style="flex: 1; min-width: 200px; display: flex; flex-direction: column;">
-                      <h2 style="color:#FFD7F3; font-family:'Futura',sans-serif; text-transform:uppercase; margin-bottom:10px; text-align:center;">Chart Ruler in the House</h2>
-                      <div style="color:#B6DAF7; font-family:'Futura',sans-serif; font-size:12px; margin-bottom:15px; text-align:center; font-style:italic;">Where Your Story Unfolds</div>
+                      <h2 style="color:#FFD7F3; font-family:'Oswald',sans-serif; text-transform:uppercase; margin-bottom:10px; text-align:center;">Chart Ruler in the House</h2>
+                      <div style="color:#B6DAF7; font-family:'Inter',sans-serif; font-size:12px; margin-bottom:15px; text-align:center; font-style:italic;">Where Your Story Unfolds</div>
                       <div class="card" style="border-color:#8FBCFF; text-align:center; padding:20px; flex: 1; display: flex; flex-direction: column;">
-                         <div style="font-weight:bold; color:#FFFFFF; font-family:'Futura',sans-serif; margin-bottom:10px;">Chart Ruler in the ${rulerHouse}${rulerHouse ? (rulerHouse === 1 ? 'st' : rulerHouse === 2 ? 'nd' : rulerHouse === 3 ? 'rd' : 'th') : ''} House</div>
-                         <div style="color:#B6DAF7; font-family:'Futura',sans-serif; font-size:14px; line-height:1.5; flex: 1;">${esc(rulerHouseText)}</div>
+                         <div style="font-weight:bold; color:#FFFFFF; font-family:'Oswald',sans-serif; margin-bottom:10px;">Chart Ruler in the ${rulerHouse}${rulerHouse ? (rulerHouse === 1 ? 'st' : rulerHouse === 2 ? 'nd' : rulerHouse === 3 ? 'rd' : 'th') : ''} House</div>
+                         <div style="color:#B6DAF7; font-family:'Inter',sans-serif; font-size:14px; line-height:1.5; flex: 1;">${esc(rulerHouseText)}</div>
                       </div>
                    </div>
                 </div>
@@ -2088,8 +2854,8 @@ app.get('/reading/:submissionId/html/2', async (req, res) => {
              contentHtml += `
                <div class="page-break"></div>
                <div style="text-align:center; margin:40px 0 20px">
-                 <h2 style="color:#FFD7F3; font-family:'Futura',sans-serif; text-transform:uppercase;">Astrological Houses</h2>
-                 <div style="font-size:14px; color:#FAF1E4; font-family:'Futura',sans-serif; font-style:italic; margin-top:10px; line-height:1.4;">
+                 <h2 style="color:#FFD7F3; font-family:'Oswald',sans-serif; text-transform:uppercase;">Astrological Houses</h2>
+                 <div style="font-size:14px; color:#FAF1E4; font-family:'Inter',sans-serif; font-style:italic; margin-top:10px; line-height:1.4;">
                    Every house is a different part of your life: identity, money, love, glow-ups, chaos, karma — all of it.<br/>
                    The sign on each house shows how you express yourself in that area. It's not the "what," it's the vibe.
                  </div>
@@ -2132,8 +2898,8 @@ app.get('/reading/:submissionId/html/2', async (req, res) => {
 
                  contentHtml += `
                     <div style="display: flex; flex-direction: column;">
-                       <h3 style="color:#FFFFFF; font-family:'Futura',sans-serif; font-size:20px; font-weight:bold; margin:0 0 5px 0;">${suffix(i+1)} House</h3>
-                       <div style="color:#B6DAF7; font-family:'Futura',sans-serif; font-size:12px; font-style:italic; margin-bottom:10px; opacity:0.8;">${archetype}</div>
+                       <h3 style="color:#FFFFFF; font-family:'Oswald',sans-serif; font-size:20px; font-weight:bold; margin:0 0 5px 0;">${suffix(i+1)} House</h3>
+                       <div style="color:#B6DAF7; font-family:'Inter',sans-serif; font-size:12px; font-style:italic; margin-bottom:10px; opacity:0.8;">${archetype}</div>
                        
                        <div class="card" style="border:1px solid #8FBCFF; border-radius:12px; padding:20px; background:transparent; flex: 1; box-sizing: border-box; display: flex; flex-direction: column;">
                           <div style="font-size:14px; opacity:0.8; margin-bottom:8px; font-weight:bold; color:#DFCDF5;">${sign}</div>
@@ -2172,10 +2938,10 @@ app.get('/reading/:submissionId/html/2', async (req, res) => {
             <div class="page-break"></div>
              <div style="text-align:center; margin:40px 0 40px">
                <img src="/assets/starglow_large.png" style="width:20px; vertical-align:middle; margin-right:10px;" alt="" />
-               <h2 style="display:inline; color:#FFD7F3; font-family:'Futura',sans-serif; text-transform:uppercase; font-style:normal;">Planets in the Houses</h2>
+               <h2 style="display:inline; color:#FFD7F3; font-family:'Oswald',sans-serif; text-transform:uppercase; font-style:normal;">Planets in the Houses</h2>
                <img src="/assets/starglow_large.png" style="width:20px; vertical-align:middle; margin-left:10px;" alt="" />
                
-               <div style="font-size:14px; color:#FAF1E4; font-family:'Futura',sans-serif; font-style:italic; margin-top:20px; line-height:1.5;">
+               <div style="font-size:14px; color:#FAF1E4; font-family:'Inter',sans-serif; font-style:italic; margin-top:20px; line-height:1.5;">
                  Planets show what the energy is.<br/>
                  Houses show where it hits.<br/>
                  Put them together and you<br/>
@@ -2213,11 +2979,11 @@ app.get('/reading/:submissionId/html/2', async (req, res) => {
                
                contentHtml += `
                  <div style="display: flex; flex-direction: column;">
-                    <h3 style="color:#FFFFFF; font-family:'Futura',sans-serif; font-size:20px; font-weight:bold; margin:0 0 5px 0;">${pName} in the House</h3>
-                    <div style="color:#B6DAF7; font-family:'Futura',sans-serif; font-size:12px; font-style:italic; margin-bottom:10px; opacity:0.8;">${PLANET_ARCHETYPES[pName] || ''}</div>
+                    <h3 style="color:#FFFFFF; font-family:'Oswald',sans-serif; font-size:16px; font-weight:bold; margin:0 0 5px 0;">${pName} in the House</h3>
+                    <div style="color:#B6DAF7; font-family:'Inter',sans-serif; font-size:12px; font-style:italic; margin-bottom:10px; opacity:0.8;">${PLANET_ARCHETYPES[pName] || ''}</div>
                     
                     <div class="card" style="border:1px solid #FFD18F; border-radius:12px; padding:20px; background:transparent; flex: 1; box-sizing: border-box; display: flex; flex-direction: column;">
-                       <div style="font-weight:bold; color:#FFFFFF; font-family:'Futura',sans-serif; margin-bottom:8px; font-size:16px;">${title}</div>
+                       <div style="font-weight:bold; color:#FFFFFF; font-family:'Oswald',sans-serif; margin-bottom:8px; font-size:16px;">${title}</div>
                        <div class="content-text" style="font-size:14px; color:#FFFFFF; line-height:1.5; flex: 1;">${esc(body)}</div>
                     </div>
                  </div>
@@ -2228,12 +2994,45 @@ app.get('/reading/:submissionId/html/2', async (req, res) => {
            contentHtml += `</div>`; // Close grid
        }
 
+       // Navigation buttons
+       contentHtml += `
+         <style>
+           .nav-button {
+             display: inline-block;
+             padding: 12px 24px;
+             font-family: 'Oswald', sans-serif;
+             font-size: 0.9rem;
+             font-weight: 700;
+             letter-spacing: 0.1em;
+             color: rgba(255, 255, 255, 0.9);
+             background: transparent;
+             border: 1px solid rgba(255, 255, 255, 0.3);
+             border-radius: 30px;
+             text-decoration: none;
+             text-transform: uppercase;
+             transition: all 0.3s ease;
+             backdrop-filter: blur(4px);
+             white-space: nowrap;
+           }
+           .nav-button:hover {
+             background: rgba(255, 255, 255, 0.1);
+             border-color: rgba(255, 255, 255, 0.6);
+             box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
+             transform: translateY(-2px);
+           }
+         </style>
+         <div style="display: flex; justify-content: center; margin: 60px 0 40px 0;">
+           <a href="/reading/${submissionId}/html" class="nav-button">
+             ← Back to Chart
+           </a>
+         </div>
+       `;
+
        // Always render footer/disclaimer
        contentHtml += `
-          <div class="disclaimer" style="text-align: left; margin-top: 40px;">
+          <div class="disclaimer" style="text-align: left; margin-top: 40px; font-size: 9px; line-height: 1.4;">
              <strong>MINI-DISCLAIMER</strong><br/>
-             We’ll use your birth info to match you with movie recs based on planetary vibes.<br/>
-             Your data is sacred. Like a vintage VHS. It’s not sold, rented, or streamed.
+             We'll use your birth info to match you with movie recs based on planetary vibes. Your data is sacred. Like a vintage VHS. It's not sold, rented, or streamed.
           </div>
           <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 30px; font-size: 14px;">
              <a href="https://www.fateflix.app" style="color:#fff; text-decoration:none">www.fateflix.app</a>
@@ -2526,131 +3325,9 @@ const chartId =
         }
       }
     }
-// ---- Build & queue email (fire-and-forget) ----
-try {
-  const { buildReading } = require('./server/readings');
-  let render;
-  try {
-    ({ render } = require('./server/template'));
-  } catch (e) {
-    console.warn('⚠️ Missing ./server/template, using fallback render()');
-    render = (tpl, data) => {
-      // very small templater: replaces {{key}} with string values
-      if (!tpl || typeof tpl !== 'string') return '';
-      return tpl.replace(/{{\s*([\w.]+)\s*}}/g, (_, k) => {
-        const val = k.split('.').reduce((o, p) => (o ? o[p] : ''), data);
-        return (val == null) ? '' : String(val);
-      });
-    };
-  }
-  const looksLikeEmail = (v) => typeof v === "string" && /.+@.+\..+/.test(v);
-  const { sendHtmlEmail } = require('./server/mailer');
-  const fs = require('fs');
-  const path = require('path');
-  const templatePath = path.join(__dirname, 'templates/email/survey-result.html');
-
-  // Load template once (optional)
-  let htmlTpl = '';
-  try {
-    htmlTpl = fs.readFileSync(templatePath, 'utf8');
-  } catch {
-    // very simple default template if the file is missing
-    htmlTpl = `
-      <h1>Your FateFlix Astro Reading</h1>
-      <p><strong>Ascendant:</strong> {{asc}}</p>
-      <p><strong>MC:</strong> {{mc}}</p>
-      <p><strong>Sun:</strong> {{sunSign}} (House {{sunHouse}})</p>
-      <p><strong>Moon:</strong> {{moonSign}} (House {{moonHouse}})</p>
-      <hr />
-      <pre style="white-space:pre-wrap">{{readingSummary.text}}</pre>
-    `;
-  }
-
-  // 1) Load the chart (if linked)
-  let chart = null;
-  if (chartId) {
-    chart = await prisma.chart.findUnique({ where: { id: chartId } });
-  }
-
-  // 2) Gather answers into a keyed map (e.g. { "genres.loved": ["drama", ...], "world.crave_in_movie": "..." })
-  const answerMap = {};
-  for (const a of answers) {
-    if (!a?.questionKey) continue;
-    // normalize radio/checkbox vs free text
-    if (Array.isArray(a.optionValues)) answerMap[a.questionKey] = a.optionValues;
-    if (a.answerText) answerMap[a.questionKey] = a.answerText;
-  }
-
-  // 3) Build reading text
-  const chartPayload = chart?.rawChart || null;
-  const readingSummary = buildReading({ chartPayload, answersByKey: answerMap });
-
-  // 4) Persist reading
-  const readingRec = await prisma.reading.create({
-    data: {
-      submissionId: submission.id,
-      chartId,
-      userEmail,
-      summary: (typeof readingSummary === 'string'
-        ? readingSummary
-        : (readingSummary?.text ?? JSON.stringify(readingSummary))),
-    },
-    select: { id: true },
-  });
-
-  // 5) Render email HTML
-  const htmlBody = render(htmlTpl, {
-    asc: chartPayload?.angles?.ascendantSign || '',
-    mc:  chartPayload?.angles?.mcSign || '',
-    sunSign: chartPayload?.planets?.sun?.sign || '',
-    sunHouse: chartPayload?.planets?.sun?.house || '',
-    moonSign: chartPayload?.planets?.moon?.sign || '',
-    moonHouse: chartPayload?.planets?.moon?.house || '',
-    readingSummary,
-  });
-  // 6) Queue + send email only if the address looks valid
-  if (looksLikeEmail(userEmail)) {
-    const outbox = await prisma.emailOutbox.create({
-      data: {
-        toEmail: userEmail,
-        subject: 'Your FateFlix Astro Reading',
-        htmlBody,
-        submissionId: submission.id,
-        chartId,
-      },
-      select: { id: true },
-    });
-
-    // 7) Send email asynchronously (don’t block the HTTP response)
-    (async () => {
-      try {
-        await sendHtmlEmail({
-          to: userEmail,
-          subject: 'Your FateFlix Astro Reading',
-          html: htmlBody,
-        });
-        await prisma.emailOutbox.update({
-          where: { id: outbox.id },
-          data: { status: 'SENT', sentAt: new Date(), error: null },
-        });
-      } catch (err) {
-        await prisma.emailOutbox.update({
-          where: { id: outbox.id },
-          data: { status: 'FAILED', error: String(err?.message || err) },
-        });
-        console.error('❌ Email send failed:', err);
-      }
-    })();
-  } else {
-    console.warn('⚠️ Skipping email send: invalid or missing userEmail');
-  }
-
-} catch (e) {
-  console.error('Email pipeline error (non-fatal):', e);
-}
-
-
-    return res.json({ ok: true, submissionId: submission.id, responses: madeResponses, optionLinks: linkedOptions });
+    const baseUrl = process.env.BASE_URL || '';
+    const htmlUrl = `${baseUrl}/reading/${submission.id}/badge`;
+    return res.json({ ok: true, submissionId: submission.id, htmlUrl, responses: madeResponses, optionLinks: linkedOptions });
   } catch (e) {
     console.error("💥 submit error:", e);
     return res.status(500).json({ ok: false, error: e?.message ?? "Unknown error" });

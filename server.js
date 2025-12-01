@@ -1655,7 +1655,7 @@ app.post('/api/dev/chart-to-svg', async (req, res) => {
 
     // 3) Hand back URLs your FE can use immediately
     const svgUrl  = `${base}/reading/${submissionId}/chart.svg`;
-    const htmlUrl = `${base}/reading/${submissionId}/html`;
+    const htmlUrl = `${base}/reading/${submissionId}/badge`;
 
     return res.json({ ok: true, chartId, submissionId: submissionId, svgUrl, htmlUrl });
   } catch (e) {

@@ -1,1 +1,46 @@
-{"name":"astro-backend-clean","version":"1.0.0","engines":{"node":"18.x"},"main":"server.js","scripts":{"start":"node server.js","migrate:deploy":"npx prisma generate && npx prisma migrate deploy","build":"npm rebuild swisseph --build-from-source && npm run migrate:deploy","postinstall":"npm rebuild swisseph --build-from-source"},"keywords":[],"author":"","license":"ISC","description":"","dependencies":{"@prisma/client":"^6.16.0","cors":"^2.8.5","dotenv":"^17.2.3","ejs":"^3.1.10","express":"^5.1.0","luxon":"^3.6.1","node-fetch":"^3.3.2","openai":"^4.104.0","resend":"^6.4.0","swisseph":"^0.5.17"},"devDependencies":{"@types/node":"^24.7.0","prisma":"^6.16.0","tsx":"^4.20.6","typescript":"^5.9.3"}}
+{
+  "name": "astro-backend-clean",
+  "version": "1.0.0",
+  "engines": {
+    "node": "18.x"
+  },
+  "main": "server.js",
+  "scripts": {
+    "dev": "astro dev",
+    "server": "node server.js",
+    "start": "concurrently \"npm run server\" \"npm run dev\"",
+    "build": "astro build && npm rebuild swisseph --build-from-source && npm run migrate:deploy",
+    "migrate:deploy": "npx prisma generate && npx prisma migrate deploy",
+    "postinstall": "npm rebuild swisseph --build-from-source"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@astrojs/react": "^4.2.0",
+    "@astrojs/tailwind": "^6.0.0",
+    "@prisma/client": "^6.16.0",
+    "astro": "^5.2.5",
+    "autoprefixer": "^10.4.20",
+    "concurrently": "^9.1.2",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "ejs": "^3.1.10",
+    "express": "^5.1.0",
+    "luxon": "^3.6.1",
+    "node-fetch": "^3.3.2",
+    "openai": "^4.104.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "resend": "^6.4.0",
+    "swisseph": "^0.5.17",
+    "tailwindcss": "^3.4.17"
+  },
+  "devDependencies": {
+    "@types/node": "^24.7.0",
+    "prisma": "^6.16.0",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3"
+  }
+}

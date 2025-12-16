@@ -3770,7 +3770,7 @@ app.get('/__routes', (_req, res) => {
 // Catch-all route for frontend (must be last, after all API routes)
 // This serves the Astro-built frontend for any route that doesn't match API routes
 if (fs.existsSync(distPath)) {
-  app.get('*', (req, res, next) => {
+  app.get('/*', (req, res, next) => {
     // Skip API routes, reading routes, health, and other backend routes
     if (req.path.startsWith('/api') || 
         req.path.startsWith('/reading') || 

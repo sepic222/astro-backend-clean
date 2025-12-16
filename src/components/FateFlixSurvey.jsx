@@ -168,7 +168,7 @@ const SurveyControls = ({ submitStatus, setSubmitStatus, setResults, setErrorMod
           timeAccuracy: answers['time_accuracy'],
         };
 
-        const apiBase = import.meta.env.DEV ? 'http://localhost:3001' : '';
+        const apiBase = import.meta.env.PUBLIC_API_BASE || (import.meta.env.DEV ? 'http://localhost:3001' : '');
         
         // Create submission + chart via chart-to-svg endpoint (but don't fetch results yet)
         const response = await fetch(`${apiBase}/api/dev/chart-to-svg`, {
@@ -225,7 +225,7 @@ const SurveyControls = ({ submitStatus, setSubmitStatus, setResults, setErrorMod
       if (finalSubmissionId) {
         // Save top3 fields (combined into hall_of_fame)
         try {
-          const apiBase = import.meta.env.DEV ? 'http://localhost:3001' : '';
+          const apiBase = import.meta.env.PUBLIC_API_BASE || (import.meta.env.DEV ? 'http://localhost:3001' : '');
           const hallOfFameParts = [];
           if (answers.top3_films) hallOfFameParts.push(`TOP 3 FILMS:\n${answers.top3_films}`);
           if (answers.top3_series) hallOfFameParts.push(`TOP 3 SERIES:\n${answers.top3_series}`);
@@ -254,8 +254,7 @@ const SurveyControls = ({ submitStatus, setSubmitStatus, setResults, setErrorMod
       console.log("Using submissionId:", finalSubmissionId || "will create new");
 
       try {
-        // Use direct URL in development if proxy isn't working
-        const apiBase = import.meta.env.DEV ? 'http://localhost:3001' : '';
+        const apiBase = import.meta.env.PUBLIC_API_BASE || (import.meta.env.DEV ? 'http://localhost:3001' : '');
         
         // 2. Call the Backend (will create new submission if we don't have one)
         // Backend will save all answers from fullResponses
@@ -480,8 +479,7 @@ const SurveyContent = () => {
         try {
           setSubmitStatus('loading');
           
-          // Use direct URL in development if proxy isn't working
-          const apiBase = import.meta.env.DEV ? 'http://localhost:3001' : '';
+          const apiBase = import.meta.env.PUBLIC_API_BASE || (import.meta.env.DEV ? 'http://localhost:3001' : '');
           const [svgRes, badgeRes, html1Res, html2Res] = await Promise.all([
             fetch(`${apiBase}/reading/${submissionId}/chart.svg`),
             fetch(`${apiBase}/reading/${submissionId}/badge`),

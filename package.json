@@ -6,10 +6,7 @@
   },
   "main": "server.js",
   "scripts": {
-    "dev": "astro dev",
-    "server": "node server.js",
-    "start": "concurrently \"npm run server\" \"npm run dev\"",
-    "build": "astro build && npm rebuild swisseph --build-from-source && npm run migrate:deploy",
+    "start": "node server.js",
     "migrate:deploy": "npx prisma generate && npx prisma migrate deploy",
     "seed": "tsx prisma/seed_sections.ts",
     "postinstall": "npm rebuild swisseph --build-from-source"
@@ -19,12 +16,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "@astrojs/react": "^4.2.0",
-    "@astrojs/tailwind": "^6.0.0",
     "@prisma/client": "^6.16.0",
-    "astro": "^5.2.5",
-    "autoprefixer": "^10.4.20",
-    "concurrently": "^9.1.2",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "ejs": "^3.1.10",
@@ -32,12 +24,8 @@
     "luxon": "^3.6.1",
     "node-fetch": "^3.3.2",
     "openai": "^4.104.0",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "react-google-autocomplete": "^2.7.5",
     "resend": "^6.4.0",
     "swisseph": "^0.5.17",
-    "tailwindcss": "^3.4.17",
     "tsx": "^4.20.6"
   },
   "devDependencies": {

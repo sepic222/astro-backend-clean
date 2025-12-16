@@ -7,18 +7,6 @@ export default defineConfig({
   integrations: [
     react(),
     tailwind()
-  ],
-  server: {
-    proxy: {
-      '/api': {
-        target: 'http://localhost:3001',
-        changeOrigin: true
-      },
-      '/reading': {
-        target: 'http://localhost:3001',
-        changeOrigin: true
-      }
-    }
-  }
+  ]
 });
 

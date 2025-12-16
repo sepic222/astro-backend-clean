@@ -7,9 +7,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-# Install deps first for better cache (including dev deps for Astro build)
+# Install deps first for better cache
 COPY package*.json ./
-RUN npm ci
+RUN npm ci --omit=dev
 
 # Copy source
 COPY . .
@@ -17,11 +17,7 @@ COPY . .
 # Generate Prisma client at build time
 RUN npx prisma generate || true
 
-# Build Astro frontend (needs dev dependencies like TypeScript)
-# Note: NODE_ENV not set here - build tools work better without production mode
-RUN npx astro build || true
-
-# Set production environment after build completes
+# Set production environment
 ENV NODE_ENV=production
 ENV PORT=3001
 

@@ -43,7 +43,7 @@ export const SurveyProvider = ({ children }) => {
     }
 
     try {
-      const apiBase = import.meta.env.DEV ? 'http://localhost:3001' : '';
+      const apiBase = import.meta.env.PUBLIC_API_BASE || (import.meta.env.DEV ? 'http://localhost:3001' : '');
       const response = await fetch(`${apiBase}/api/survey/save-answer`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

@@ -1,0 +1,29 @@
+{
+  "name": "fateflix-frontend",
+  "version": "1.0.0",
+  "type": "module",
+  "engines": {
+    "node": "18.x"
+  },
+  "scripts": {
+    "dev": "astro dev",
+    "start": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview"
+  },
+  "dependencies": {
+    "@astrojs/react": "^4.2.0",
+    "@astrojs/tailwind": "^6.0.0",
+    "astro": "^5.2.5",
+    "autoprefixer": "^10.4.20",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-google-autocomplete": "^2.7.5",
+    "tailwindcss": "^3.4.17"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0"
+  }
+}
+

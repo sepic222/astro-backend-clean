@@ -11,6 +11,7 @@
     "start": "concurrently \"npm run server\" \"npm run dev\"",
     "build": "astro build && npm rebuild swisseph --build-from-source && npm run migrate:deploy",
     "migrate:deploy": "npx prisma generate && npx prisma migrate deploy",
+    "seed": "tsx prisma/seed_sections.ts",
     "postinstall": "npm rebuild swisseph --build-from-source"
   },
   "keywords": [],
@@ -33,14 +34,15 @@
     "openai": "^4.104.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "react-google-autocomplete": "^2.7.5",
     "resend": "^6.4.0",
     "swisseph": "^0.5.17",
-    "tailwindcss": "^3.4.17"
+    "tailwindcss": "^3.4.17",
+    "tsx": "^4.20.6"
   },
   "devDependencies": {
     "@types/node": "^24.7.0",
     "prisma": "^6.16.0",
-    "tsx": "^4.20.6",
     "typescript": "^5.9.3"
   }
 }

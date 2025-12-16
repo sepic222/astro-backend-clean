@@ -20,5 +20,6 @@ ENV PORT=3001
 # Generate Prisma client at build time
 RUN npx prisma generate || true
 
-# Run migrations at container start, then launch server
-CMD sh -c "npx prisma migrate deploy && node server.js"
+# Run migrations, seed database, then launch server
+# Seed is idempotent (uses upsert), safe to run on every deploy
+CMD sh -c "npx prisma migrate deploy && npm run seed && node server.js"

@@ -324,12 +324,16 @@ function buildReadingFromContent(chartDto) {
 if (SECTION_INTROS.chart_ruler) parts.push(SECTION_INTROS.chart_ruler.trim());
 const chartRulerPlanet = chartDto.chartRulerPlanet || '';
 const chartRulerHouse = String(chartDto.chartRulerHouse || '');
-if (chartRulerPlanet && ascSign) {
-  // chart_ruler.json has keys like "Mars:1", "Venus:2" where number is ascendant sign number (1=Aries, 2=Taurus, etc.)
-  const ascSignNum = ZODIAC_SIGNS.indexOf(ascSign) + 1;
-  const keyWithSign = `${chartRulerPlanet}:${ascSignNum}`;
-  const rulerText = pick(CHART_RULER_TEXT, keyWithSign, '');
-  if (rulerText) parts.push(rulerText);
+if (chartRulerPlanet) {
+  // chart_ruler.json now uses zodiac sign names as keys (e.g., "Aries", "Taurus")
+  // We need to get the sign that the chart ruler planet is IN
+  const chartRulerPlanetLower = chartRulerPlanet.toLowerCase();
+  const chartRulerSign = chartDto[`${chartRulerPlanetLower}Sign`] || chartDto.planets?.[chartRulerPlanetLower]?.sign || '';
+  
+  if (chartRulerSign) {
+    const rulerText = pick(CHART_RULER_TEXT, chartRulerSign, '');
+    if (rulerText) parts.push(rulerText);
+  }
 }
 if (chartRulerHouse) {
   parts.push(pick(CHART_RULER_HOUSE_TEXT, chartRulerHouse, ''));
@@ -1622,6 +1626,170 @@ app.post('/api/dev/chart-to-svg', async (req, res) => {
         },
         select: { id: true }
       });
+
+      // 3) Save survey answers (non-fatal - don't break flow if this fails)
+      if (req.body.fullResponses && typeof req.body.fullResponses === 'object') {
+        try {
+          const { normalizeSurveyPayload } = require('./server/normalizeSurveyPayload');
+          
+          // Convert flat fullResponses object to format normalizeSurveyPayload expects
+          // Frontend sends flat object like { username: "...", email: "...", gender: "..." }
+          // We need to convert to sectioned format or directly normalize
+          const fullResponses = req.body.fullResponses;
+          
+          // Map frontend answer keys to question keys
+          // This mapping connects frontend question IDs to database question keys
+          const keyMapping = {
+            // Section I: Cosmic (skip - already in chart)
+            // Section II: Casting
+            'gender': 'casting.gender',
+            'attraction_style': 'casting.attraction_style',
+            'cine_level': 'casting.love_o_meter',
+            'life_role': 'casting.movie_role',
+            'escapism_style': 'casting.escapism_style',
+            'first_crush': 'casting.first_obsession',
+            // Section III: Taste
+            'watch_habit': 'taste.how_you_watch',
+            'fav_era': 'taste.favorite_era',
+            'culture_background': 'taste.cultural_background',
+            'environment_growing_up': 'taste.childhood_environment',
+            // Section IV: Core Memory
+            'first_feeling': 'core_memory.first_emotional',
+            'life_changing': 'core_memory.life_changing',
+            'comfort_watch': 'core_memory.comfort_watch',
+            'power_watch': 'core_memory.power_movie',
+            'date_impress': 'core_memory.impress_movie',
+            // Section V: World
+            'movie_universe': 'world.movie_universe',
+            'villain_relate': 'world.villain',
+            'forever_crush': 'world.forever_crush',
+            'crave_most': 'world.crave_in_movie',
+            'life_tagline': 'world.life_tagline',
+            // Section VI: Screen Ed
+            'tv_taste': 'screen_ed.tv_taste',
+            'fav_tv': 'screen_ed.favorite_tv_show',
+            'cinematography': 'screen_ed.cinematography',
+            'directors': 'screen_ed.favorite_directors',
+            'access_growing_up': 'screen_ed.access_growing_up',
+            // Section VII: Genres
+            'genres_love': 'genres.loved',
+            'turn_offs': 'genres.turn_offs',
+            'hated_film': 'genres.hated_but_loved',
+            // Section Swipe
+            'character_match': 'genres.twin_flame',
+            // Section VIII: Global
+            'foreign_films': 'global.foreign_films',
+            // Section IX: Fit
+            'selection_method': 'fit.pick_what_to_watch',
+            'discovery': 'fit.found_survey',
+            'email': 'fit.email',
+            'beta_test': 'fit.beta_test',
+            // top3_films, top3_series, top3_docs handled separately (combined into fit.hall_of_fame)
+          };
+
+          // Build answers array from fullResponses
+          const answers = [];
+          
+          // Handle top3 fields separately (they combine into one hall_of_fame answer)
+          let hallOfFameParts = [];
+          if (fullResponses.top3_films) hallOfFameParts.push(`TOP 3 FILMS:\n${fullResponses.top3_films}`);
+          if (fullResponses.top3_series) hallOfFameParts.push(`TOP 3 SERIES:\n${fullResponses.top3_series}`);
+          if (fullResponses.top3_docs) hallOfFameParts.push(`TOP 3 DOCS:\n${fullResponses.top3_docs}`);
+          if (hallOfFameParts.length > 0) {
+            answers.push({ questionKey: 'fit.hall_of_fame', answerText: hallOfFameParts.join('\n\n') });
+          }
+          
+          for (const [frontendKey, value] of Object.entries(fullResponses)) {
+            // Skip birth data and metadata (already in chart)
+            if (['date', 'time', 'latitude', 'longitude', 'city', 'country', 'username', 'time_accuracy', 'top3_films', 'top3_series', 'top3_docs'].includes(frontendKey)) {
+              continue;
+            }
+
+            const questionKey = keyMapping[frontendKey];
+            if (!questionKey) {
+              // Try to find question by matching key directly
+              const foundQuestion = await prisma.surveyQuestion.findFirst({
+                where: { key: frontendKey }
+              });
+              if (foundQuestion) {
+                // Direct match
+                if (Array.isArray(value)) {
+                  answers.push({ questionKey: frontendKey, optionValues: value });
+                } else if (value != null && value !== '') {
+                  answers.push({ questionKey: frontendKey, answerText: String(value) });
+                }
+              } else {
+                console.warn(`⚠️ No mapping or database question found for key: ${frontendKey}`);
+              }
+              continue;
+            }
+
+            // Map to database question key
+            if (Array.isArray(value)) {
+              answers.push({ questionKey, optionValues: value });
+            } else if (value != null && value !== '') {
+              answers.push({ questionKey, answerText: String(value) });
+            }
+          }
+
+          // Save answers (same logic as /api/survey/submit)
+          if (answers.length > 0) {
+            let savedCount = 0;
+            let optionCount = 0;
+
+            for (const a of answers) {
+              const key = a?.questionKey;
+              if (!key) continue;
+              
+              // Skip cosmic/meta keys (already in chart)
+              if (key.startsWith('cosmic.') || key.startsWith('meta.')) continue;
+
+              const q = await prisma.surveyQuestion.findUnique({
+                where: { key: a.questionKey },
+                include: { options: true },
+              });
+
+              if (!q) {
+                console.warn("⚠️ No question found for key:", a.questionKey);
+                continue;
+              }
+
+              const response = await prisma.surveyResponse.create({
+                data: {
+                  questionId: q.id,
+                  submissionId: submissionId,
+                  answerText: a.answerText ?? null,
+                  userId: userEmail || "anonymous",
+                },
+                select: { id: true },
+              });
+              savedCount++;
+
+              // Link options if provided
+              if (Array.isArray(a.optionValues) && a.optionValues.length > 0) {
+                const allowed = new Set(q.options.map(o => o.value));
+                const chosen = a.optionValues.filter(v => allowed.has(v));
+                for (const val of chosen) {
+                  const opt = q.options.find(o => o.value === val);
+                  if (!opt) continue;
+                  await prisma.surveyResponseOption.create({
+                    data: { responseId: response.id, optionId: opt.id },
+                  });
+                  optionCount++;
+                }
+              }
+            }
+
+            console.log(`✅ Saved ${savedCount} survey answers (${optionCount} options) for submission ${submissionId}`);
+          } else {
+            console.log(`ℹ️ No survey answers to save for submission ${submissionId}`);
+          }
+        } catch (answerError) {
+          // Non-fatal: log but don't break the flow
+          console.error('⚠️ Failed to save survey answers (non-fatal):', answerError.message);
+          // Continue - don't throw
+        }
+      }
     } else {
       // Fallback: Mock flow if DB save failed
       console.warn('⚠️ DB save failed, using in-memory mock for visualization.');
@@ -1653,7 +1821,7 @@ app.post('/api/dev/chart-to-svg', async (req, res) => {
       };
     }
 
-    // 3) Hand back URLs your FE can use immediately
+    // 4) Hand back URLs your FE can use immediately
     const svgUrl  = `${base}/reading/${submissionId}/chart.svg`;
     const htmlUrl = `${base}/reading/${submissionId}/badge`;
 
@@ -2321,10 +2489,11 @@ app.get('/reading/:submissionId/html', async (req, res) => {
       }
       .wrap { 
         width: 100%; 
-        max-width: 480px; 
+        max-width: 100%; 
         padding: 20px; 
         box-sizing: border-box; 
       }
+      * { box-sizing: border-box; }
       h1, h2, h3, .header-font { 
         font-family: 'Oswald', sans-serif; 
         text-transform: uppercase; 
@@ -2424,6 +2593,10 @@ app.get('/reading/:submissionId/html', async (req, res) => {
       .row { display: flex; border-bottom: 1px solid #ccc; padding: 8px 0; }
       .col { flex: 1; padding: 0 5px; }
       .border-left { border-left: 1px solid #ccc; }
+      @media (max-width: 768px) {
+        .wrap { padding: 10px; }
+        .card { padding: 15px; }
+      }
     `;
 
     let contentHtml = '';
@@ -2650,10 +2823,11 @@ app.get('/reading/:submissionId/html/2', async (req, res) => {
       }
       .wrap { 
         width: 100%; 
-        max-width: 480px; 
+        max-width: 100%; 
         padding: 20px; 
         box-sizing: border-box; 
       }
+      * { box-sizing: border-box; }
       h1, h2, h3, .header-font { 
         font-family: 'Oswald', sans-serif; 
         text-transform: uppercase; 
@@ -2736,6 +2910,10 @@ app.get('/reading/:submissionId/html/2', async (req, res) => {
       .page-break { margin-top: 50px; margin-bottom: 50px; }
       .img-responsive { max-width: 100%; height: auto; display: block; margin: 0 auto; }
       .star-decoration { width: 20px; height: 20px; display: inline-block; vertical-align: middle; margin: 0 5px; }
+      @media (max-width: 768px) {
+        .wrap { padding: 10px; }
+        .card { padding: 15px; }
+      }
     `;
 
     let contentHtml = '';
@@ -3008,7 +3186,7 @@ app.get('/reading/:submissionId/html/2', async (req, res) => {
                  get the true plot of your chart.
                </div>
              </div>
-             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
+             <div style="display: flex; flex-wrap: wrap; gap: 15px;">
            `;
            
            PLANETS_ORDER.forEach((pName, idx) => {
@@ -3038,7 +3216,7 @@ app.get('/reading/:submissionId/html/2', async (req, res) => {
                }
                
                contentHtml += `
-                 <div style="display: flex; flex-direction: column;">
+                 <div style="display: flex; flex-direction: column; flex: 1 1 calc(50% - 15px); min-width: 0; max-width: 100%;">
                     <h3 style="color:#FFFFFF; font-family:'Oswald',sans-serif; font-size:16px; font-weight:bold; margin:0 0 5px 0;">${pName} in the House</h3>
                     <div style="color:#B6DAF7; font-family:'Inter',sans-serif; font-size:12px; font-style:italic; margin-bottom:10px; opacity:0.8;">${PLANET_ARCHETYPES[pName] || ''}</div>
                     
@@ -3393,6 +3571,153 @@ const chartId =
     return res.status(500).json({ ok: false, error: e?.message ?? "Unknown error" });
   }
 });
+
+// === Save individual answer (for real-time saving) ==================
+app.post("/api/survey/save-answer", async (req, res) => {
+  try {
+    const { submissionId, questionKey: frontendKey, answerValue, userEmail } = req.body;
+
+    if (!submissionId) {
+      return res.status(400).json({ ok: false, error: "submissionId is required" });
+    }
+    if (!frontendKey) {
+      return res.status(400).json({ ok: false, error: "questionKey is required" });
+    }
+
+    // Verify submission exists
+    const submission = await prisma.surveySubmission.findUnique({
+      where: { id: submissionId },
+      select: { id: true },
+    });
+
+    if (!submission) {
+      return res.status(404).json({ ok: false, error: "Submission not found" });
+    }
+
+    // Map frontend key to database question key (same mapping as in /api/dev/chart-to-svg)
+    const keyMapping = {
+      // Section II: Casting
+      'gender': 'casting.gender',
+      'attraction_style': 'casting.attraction_style',
+      'cine_level': 'casting.love_o_meter',
+      'life_role': 'casting.movie_role',
+      'escapism_style': 'casting.escapism_style',
+      'first_crush': 'casting.first_obsession',
+      // Section III: Taste
+      'watch_habit': 'taste.how_you_watch',
+      'fav_era': 'taste.favorite_era',
+      'culture_background': 'taste.cultural_background',
+      'environment_growing_up': 'taste.childhood_environment',
+      // Section IV: Core Memory
+      'first_feeling': 'core_memory.first_emotional',
+      'life_changing': 'core_memory.life_changing',
+      'comfort_watch': 'core_memory.comfort_watch',
+      'power_watch': 'core_memory.power_movie',
+      'date_impress': 'core_memory.impress_movie',
+      // Section V: World
+      'movie_universe': 'world.movie_universe',
+      'villain_relate': 'world.villain',
+      'forever_crush': 'world.forever_crush',
+      'crave_most': 'world.crave_in_movie',
+      'life_tagline': 'world.life_tagline',
+      // Section VI: Screen Ed
+      'tv_taste': 'screen_ed.tv_taste',
+      'fav_tv': 'screen_ed.favorite_tv_show',
+      'cinematography': 'screen_ed.cinematography',
+      'directors': 'screen_ed.favorite_directors',
+      'access_growing_up': 'screen_ed.access_growing_up',
+      // Section VII: Genres
+      'genres_love': 'genres.loved',
+      'turn_offs': 'genres.turn_offs',
+      'hated_film': 'genres.hated_but_loved',
+      // Section Swipe
+      'character_match': 'genres.twin_flame',
+      // Section VIII: Global
+      'foreign_films': 'global.foreign_films',
+      // Section IX: Fit
+      'selection_method': 'fit.pick_what_to_watch',
+      'discovery': 'fit.found_survey',
+      'email': 'fit.email',
+      'beta_test': 'fit.beta_test',
+      // Special case: frontend can send 'hall_of_fame' directly (combined top3 fields)
+      'hall_of_fame': 'fit.hall_of_fame',
+    };
+
+    // Skip birth data and cosmic keys (already in chart)
+    if (['date', 'time', 'latitude', 'longitude', 'city', 'country', 'username', 'time_accuracy'].includes(frontendKey)) {
+      return res.json({ ok: true, skipped: true, reason: 'birth_data_or_cosmic' });
+    }
+
+    // Get database question key
+    const dbQuestionKey = keyMapping[frontendKey] || frontendKey;
+    
+    // Skip cosmic/meta keys
+    if (dbQuestionKey.startsWith('cosmic.') || dbQuestionKey.startsWith('meta.')) {
+      return res.json({ ok: true, skipped: true, reason: 'cosmic_or_meta' });
+    }
+
+    // Find question in database
+    const question = await prisma.surveyQuestion.findUnique({
+      where: { key: dbQuestionKey },
+      include: { options: true },
+    });
+
+    if (!question) {
+      return res.status(404).json({ ok: false, error: `Question not found for key: ${dbQuestionKey}` });
+    }
+
+    // Delete existing response for this question (upsert behavior)
+    await prisma.surveyResponse.deleteMany({
+      where: {
+        submissionId: submissionId,
+        questionId: question.id,
+      },
+    });
+
+    // Determine if answer is array (checkbox) or single value
+    const isArray = Array.isArray(answerValue);
+    const answerText = isArray ? null : (answerValue != null && answerValue !== '' ? String(answerValue) : null);
+    const optionValues = isArray ? answerValue.filter(v => v != null && v !== '') : [];
+
+    // Create new response
+    const response = await prisma.surveyResponse.create({
+      data: {
+        questionId: question.id,
+        submissionId: submissionId,
+        answerText: answerText,
+        userId: userEmail || "anonymous",
+      },
+      select: { id: true },
+    });
+
+    // Link options if provided
+    let optionCount = 0;
+    if (optionValues.length > 0) {
+      const allowed = new Set(question.options.map(o => o.value));
+      const chosen = optionValues.filter(v => allowed.has(v));
+      for (const val of chosen) {
+        const opt = question.options.find(o => o.value === val);
+        if (opt) {
+          await prisma.surveyResponseOption.create({
+            data: { responseId: response.id, optionId: opt.id },
+          });
+          optionCount++;
+        }
+      }
+    }
+
+    return res.json({
+      ok: true,
+      responseId: response.id,
+      questionKey: dbQuestionKey,
+      optionCount: optionCount,
+    });
+  } catch (e) {
+    console.error("💥 save-answer error:", e);
+    return res.status(500).json({ ok: false, error: e?.message ?? "Unknown error" });
+  }
+});
+
 // === Debug helper: list recent chart + submission IDs ==============
 app.get('/api/debug/latest', async (_req, res) => {
   try {

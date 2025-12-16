@@ -59,6 +59,13 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public'))); // Serve static files from public dir
 app.use('/assets', express.static(path.join(__dirname, 'public/assets'))); // Explicitly serve assets
 
+// Serve Astro-built frontend (if dist folder exists)
+const distPath = path.join(__dirname, 'dist');
+const indexPath = path.join(distPath, 'index.html');
+if (fs.existsSync(distPath)) {
+  app.use(express.static(distPath)); // Serve static files from Astro build
+}
+
 // --- EJS view engine setup ---
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
@@ -1034,7 +1041,14 @@ app.get('/dev/email/preview/:outboxId', async (req, res) => {
 });
 
 // root & health
-app.get('/', (_req, res) => res.send('OK'));
+// Serve frontend if dist exists, otherwise return OK (for health checks)
+app.get('/', (req, res) => {
+  if (fs.existsSync(indexPath)) {
+    res.sendFile(indexPath);
+  } else {
+    res.send('OK - Frontend not built');
+  }
+});
 
 app.get('/health', (req, res) => {
   const routes = listAllRoutes(app);
@@ -3752,6 +3766,28 @@ app.get('/__routes', (_req, res) => {
   res.json({ count: list.length, routes: list });
 });
 
+
+// Catch-all route for frontend (must be last, after all API routes)
+// This serves the Astro-built frontend for any route that doesn't match API routes
+if (fs.existsSync(distPath)) {
+  app.get('*', (req, res, next) => {
+    // Skip API routes, reading routes, health, and other backend routes
+    if (req.path.startsWith('/api') || 
+        req.path.startsWith('/reading') || 
+        req.path.startsWith('/health') ||
+        req.path.startsWith('/__routes') ||
+        req.path.startsWith('/ping') ||
+        req.path.startsWith('/dev')) {
+      return next(); // Let Express handle 404 for these
+    }
+    // Serve frontend for all other routes (client-side routing)
+    if (fs.existsSync(indexPath)) {
+      res.sendFile(indexPath);
+    } else {
+      next();
+    }
+  });
+}
 
 // start server (only when run directly)
 if (require.main === module) {

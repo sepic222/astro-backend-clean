@@ -24,3 +24,8 @@ node_modules/
 
 # Experimental/test projects
 fateflix-badge-app/
+
+# Debug and test output files
+debug_page*.html
+*-result*.json
+no-time-result*.json

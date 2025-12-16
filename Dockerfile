@@ -14,14 +14,16 @@ RUN npm ci
 # Copy source
 COPY . .
 
-ENV NODE_ENV=production
-ENV PORT=3001
-
 # Generate Prisma client at build time
 RUN npx prisma generate || true
 
 # Build Astro frontend (needs dev dependencies like TypeScript)
+# Note: NODE_ENV not set here - build tools work better without production mode
 RUN npx astro build || true
+
+# Set production environment after build completes
+ENV NODE_ENV=production
+ENV PORT=3001
 
 # Run migrations, seed database, then launch server
 # Seed is idempotent (uses upsert), safe to run on every deploy

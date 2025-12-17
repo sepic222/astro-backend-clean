@@ -1060,6 +1060,67 @@ app.get('/_whoami', (_req, res) => {
   res.json({ cwd: process.cwd(), __dirname, routesCount: (app._router?.stack?.length) || 0 });
 });
 
+// === Database seed status check ====================
+app.get('/api/admin/seed-status', async (req, res) => {
+  try {
+    const sectionsCount = await prisma.surveySection.count();
+    const questionsCount = await prisma.surveyQuestion.count();
+    const optionsCount = await prisma.surveyOption.count();
+    
+    res.json({
+      ok: true,
+      seeded: questionsCount > 0,
+      counts: {
+        sections: sectionsCount,
+        questions: questionsCount,
+        options: optionsCount
+      }
+    });
+  } catch (error) {
+    console.error('❌ Seed status check failed:', error);
+    res.status(500).json({ 
+      ok: false, 
+      error: error.message
+    });
+  }
+});
+
+// === Database seed endpoint (manual trigger) ====================
+app.post('/api/admin/seed', async (req, res) => {
+  const { exec } = require('child_process');
+  const { promisify } = require('util');
+  const execAsync = promisify(exec);
+  
+  try {
+    console.log('🌱 Starting manual database seed...');
+    const { stdout, stderr } = await execAsync('npm run seed', {
+      cwd: __dirname,
+      env: process.env,
+      maxBuffer: 1024 * 1024 * 10 // 10MB buffer
+    });
+    
+    if (stderr && !stderr.includes('Seed complete')) {
+      console.error('⚠️ Seed warnings:', stderr);
+    }
+    
+    console.log('✅ Seed completed successfully');
+    res.json({ 
+      ok: true, 
+      message: 'Database seeded successfully',
+      output: stdout,
+      warnings: stderr || null
+    });
+  } catch (error) {
+    console.error('❌ Seed failed:', error);
+    res.status(500).json({ 
+      ok: false, 
+      error: error.message,
+      stdout: error.stdout || null,
+      stderr: error.stderr || null
+    });
+  }
+});
+
 // tiny OpenAI smoke test
 if (typeof openai !== 'undefined' && openai) {
   app.get('/api/ai/test', async (req, res) => {

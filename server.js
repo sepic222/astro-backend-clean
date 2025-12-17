@@ -1085,6 +1085,34 @@ app.get('/api/admin/seed-status', async (req, res) => {
   }
 });
 
+// === Database response counts check ====================
+app.get('/api/admin/response-counts', async (req, res) => {
+  try {
+    const submissionsCount = await prisma.surveySubmission.count();
+    const responsesCount = await prisma.surveyResponse.count();
+    const responseOptionsCount = await prisma.surveyResponseOption.count();
+    const chartsCount = await prisma.chart.count();
+    const readingsCount = await prisma.reading.count();
+    
+    res.json({
+      ok: true,
+      counts: {
+        submissions: submissionsCount,
+        responses: responsesCount,
+        responseOptions: responseOptionsCount,
+        charts: chartsCount,
+        readings: readingsCount
+      }
+    });
+  } catch (error) {
+    console.error('❌ Response counts check failed:', error);
+    res.status(500).json({ 
+      ok: false, 
+      error: error.message
+    });
+  }
+});
+
 // === Database seed endpoint (manual trigger) ====================
 app.post('/api/admin/seed', async (req, res) => {
   const { exec } = require('child_process');

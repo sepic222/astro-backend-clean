@@ -1094,6 +1094,24 @@ app.get('/api/admin/response-counts', async (req, res) => {
     const chartsCount = await prisma.chart.count();
     const readingsCount = await prisma.reading.count();
     
+    // Get submissions with response counts
+    const submissionsWithResponses = await prisma.surveySubmission.findMany({
+      select: {
+        id: true,
+        userEmail: true,
+        createdAt: true,
+        _count: {
+          select: {
+            responses: true
+          }
+        }
+      },
+      orderBy: {
+        createdAt: 'desc'
+      },
+      take: 10
+    });
+    
     res.json({
       ok: true,
       counts: {
@@ -1102,10 +1120,80 @@ app.get('/api/admin/response-counts', async (req, res) => {
         responseOptions: responseOptionsCount,
         charts: chartsCount,
         readings: readingsCount
-      }
+      },
+      recentSubmissions: submissionsWithResponses.map(s => ({
+        id: s.id,
+        email: s.userEmail,
+        createdAt: s.createdAt,
+        responseCount: s._count.responses
+      }))
     });
   } catch (error) {
     console.error('❌ Response counts check failed:', error);
+    res.status(500).json({ 
+      ok: false, 
+      error: error.message
+    });
+  }
+});
+
+// === Check specific submission ====================
+app.get('/api/admin/submission/:submissionId', async (req, res) => {
+  try {
+    const { submissionId } = req.params;
+    
+    const submission = await prisma.surveySubmission.findUnique({
+      where: { id: submissionId },
+      include: {
+        responses: {
+          include: {
+            question: {
+              select: { key: true, text: true }
+            },
+            responseOptions: {
+              include: {
+                option: {
+                  select: { value: true, label: true }
+                }
+              }
+            }
+          }
+        },
+        chart: {
+          select: { id: true, createdAt: true }
+        },
+        reading: {
+          select: { id: true, createdAt: true }
+        }
+      }
+    });
+    
+    if (!submission) {
+      return res.status(404).json({ ok: false, error: 'Submission not found' });
+    }
+    
+    res.json({
+      ok: true,
+      submission: {
+        id: submission.id,
+        userEmail: submission.userEmail,
+        createdAt: submission.createdAt,
+        hasChart: !!submission.chart,
+        hasReading: !!submission.reading,
+        responseCount: submission.responses.length,
+        responses: submission.responses.map(r => ({
+          questionKey: r.question.key,
+          questionText: r.question.text,
+          answerText: r.answerText,
+          options: r.responseOptions.map(ro => ({
+            value: ro.option.value,
+            label: ro.option.label
+          }))
+        }))
+      }
+    });
+  } catch (error) {
+    console.error('❌ Submission check failed:', error);
     res.status(500).json({ 
       ok: false, 
       error: error.message

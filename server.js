@@ -16,10 +16,10 @@ function loadJson(p) {
 }
 const CONTENT_DIR = path.join(__dirname, 'content', 'readings');
 const SECTION_INTROS = loadJson(path.join(CONTENT_DIR, 'section_intros.json'));
-const ASCENDANT_TEXT  = loadJson(path.join(CONTENT_DIR, 'ascendant.json'));
-const SUN_SIGN_TEXT   = loadJson(path.join(CONTENT_DIR, 'sun_sign.json'));
-const SUN_HOUSE_TEXT  = loadJson(path.join(CONTENT_DIR, 'sun_house.json'));
-const MOON_SIGN_TEXT  = loadJson(path.join(CONTENT_DIR, 'moon_sign.json'));
+const ASCENDANT_TEXT = loadJson(path.join(CONTENT_DIR, 'ascendant.json'));
+const SUN_SIGN_TEXT = loadJson(path.join(CONTENT_DIR, 'sun_sign.json'));
+const SUN_HOUSE_TEXT = loadJson(path.join(CONTENT_DIR, 'sun_house.json'));
+const MOON_SIGN_TEXT = loadJson(path.join(CONTENT_DIR, 'moon_sign.json'));
 const MOON_HOUSE_TEXT = loadJson(path.join(CONTENT_DIR, 'moon_house.json'));
 const CHART_RULER_TEXT = loadJson(path.join(CONTENT_DIR, 'chart_ruler.json'));
 const CHART_RULER_HOUSE_TEXT = loadJson(path.join(CONTENT_DIR, 'chart_ruler_house.json'));
@@ -108,9 +108,9 @@ if (process.env.OPENAI_API_KEY) {
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const MOCK_DB = {
-  'dev-badge-test': { 
-    submissionId: 'dev-badge-test', 
-    reading: { 
+  'dev-badge-test': {
+    submissionId: 'dev-badge-test',
+    reading: {
       id: 'mock-reading-1',
       submissionId: 'dev-badge-test',
       createdAt: new Date('2025-11-30'),
@@ -121,7 +121,7 @@ const MOCK_DB = {
       username: 'cosmic-tester',
       userEmail: 'test@fateflix.app',
       chartId: 'mock-chart-1'
-    }, 
+    },
     chart: {
       id: 'mock-chart-1',
       chartRulerPlanet: 'Mercury',
@@ -260,8 +260,8 @@ function normalize360(val) {
 }
 
 const ZODIAC_SIGNS = [
-  "Aries","Taurus","Gemini","Cancer","Leo","Virgo",
-  "Libra","Scorpio","Sagittarius","Capricorn","Aquarius","Pisces"
+  "Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",
+  "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces"
 ];
 
 function signFromLongitude(lon) {
@@ -310,8 +310,8 @@ function pick(map, key, fallback = '') {
 // Builds the reading text using your JSON blocks
 function buildReadingFromContent(chartDto) {
   // chartDto should contain: ascendantSign, sunSign, sunHouse, chartRulerPlanet, chartRulerHouse, etc.
-  const ascSign  = chartDto.ascendantSign || chartDto.risingSign || '';
-  const sunSign  = chartDto.sunSign || '';
+  const ascSign = chartDto.ascendantSign || chartDto.risingSign || '';
+  const sunSign = chartDto.sunSign || '';
   const sunHouse = String(chartDto.sunHouse || '');
   const moonSign = chartDto.moonSign || (chartDto.planets?.moon?.sign || '');
   const moonHouse = String(chartDto.moonHouse || (chartDto.planets?.moon?.house || ''));
@@ -325,24 +325,24 @@ function buildReadingFromContent(chartDto) {
   if (SECTION_INTROS.ascendant) parts.push(SECTION_INTROS.ascendant.trim());
   parts.push(pick(ASCENDANT_TEXT, ascSign, ''));
 
-// Chart ruler
-if (SECTION_INTROS.chart_ruler) parts.push(SECTION_INTROS.chart_ruler.trim());
-const chartRulerPlanet = chartDto.chartRulerPlanet || '';
-const chartRulerHouse = String(chartDto.chartRulerHouse || '');
-if (chartRulerPlanet) {
-  // chart_ruler.json now uses zodiac sign names as keys (e.g., "Aries", "Taurus")
-  // We need to get the sign that the chart ruler planet is IN
-  const chartRulerPlanetLower = chartRulerPlanet.toLowerCase();
-  const chartRulerSign = chartDto[`${chartRulerPlanetLower}Sign`] || chartDto.planets?.[chartRulerPlanetLower]?.sign || '';
-  
-  if (chartRulerSign) {
-    const rulerText = pick(CHART_RULER_TEXT, chartRulerSign, '');
-    if (rulerText) parts.push(rulerText);
+  // Chart ruler
+  if (SECTION_INTROS.chart_ruler) parts.push(SECTION_INTROS.chart_ruler.trim());
+  const chartRulerPlanet = chartDto.chartRulerPlanet || '';
+  const chartRulerHouse = String(chartDto.chartRulerHouse || '');
+  if (chartRulerPlanet) {
+    // chart_ruler.json now uses zodiac sign names as keys (e.g., "Aries", "Taurus")
+    // We need to get the sign that the chart ruler planet is IN
+    const chartRulerPlanetLower = chartRulerPlanet.toLowerCase();
+    const chartRulerSign = chartDto[`${chartRulerPlanetLower}Sign`] || chartDto.planets?.[chartRulerPlanetLower]?.sign || '';
+
+    if (chartRulerSign) {
+      const rulerText = pick(CHART_RULER_TEXT, chartRulerSign, '');
+      if (rulerText) parts.push(rulerText);
+    }
   }
-}
-if (chartRulerHouse) {
-  parts.push(pick(CHART_RULER_HOUSE_TEXT, chartRulerHouse, ''));
-}
+  if (chartRulerHouse) {
+    parts.push(pick(CHART_RULER_HOUSE_TEXT, chartRulerHouse, ''));
+  }
 
   // Sun sign
   if (SECTION_INTROS.sun_sign) parts.push(SECTION_INTROS.sun_sign.trim());
@@ -363,19 +363,19 @@ if (chartRulerHouse) {
   // Mercury → Pluto
   const PLANETS = [
     ['mercury', MERCURY_SIGN_TEXT, MERCURY_HOUSE_TEXT],
-    ['venus',   VENUS_SIGN_TEXT,   VENUS_HOUSE_TEXT],
-    ['mars',    MARS_SIGN_TEXT,    MARS_HOUSE_TEXT],
+    ['venus', VENUS_SIGN_TEXT, VENUS_HOUSE_TEXT],
+    ['mars', MARS_SIGN_TEXT, MARS_HOUSE_TEXT],
     ['jupiter', JUPITER_SIGN_TEXT, JUPITER_HOUSE_TEXT],
-    ['saturn',  SATURN_SIGN_TEXT,  SATURN_HOUSE_TEXT],
-    ['uranus',  URANUS_SIGN_TEXT,  URANUS_HOUSE_TEXT],
+    ['saturn', SATURN_SIGN_TEXT, SATURN_HOUSE_TEXT],
+    ['uranus', URANUS_SIGN_TEXT, URANUS_HOUSE_TEXT],
     ['neptune', NEPTUNE_SIGN_TEXT, NEPTUNE_HOUSE_TEXT],
-    ['pluto',   PLUTO_SIGN_TEXT,   PLUTO_HOUSE_TEXT],
+    ['pluto', PLUTO_SIGN_TEXT, PLUTO_HOUSE_TEXT],
   ];
 
   for (const [name, SIGN_TEXT, HOUSE_TEXT] of PLANETS) {
-    const signVal  = chartDto[`${name}Sign`]  || chartDto.planets?.[name]?.sign  || '';
+    const signVal = chartDto[`${name}Sign`] || chartDto.planets?.[name]?.sign || '';
     const houseVal = String(chartDto[`${name}House`] || chartDto.planets?.[name]?.house || '');
-    if (SECTION_INTROS[`${name}_sign`])  parts.push(SECTION_INTROS[`${name}_sign`].trim());
+    if (SECTION_INTROS[`${name}_sign`]) parts.push(SECTION_INTROS[`${name}_sign`].trim());
     parts.push(pick(SIGN_TEXT, signVal, ''));
     if (SECTION_INTROS[`${name}_house`]) parts.push(SECTION_INTROS[`${name}_house`].trim());
     parts.push(pick(HOUSE_TEXT, houseVal, ''));
@@ -428,7 +428,7 @@ async function saveChartToDB(input, output) {
       neptuneHouse: output?.planets?.neptune?.house ?? null,
       plutoSign: output?.planets?.pluto?.sign ?? null,
       plutoHouse: output?.planets?.pluto?.house ?? null,
-      chartRulerPlanet: normalizePlanetName(output?.chartRulerPlanet) ?? null,      
+      chartRulerPlanet: normalizePlanetName(output?.chartRulerPlanet) ?? null,
       chartRulerHouse: output?.chartRulerHouse ?? null,
       northNodeHouse: output?.nodesAndChiron?.northNode?.house ?? null,
       chironHouse: output?.nodesAndChiron?.chiron?.house ?? null,
@@ -447,7 +447,7 @@ async function saveChartToDB(input, output) {
 // BADGE HTML BUILDER
 // --------------------------------------------------------------
 function buildBadgeHtml(reading) {
-  const creationDate = reading.createdAt 
+  const creationDate = reading.createdAt
     ? new Date(reading.createdAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
     : 'Unknown Date';
   const submissionID = reading.submissionId || reading.id || 'N/A';
@@ -667,28 +667,28 @@ function buildChartWheelHtml(chartDTO) {
   // Calculate aspects between planets
   const aspectData = [];
   const planetList = Object.entries(planets);
-  
+
   for (let i = 0; i < planetList.length; i++) {
     for (let j = i + 1; j < planetList.length; j++) {
       const [name1, data1] = planetList[i];
       const [name2, data2] = planetList[j];
       const deg1 = data1.longitude || 0;
       const deg2 = data2.longitude || 0;
-      
+
       // Calculate angular distance
       let diff = Math.abs(deg1 - deg2);
       if (diff > 180) diff = 360 - diff;
-      
+
       // Check for major aspects (with 8-degree orb)
       const orb = 8;
       let aspectType = null;
-      
+
       if (Math.abs(diff - 0) <= orb) aspectType = 'Conjunction';
       else if (Math.abs(diff - 60) <= orb) aspectType = 'Sextile';
       else if (Math.abs(diff - 90) <= orb) aspectType = 'Square';
       else if (Math.abs(diff - 120) <= orb) aspectType = 'Trine';
       else if (Math.abs(diff - 180) <= orb) aspectType = 'Opposition';
-      
+
       if (aspectType) {
         aspectData.push({
           p1: name1.charAt(0).toUpperCase() + name1.slice(1),
@@ -884,7 +884,7 @@ function buildChartWheelHtml(chartDTO) {
 app.get('/dev/no-time', (req, res) => {
   const submissionId = 'dev-no-time-' + Date.now();
   const chartId = 'dev-chart-' + Date.now();
-  
+
   // Insert into mock DB
   MOCK_DB[submissionId] = {
     reading: {
@@ -909,7 +909,7 @@ app.get('/dev/no-time', (req, res) => {
       }
     }
   };
-  
+
   // Redirect to the HTML view (page 2 is where the no-time logic lives)
   res.redirect(`/reading/${submissionId}/html/2`);
 });
@@ -917,7 +917,7 @@ app.get('/dev/no-time', (req, res) => {
 app.get('/dev/chart-ruler', (req, res) => {
   const submissionId = 'dev-chart-ruler-' + Date.now();
   const chartId = 'dev-chart-ruler-' + Date.now();
-  
+
   // Mock chart with ascendant (Cancer) to show Chart Ruler section
   // Cancer's ruler is the Moon
   MOCK_DB[submissionId] = {
@@ -939,7 +939,7 @@ app.get('/dev/chart-ruler', (req, res) => {
       chartRulerPlanet: 'Moon',
       chartRulerHouse: 11,
       rawChart: {
-        angles: { 
+        angles: {
           ascendantSign: 'Cancer',
           ascendantDeg: 120,
           mcSign: 'Aries',
@@ -961,20 +961,20 @@ app.get('/dev/chart-ruler', (req, res) => {
       }
     }
   };
-  
+
   // Redirect to the HTML view (page 2 is where the chart ruler logic lives)
   res.redirect(`/reading/${submissionId}/html/2`);
 });
 
 // Dev route for Badge preview (uses EJS template)
 app.get('/dev/badge', (req, res) => {
-  const creationDate = new Date().toLocaleDateString('en-US', { 
-    month: 'long', 
-    day: 'numeric', 
-    year: 'numeric' 
+  const creationDate = new Date().toLocaleDateString('en-US', {
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric'
   });
   const submissionID = 'dev-badge-' + Date.now();
-  
+
   res.render('badge', { creationDate, submissionID });
 });
 
@@ -994,7 +994,7 @@ app.get('/dev/chart-wheel', (req, res) => {
       pluto: { longitude: 185, sign: 'Libra' }
     }
   };
-  
+
   const html = `<!DOCTYPE html>
   <html lang="en">
   <head>
@@ -1026,7 +1026,7 @@ app.get('/dev/chart-wheel', (req, res) => {
     </div>
   </body>
   </html>`;
-  
+
   res.set('Content-Type', 'text/html; charset=utf-8');
   res.send(html);
 });
@@ -1049,8 +1049,8 @@ app.get('/health', (req, res) => {
     ok: true,
     status: 'healthy',
     build: process.env.RAILWAY_GIT_COMMIT_SHA
-        || process.env.VERCEL_GIT_COMMIT_SHA
-        || 'unknown',
+      || process.env.VERCEL_GIT_COMMIT_SHA
+      || 'unknown',
     cwd: process.cwd(),
     __dirname,
     routesCount: routes.length
@@ -1066,7 +1066,7 @@ app.get('/api/admin/seed-status', async (req, res) => {
     const sectionsCount = await prisma.surveySection.count();
     const questionsCount = await prisma.surveyQuestion.count();
     const optionsCount = await prisma.surveyOption.count();
-    
+
     res.json({
       ok: true,
       seeded: questionsCount > 0,
@@ -1078,8 +1078,8 @@ app.get('/api/admin/seed-status', async (req, res) => {
     });
   } catch (error) {
     console.error('❌ Seed status check failed:', error);
-    res.status(500).json({ 
-      ok: false, 
+    res.status(500).json({
+      ok: false,
       error: error.message
     });
   }
@@ -1093,7 +1093,7 @@ app.get('/api/admin/response-counts', async (req, res) => {
     const responseOptionsCount = await prisma.surveyResponseOption.count();
     const chartsCount = await prisma.chart.count();
     const readingsCount = await prisma.reading.count();
-    
+
     // Get submissions with response counts
     const submissionsWithResponses = await prisma.surveySubmission.findMany({
       select: {
@@ -1111,7 +1111,7 @@ app.get('/api/admin/response-counts', async (req, res) => {
       },
       take: 10
     });
-    
+
     res.json({
       ok: true,
       counts: {
@@ -1130,8 +1130,8 @@ app.get('/api/admin/response-counts', async (req, res) => {
     });
   } catch (error) {
     console.error('❌ Response counts check failed:', error);
-    res.status(500).json({ 
-      ok: false, 
+    res.status(500).json({
+      ok: false,
       error: error.message
     });
   }
@@ -1141,7 +1141,7 @@ app.get('/api/admin/response-counts', async (req, res) => {
 app.get('/api/admin/submission/:submissionId', async (req, res) => {
   try {
     const { submissionId } = req.params;
-    
+
     const submission = await prisma.surveySubmission.findUnique({
       where: { id: submissionId },
       include: {
@@ -1167,11 +1167,11 @@ app.get('/api/admin/submission/:submissionId', async (req, res) => {
         }
       }
     });
-    
+
     if (!submission) {
       return res.status(404).json({ ok: false, error: 'Submission not found' });
     }
-    
+
     res.json({
       ok: true,
       submission: {
@@ -1194,8 +1194,8 @@ app.get('/api/admin/submission/:submissionId', async (req, res) => {
     });
   } catch (error) {
     console.error('❌ Submission check failed:', error);
-    res.status(500).json({ 
-      ok: false, 
+    res.status(500).json({
+      ok: false,
       error: error.message
     });
   }
@@ -1206,7 +1206,7 @@ app.post('/api/admin/seed', async (req, res) => {
   const { exec } = require('child_process');
   const { promisify } = require('util');
   const execAsync = promisify(exec);
-  
+
   try {
     console.log('🌱 Starting manual database seed...');
     const { stdout, stderr } = await execAsync('npm run seed', {
@@ -1214,22 +1214,22 @@ app.post('/api/admin/seed', async (req, res) => {
       env: process.env,
       maxBuffer: 1024 * 1024 * 10 // 10MB buffer
     });
-    
+
     if (stderr && !stderr.includes('Seed complete')) {
       console.error('⚠️ Seed warnings:', stderr);
     }
-    
+
     console.log('✅ Seed completed successfully');
-    res.json({ 
-      ok: true, 
+    res.json({
+      ok: true,
       message: 'Database seeded successfully',
       output: stdout,
       warnings: stderr || null
     });
   } catch (error) {
     console.error('❌ Seed failed:', error);
-    res.status(500).json({ 
-      ok: false, 
+    res.status(500).json({
+      ok: false,
       error: error.message,
       stdout: error.stdout || null,
       stderr: error.stderr || null
@@ -1289,12 +1289,12 @@ app.post('/api/birth-chart-swisseph', async (req, res) => {
     }
 
     // Convert input date/time (Berlin zone) → UTC
-const birthDT = DateTime.fromISO(`${date}T${time}`, { zone: 'Europe/Berlin' });
-if (!birthDT.isValid) {
-  return res.status(400).json({ success: false, error: 'Invalid date or time.' });
-}
-const birthUTC = birthDT.toUTC().toJSDate();
-const tzOffsetMinutes = birthDT.offset; // e.g. +120 or +60 depending on DST
+    const birthDT = DateTime.fromISO(`${date}T${time}`, { zone: 'Europe/Berlin' });
+    if (!birthDT.isValid) {
+      return res.status(400).json({ success: false, error: 'Invalid date or time.' });
+    }
+    const birthUTC = birthDT.toUTC().toJSDate();
+    const tzOffsetMinutes = birthDT.offset; // e.g. +120 or +60 depending on DST
 
 
     const jd = getJulianDayFromDate(birthUTC);
@@ -1320,7 +1320,7 @@ const tzOffsetMinutes = birthDT.offset; // e.g. +120 or +60 depending on DST
     });
 
     const ascendant = normalize360(housesRes.ascendant);
-    const mc        = normalize360(housesRes.mc);
+    const mc = normalize360(housesRes.mc);
     const housesDeg = (housesRes.house || []).map(normalize360);
     const houseSigns = housesDeg.map(signFromLongitude);
 
@@ -1330,7 +1330,7 @@ const tzOffsetMinutes = birthDT.offset; // e.g. +120 or +60 depending on DST
     function houseOf(longitude) {
       for (let i = 0; i < 12; i++) {
         const start = housesDeg[i];
-        const end   = housesDeg[(i + 1) % 12];
+        const end = housesDeg[(i + 1) % 12];
         if (start <= end) { if (longitude >= start && longitude < end) return i + 1; }
         else { if (longitude >= start || longitude < end) return i + 1; }
       }
@@ -1341,49 +1341,49 @@ const tzOffsetMinutes = birthDT.offset; // e.g. +120 or +60 depending on DST
     for (const [planet, data] of Object.entries(planets)) {
       const house = houseOf(data.longitude);
       planetsInHouses[planet] = house;
-      data.sign  = signFromLongitude(data.longitude);
+      data.sign = signFromLongitude(data.longitude);
       data.house = house;
     }
-// --- Nodes & Chiron (compute AFTER housesDeg + houseOf exist) ---
-// NOTE: Chiron needs asteroid ephemeris files (e.g. seas_18.se1). If the file is missing,
-// we skip Chiron gracefully so the rest of the chart can compute.
-const extraBodies = {
-  northNode: swisseph.SE_TRUE_NODE,  // true node (works without asteroid files)
-  chiron:    swisseph.SE_CHIRON      // requires seas_*.se1 (asteroid ephe)
-};
-
-const nodesAndChiron = {};
-for (const [name, code] of Object.entries(extraBodies)) {
-  try {
-    const result = await new Promise((resolve, reject) => {
-      swisseph.swe_calc_ut(jd, code, swisseph.SEFLG_SWIEPH, (r) => {
-        if (r.error) reject(new Error(r.error)); else resolve(r);
-      });
-    });
-    const lon = normalize360(result.longitude);
-    const house = houseOf(lon);
-    nodesAndChiron[name] = {
-      longitude: lon,
-      sign: signFromLongitude(lon),
-      house
+    // --- Nodes & Chiron (compute AFTER housesDeg + houseOf exist) ---
+    // NOTE: Chiron needs asteroid ephemeris files (e.g. seas_18.se1). If the file is missing,
+    // we skip Chiron gracefully so the rest of the chart can compute.
+    const extraBodies = {
+      northNode: swisseph.SE_TRUE_NODE,  // true node (works without asteroid files)
+      chiron: swisseph.SE_CHIRON      // requires seas_*.se1 (asteroid ephe)
     };
-  } catch (err) {
-    // If Chiron fails due to missing `seas_*.se1`, log and continue.
-    console.warn(`⚠️ Skipping ${name}:`, err.message);
-  }
-}
 
-// merge whatever we got into planets-style structures
-if (nodesAndChiron.northNode) {
-  planets.northNode = nodesAndChiron.northNode;
-  planetsInHouses.northNode = nodesAndChiron.northNode.house;
-}
-if (nodesAndChiron.chiron) {
-  planets.chiron = nodesAndChiron.chiron;
-  planetsInHouses.chiron = nodesAndChiron.chiron.house;
-}
+    const nodesAndChiron = {};
+    for (const [name, code] of Object.entries(extraBodies)) {
+      try {
+        const result = await new Promise((resolve, reject) => {
+          swisseph.swe_calc_ut(jd, code, swisseph.SEFLG_SWIEPH, (r) => {
+            if (r.error) reject(new Error(r.error)); else resolve(r);
+          });
+        });
+        const lon = normalize360(result.longitude);
+        const house = houseOf(lon);
+        nodesAndChiron[name] = {
+          longitude: lon,
+          sign: signFromLongitude(lon),
+          house
+        };
+      } catch (err) {
+        // If Chiron fails due to missing `seas_*.se1`, log and continue.
+        console.warn(`⚠️ Skipping ${name}:`, err.message);
+      }
+    }
+
+    // merge whatever we got into planets-style structures
+    if (nodesAndChiron.northNode) {
+      planets.northNode = nodesAndChiron.northNode;
+      planetsInHouses.northNode = nodesAndChiron.northNode.house;
+    }
+    if (nodesAndChiron.chiron) {
+      planets.chiron = nodesAndChiron.chiron;
+      planetsInHouses.chiron = nodesAndChiron.chiron.house;
+    }
     const descendantDeg = (ascendant + 180) % 360;
-    const icDeg         = (mc + 180) % 360;
+    const icDeg = (mc + 180) % 360;
     const signOf = (deg) => ZODIAC_SIGNS[Math.floor((((deg % 360) + 360) % 360) / 30)];
     const ascendantSign = signOf(ascendant);
 
@@ -1392,7 +1392,7 @@ if (nodesAndChiron.chiron) {
     const chartRulerHouse = chartRulerPlanet
       ? (planetsInHouses[chartRulerPlanet.toLowerCase()] ?? null)
       : null;
-      console.log('🔎 chartRuler computed:', { ascendantSign, chartRulerPlanet, chartRulerHouse });
+    console.log('🔎 chartRuler computed:', { ascendantSign, chartRulerPlanet, chartRulerHouse });
     const payload = {
       success: true,
       method: 'swisseph',
@@ -1449,38 +1449,39 @@ if (nodesAndChiron.chiron) {
     // ensure a meta bag exists
     payload.meta = payload.meta || {};
     payload.meta.timeAccuracy = req.body?.timeAccuracy ?? null;
- const savedChartId = await saveChartToDB(
+    const savedChartId = await saveChartToDB(
       {
         userEmail: req.body?.userEmail ?? null,
         city: req.body?.city ?? null,
         country: req.body?.country ?? null,
         timeAccuracy: req.body?.timeAccuracy ?? null,
         date, time, latitude, longitude,
-        birthDateTimeUtc: birthUTC.toISOString(),tzOffsetMinutes,
+        birthDateTimeUtc: birthUTC.toISOString(), tzOffsetMinutes,
         northNodeHouse: nodesAndChiron.northNode?.house ?? null,
-        chironHouse: nodesAndChiron.chiron?.house ?? null,},
+        chironHouse: nodesAndChiron.chiron?.house ?? null,
+      },
       payload
     );
 
     payload.savedChartId = savedChartId;
     // --- debug: show key chart bits in the server log (POST) ---
-try {
-  const planetSummary = Object.fromEntries(
-    Object.entries(planets || {}).map(([name, p]) => [
-      name,
-      { sign: p.sign, house: p.house }
-    ])
-  );
-  console.log('🪐 [POST] chart computed:', {
-    jd,
-    angles: payload.angles,
-    planets: planetSummary,
-  });
-  console.log('💾 savedChartId:', savedChartId ?? null);
-} catch (e) {
-  console.warn('chart debug log failed (POST):', e?.message);
-}
-// return res.json (payload)is response that ends the route
+    try {
+      const planetSummary = Object.fromEntries(
+        Object.entries(planets || {}).map(([name, p]) => [
+          name,
+          { sign: p.sign, house: p.house }
+        ])
+      );
+      console.log('🪐 [POST] chart computed:', {
+        jd,
+        angles: payload.angles,
+        planets: planetSummary,
+      });
+      console.log('💾 savedChartId:', savedChartId ?? null);
+    } catch (e) {
+      console.warn('chart debug log failed (POST):', e?.message);
+    }
+    // return res.json (payload)is response that ends the route
     return res.json(payload);
   } catch (e) {
     console.error("💥 submit error:", e);
@@ -1539,7 +1540,7 @@ app.get('/api/birth-chart-swisseph', async (req, res) => {
     });
 
     const ascendant = normalize360(housesRes.ascendant);
-    const mc        = normalize360(housesRes.mc);
+    const mc = normalize360(housesRes.mc);
     const housesDeg = (housesRes.house || []).map(normalize360);
     const houseSigns = housesDeg.map(signFromLongitude);
 
@@ -1549,7 +1550,7 @@ app.get('/api/birth-chart-swisseph', async (req, res) => {
     function houseOf(longitude) {
       for (let i = 0; i < 12; i++) {
         const start = housesDeg[i];
-        const end   = housesDeg[(i + 1) % 12];
+        const end = housesDeg[(i + 1) % 12];
         if (start <= end) { if (longitude >= start && longitude < end) return i + 1; }
         else { if (longitude >= start || longitude < end) return i + 1; }
       }
@@ -1560,14 +1561,14 @@ app.get('/api/birth-chart-swisseph', async (req, res) => {
     for (const [planet, data] of Object.entries(planets)) {
       const house = houseOf(data.longitude);
       planetsInHouses[planet] = house;
-      data.sign  = signFromLongitude(data.longitude);
+      data.sign = signFromLongitude(data.longitude);
       data.house = house;
     }
 
     // --- Nodes & Chiron (compute AFTER housesDeg + houseOf exist) ---
     const extraBodies = {
       northNode: swisseph.SE_TRUE_NODE,
-      chiron:    swisseph.SE_CHIRON
+      chiron: swisseph.SE_CHIRON
     };
 
     const nodesAndChiron = {};
@@ -1601,7 +1602,7 @@ app.get('/api/birth-chart-swisseph', async (req, res) => {
     }
 
     const descendantDeg = (ascendant + 180) % 360;
-    const icDeg         = (mc + 180) % 360;
+    const icDeg = (mc + 180) % 360;
     const signOf = (deg) => ZODIAC_SIGNS[Math.floor((((deg % 360) + 360) % 360) / 30)];
     const ascendantSign = signOf(ascendant);
 
@@ -1610,7 +1611,7 @@ app.get('/api/birth-chart-swisseph', async (req, res) => {
     const chartRulerHouse = chartRulerPlanet
       ? (planetsInHouses[chartRulerPlanet.toLowerCase()] ?? null)
       : null;
-      console.log('🔎 chartRuler computed:', { ascendantSign, chartRulerPlanet, chartRulerHouse });
+    console.log('🔎 chartRuler computed:', { ascendantSign, chartRulerPlanet, chartRulerHouse });
     const payload = {
       success: true,
       method: 'swisseph',
@@ -1685,22 +1686,22 @@ app.get('/api/birth-chart-swisseph', async (req, res) => {
 
     payload.savedChartId = savedChartId;
     // --- debug: show key chart bits in the server log (GET) ---
-try {
-  const planetSummary = Object.fromEntries(
-    Object.entries(planets || {}).map(([name, p]) => [
-      name,
-      { sign: p.sign, house: p.house }
-    ])
-  );
-  console.log('🪐 [GET] chart computed:', {
-    jd,
-    angles: payload.angles,
-    planets: planetSummary,
-  });
-  console.log('💾 savedChartId:', savedChartId ?? null);
-} catch (e) {
-  console.warn('chart debug log failed (GET):', e?.message);
-}
+    try {
+      const planetSummary = Object.fromEntries(
+        Object.entries(planets || {}).map(([name, p]) => [
+          name,
+          { sign: p.sign, house: p.house }
+        ])
+      );
+      console.log('🪐 [GET] chart computed:', {
+        jd,
+        angles: payload.angles,
+        planets: planetSummary,
+      });
+      console.log('💾 savedChartId:', savedChartId ?? null);
+    } catch (e) {
+      console.warn('chart debug log failed (GET):', e?.message);
+    }
     return res.json(payload);
   } catch (e) {
     console.error("💥 submit error (GET):", e);
@@ -1741,18 +1742,18 @@ app.get('/api/chart/summary', async (req, res) => {
       northNodeHouse: chart.northNodeHouse || rc?.nodesAndChiron?.northNode?.house || null,
       chironHouse: chart.chironHouse || rc?.nodesAndChiron?.chiron?.house || null,
       planets: {
-        sun:   { sign: planets.sun?.sign   || null, house: planets.sun?.house   || null },
-        moon:  { sign: planets.moon?.sign  || null, house: planets.moon?.house  || null },
-        mercury:{sign: planets.mercury?.sign|| null, house: planets.mercury?.house|| null },
+        sun: { sign: planets.sun?.sign || null, house: planets.sun?.house || null },
+        moon: { sign: planets.moon?.sign || null, house: planets.moon?.house || null },
+        mercury: { sign: planets.mercury?.sign || null, house: planets.mercury?.house || null },
         venus: { sign: planets.venus?.sign || null, house: planets.venus?.house || null },
-        mars:  { sign: planets.mars?.sign  || null, house: planets.mars?.house  || null },
-        jupiter:{sign: planets.jupiter?.sign|| null, house: planets.jupiter?.house|| null },
-        saturn:{ sign: planets.saturn?.sign|| null, house: planets.saturn?.house|| null },
-        uranus:{ sign: planets.uranus?.sign|| null, house: planets.uranus?.house|| null },
-        neptune:{sign: planets.neptune?.sign|| null, house: planets.neptune?.house|| null },
+        mars: { sign: planets.mars?.sign || null, house: planets.mars?.house || null },
+        jupiter: { sign: planets.jupiter?.sign || null, house: planets.jupiter?.house || null },
+        saturn: { sign: planets.saturn?.sign || null, house: planets.saturn?.house || null },
+        uranus: { sign: planets.uranus?.sign || null, house: planets.uranus?.house || null },
+        neptune: { sign: planets.neptune?.sign || null, house: planets.neptune?.house || null },
         pluto: { sign: planets.pluto?.sign || null, house: planets.pluto?.house || null },
         northNode: { sign: planets.northNode?.sign || null, house: planets.northNode?.house || null },
-        chiron:    { sign: planets.chiron?.sign    || null, house: planets.chiron?.house    || null },
+        chiron: { sign: planets.chiron?.sign || null, house: planets.chiron?.house || null },
       },
       houseSigns: rc.houseSigns || null,
       houseRulers: rc.houseRulers || null,
@@ -1776,8 +1777,8 @@ app.post('/api/dev/chart-to-svg', async (req, res) => {
 
     // Build absolute base URL that works in Railway (no localhost)
     const proto = (req.headers['x-forwarded-proto'] || req.protocol || 'https');
-    const host  = req.headers['x-forwarded-host']  || req.get('host');
-    const base  = `${proto}://${host}`;
+    const host = req.headers['x-forwarded-host'] || req.get('host');
+    const base = `${proto}://${host}`;
 
     // 1) Compute + save chart via our own API (returns savedChartId)
     const rChart = await fetch(`${base}/api/birth-chart-swisseph`, {
@@ -1786,7 +1787,7 @@ app.post('/api/dev/chart-to-svg', async (req, res) => {
       body: JSON.stringify({ date, time, latitude, longitude, userEmail })
     });
     if (!rChart.ok) {
-      const err = await rChart.text().catch(()=>'');
+      const err = await rChart.text().catch(() => '');
       return res.status(502).json({ ok: false, step: 'chart', error: err || rChart.statusText });
     }
     const chartPayload = await rChart.json();
@@ -1815,12 +1816,12 @@ app.post('/api/dev/chart-to-svg', async (req, res) => {
       if (req.body.fullResponses && typeof req.body.fullResponses === 'object') {
         try {
           const { normalizeSurveyPayload } = require('./server/normalizeSurveyPayload');
-          
+
           // Convert flat fullResponses object to format normalizeSurveyPayload expects
           // Frontend sends flat object like { username: "...", email: "...", gender: "..." }
           // We need to convert to sectioned format or directly normalize
           const fullResponses = req.body.fullResponses;
-          
+
           // Map frontend answer keys to question keys
           // This mapping connects frontend question IDs to database question keys
           const keyMapping = {
@@ -1873,7 +1874,7 @@ app.post('/api/dev/chart-to-svg', async (req, res) => {
 
           // Build answers array from fullResponses
           const answers = [];
-          
+
           // Handle top3 fields separately (they combine into one hall_of_fame answer)
           let hallOfFameParts = [];
           if (fullResponses.top3_films) hallOfFameParts.push(`TOP 3 FILMS:\n${fullResponses.top3_films}`);
@@ -1882,7 +1883,7 @@ app.post('/api/dev/chart-to-svg', async (req, res) => {
           if (hallOfFameParts.length > 0) {
             answers.push({ questionKey: 'fit.hall_of_fame', answerText: hallOfFameParts.join('\n\n') });
           }
-          
+
           for (const [frontendKey, value] of Object.entries(fullResponses)) {
             // Skip birth data and metadata (already in chart)
             if (['date', 'time', 'latitude', 'longitude', 'city', 'country', 'username', 'time_accuracy', 'top3_films', 'top3_series', 'top3_docs'].includes(frontendKey)) {
@@ -1924,7 +1925,7 @@ app.post('/api/dev/chart-to-svg', async (req, res) => {
             for (const a of answers) {
               const key = a?.questionKey;
               if (!key) continue;
-              
+
               // Skip cosmic/meta keys (already in chart)
               if (key.startsWith('cosmic.') || key.startsWith('meta.')) continue;
 
@@ -2006,7 +2007,7 @@ app.post('/api/dev/chart-to-svg', async (req, res) => {
     }
 
     // 4) Hand back URLs your FE can use immediately
-    const svgUrl  = `${base}/reading/${submissionId}/chart.svg`;
+    const svgUrl = `${base}/reading/${submissionId}/chart.svg`;
     const htmlUrl = `${base}/reading/${submissionId}/badge`;
 
     return res.json({ ok: true, chartId, submissionId: submissionId, svgUrl, htmlUrl });
@@ -2056,18 +2057,18 @@ app.get('/api/reading/:submissionId', async (req, res) => {
           northNodeHouse: chart.northNodeHouse || rc?.nodesAndChiron?.northNode?.house || null,
           chironHouse: chart.chironHouse || rc?.nodesAndChiron?.chiron?.house || null,
           planets: {
-            sun:      { sign: planets.sun?.sign,      house: planets.sun?.house },
-            moon:     { sign: planets.moon?.sign,     house: planets.moon?.house },
-            mercury:  { sign: planets.mercury?.sign,  house: planets.mercury?.house },
-            venus:    { sign: planets.venus?.sign,    house: planets.venus?.house },
-            mars:     { sign: planets.mars?.sign,     house: planets.mars?.house },
-            jupiter:  { sign: planets.jupiter?.sign,  house: planets.jupiter?.house },
-            saturn:   { sign: planets.saturn?.sign,   house: planets.saturn?.house },
-            uranus:   { sign: planets.uranus?.sign,   house: planets.uranus?.house },
-            neptune:  { sign: planets.neptune?.sign,  house: planets.neptune?.house },
-            pluto:    { sign: planets.pluto?.sign,    house: planets.pluto?.house },
-            northNode:{ sign: rc?.nodesAndChiron?.northNode?.sign, house: rc?.nodesAndChiron?.northNode?.house },
-            chiron:   { sign: rc?.nodesAndChiron?.chiron?.sign,    house: rc?.nodesAndChiron?.chiron?.house },
+            sun: { sign: planets.sun?.sign, house: planets.sun?.house },
+            moon: { sign: planets.moon?.sign, house: planets.moon?.house },
+            mercury: { sign: planets.mercury?.sign, house: planets.mercury?.house },
+            venus: { sign: planets.venus?.sign, house: planets.venus?.house },
+            mars: { sign: planets.mars?.sign, house: planets.mars?.house },
+            jupiter: { sign: planets.jupiter?.sign, house: planets.jupiter?.house },
+            saturn: { sign: planets.saturn?.sign, house: planets.saturn?.house },
+            uranus: { sign: planets.uranus?.sign, house: planets.uranus?.house },
+            neptune: { sign: planets.neptune?.sign, house: planets.neptune?.house },
+            pluto: { sign: planets.pluto?.sign, house: planets.pluto?.house },
+            northNode: { sign: rc?.nodesAndChiron?.northNode?.sign, house: rc?.nodesAndChiron?.northNode?.house },
+            chiron: { sign: rc?.nodesAndChiron?.chiron?.sign, house: rc?.nodesAndChiron?.chiron?.house },
           },
           houseSigns: rc.houseSigns || null,
           houseRulers: rc.houseRulers || null,
@@ -2076,28 +2077,28 @@ app.get('/api/reading/:submissionId', async (req, res) => {
         // Build reading text from content files
         const builderDto = {
           ascendantSign: angles.ascendantSign || null,
-          sunSign:       planets?.sun?.sign || null,
-          sunHouse:      planets?.sun?.house || null,
-          moonSign:      planets?.moon?.sign || null,
-          moonHouse:     planets?.moon?.house || null,
-          mercurySign:   planets?.mercury?.sign || null,
-          mercuryHouse:  planets?.mercury?.house || null,
-          venusSign:     planets?.venus?.sign || null,
-          venusHouse:    planets?.venus?.house || null,
-          marsSign:      planets?.mars?.sign || null,
-          marsHouse:     planets?.mars?.house || null,
-          jupiterSign:   planets?.jupiter?.sign || null,
-          jupiterHouse:  planets?.jupiter?.house || null,
-          saturnSign:    planets?.saturn?.sign || null,
-          saturnHouse:   planets?.saturn?.house || null,
-          uranusSign:    planets?.uranus?.sign || null,
-          uranusHouse:   planets?.uranus?.house || null,
-          neptuneSign:   planets?.neptune?.sign || null,
-          neptuneHouse:  planets?.neptune?.house || null,
-          plutoSign:     planets?.pluto?.sign || null,
-          plutoHouse:    planets?.pluto?.house || null,
+          sunSign: planets?.sun?.sign || null,
+          sunHouse: planets?.sun?.house || null,
+          moonSign: planets?.moon?.sign || null,
+          moonHouse: planets?.moon?.house || null,
+          mercurySign: planets?.mercury?.sign || null,
+          mercuryHouse: planets?.mercury?.house || null,
+          venusSign: planets?.venus?.sign || null,
+          venusHouse: planets?.venus?.house || null,
+          marsSign: planets?.mars?.sign || null,
+          marsHouse: planets?.mars?.house || null,
+          jupiterSign: planets?.jupiter?.sign || null,
+          jupiterHouse: planets?.jupiter?.house || null,
+          saturnSign: planets?.saturn?.sign || null,
+          saturnHouse: planets?.saturn?.house || null,
+          uranusSign: planets?.uranus?.sign || null,
+          uranusHouse: planets?.uranus?.house || null,
+          neptuneSign: planets?.neptune?.sign || null,
+          neptuneHouse: planets?.neptune?.house || null,
+          plutoSign: planets?.pluto?.sign || null,
+          plutoHouse: planets?.pluto?.house || null,
           chartRulerPlanet: chart.chartRulerPlanet || null,
-          chartRulerHouse:  chart.chartRulerHouse  || null,
+          chartRulerHouse: chart.chartRulerHouse || null,
         };
         builtText = buildReadingFromContent(builderDto);
       }
@@ -2119,7 +2120,7 @@ app.get('/api/reading/:submissionId', async (req, res) => {
     console.error('💥 /api/reading/:submissionId error:', e);
     res.status(500).json({ ok: false, error: e?.message || 'Unknown error' });
   }
-  
+
 });
 
 // === Server-rendered Reading Page (HTML) ============================
@@ -2130,7 +2131,7 @@ const ZODIAC_ICONS = {
 };
 function esc(s) {
   return String(s == null ? '' : s)
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 function fmtDeg(n) { const v = Number(n); return Number.isFinite(v) ? v.toFixed(2) + '°' : '—'; }
 function renderSign(sign) {
@@ -2162,9 +2163,9 @@ function renderChartHTML(dto) {
   const planetsByHouseGrid = planetsByHouse.map((list, i) => {
     const li = list.length
       ? `<ul>${list.map(p => {
-          const info = planets[p] || {};
-          return `<li>${esc(p)} — ${renderSign(info.sign)}${info.longitude != null ? ` (${fmtDeg(info.longitude)})` : ''}</li>`;
-        }).join('')}</ul>`
+        const info = planets[p] || {};
+        return `<li>${esc(p)} — ${renderSign(info.sign)}${info.longitude != null ? ` (${fmtDeg(info.longitude)})` : ''}</li>`;
+      }).join('')}</ul>`
       : '—';
     return `
       <div class="tile">
@@ -2237,40 +2238,40 @@ function buildChartSVG(rawChart, opts = {}) {
   const cx = size / 2, cy = size / 2;
 
   // Radii layout (outer → inner)
-  const R_outer            = (size / 2) - pad; // canvas margin
-  const R_border           = R_outer - 2;      // thin border
-  const R_signBandOuter    = R_border - 2;     // sign colored ring (outer edge)
-  const R_signBandInner    = R_signBandOuter - 28;
-  const R_majorTickOuter   = R_signBandInner - 2;
-  const R_majorTickInner   = R_majorTickOuter - 12;
-  const R_minorTickInner   = R_majorTickOuter - 6;
-  const R_houseOuter       = R_majorTickInner - 6;
-  const R_houseInner       = R_houseOuter - 58;
-  const R_planet           = R_houseInner - 26;
-  const R_center           = R_planet - 18;
+  const R_outer = (size / 2) - pad; // canvas margin
+  const R_border = R_outer - 2;      // thin border
+  const R_signBandOuter = R_border - 2;     // sign colored ring (outer edge)
+  const R_signBandInner = R_signBandOuter - 28;
+  const R_majorTickOuter = R_signBandInner - 2;
+  const R_majorTickInner = R_majorTickOuter - 12;
+  const R_minorTickInner = R_majorTickOuter - 6;
+  const R_houseOuter = R_majorTickInner - 6;
+  const R_houseInner = R_houseOuter - 58;
+  const R_planet = R_houseInner - 26;
+  const R_center = R_planet - 18;
 
-  const houses   = rawChart?.houses || [];       // 12 cusp longitudes
+  const houses = rawChart?.houses || [];       // 12 cusp longitudes
   const houseSigns = rawChart?.houseSigns || []; // 12 sign names for cusps
-  const planets  = rawChart?.planets || {};      // { sun:{longitude, sign, house}, ... }
+  const planets = rawChart?.planets || {};      // { sun:{longitude, sign, house}, ... }
 
   // Local helpers (these rely on helpers already defined above in the file)
   const clamp360 = (d) => ((d % 360) + 360) % 360;
-  const rad      = (d) => (Math.PI / 180) * d;
-  const pol      = (r, deg) => {
+  const rad = (d) => (Math.PI / 180) * d;
+  const pol = (r, deg) => {
     const a = rad(deg);
     return { x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) };
   };
   const svgAngle = (lon) => svgAngleFromEcliptic(lon); // keep same orientation as before
 
   // Colors (dark theme)
-  const BG        = "#0b0d10";
-  const PANEL     = "#11151b";
-  const BORDER    = "#222a35";
-  const GRID      = "#313a46";
+  const BG = "#0b0d10";
+  const PANEL = "#11151b";
+  const BORDER = "#222a35";
+  const GRID = "#313a46";
   const GRID_SOFT = "#2a3340";
-  const TEXT      = "#d8dee9";
+  const TEXT = "#d8dee9";
   const TEXT_SOFT = "#aab3c0";
-  const ACCENT    = "#83c9f4";
+  const ACCENT = "#83c9f4";
 
   // Per-sign subtle colors (12)
   const SIGN_COLORS = [
@@ -2290,9 +2291,9 @@ function buildChartSVG(rawChart, opts = {}) {
 
   // Optional glyphs for signs (fallbacks to names if not available)
   const SIGN_GLYPH = {
-    Aries:"♈", Taurus:"♉", Gemini:"♊", Cancer:"♋",
-    Leo:"♌", Virgo:"♍", Libra:"♎", Scorpio:"♏",
-    Sagittarius:"♐", Capricorn:"♑", Aquarius:"♒", Pisces:"♓"
+    Aries: "♈", Taurus: "♉", Gemini: "♊", Cancer: "♋",
+    Leo: "♌", Virgo: "♍", Libra: "♎", Scorpio: "♏",
+    Sagittarius: "♐", Capricorn: "♑", Aquarius: "♒", Pisces: "♓"
   };
 
   let svg = [];
@@ -2368,7 +2369,7 @@ function buildChartSVG(rawChart, opts = {}) {
     for (let i = 0; i < 12; i++) {
       const deg = svgAngle(houses[i]);
       const pOut = pol(R_houseOuter, deg);
-      const pIn  = pol(R_houseInner, deg);
+      const pIn = pol(R_houseInner, deg);
       svg.push(`<line x1="${pOut.x.toFixed(1)}" y1="${pOut.y.toFixed(1)}" x2="${pIn.x.toFixed(1)}" y2="${pIn.y.toFixed(1)}" stroke="${ACCENT}" stroke-width="1.5" opacity="0.7"/>`);
 
       // cusp number slightly inside
@@ -2385,8 +2386,8 @@ function buildChartSVG(rawChart, opts = {}) {
     const lon = Number(p?.longitude);
     if (!Number.isFinite(lon)) continue;
     const deg = svgAngle(lon);
-    const pt  = pol(R_planet, deg);
-    const glyph = PLANET_GLYPH[name] || name.slice(0,1).toUpperCase();
+    const pt = pol(R_planet, deg);
+    const glyph = PLANET_GLYPH[name] || name.slice(0, 1).toUpperCase();
 
     svg.push(
       `<circle cx="${pt.x.toFixed(1)}" cy="${pt.y.toFixed(1)}" r="12" fill="${PANEL}" stroke="${GRID}" stroke-width="1.2"/>`,
@@ -2404,19 +2405,19 @@ function buildChartSVG(rawChart, opts = {}) {
   svg.push(`</svg>`);
   return svg.join('\n');
 }
-  app.get('/reading/:submissionId/chart.svg', async (req, res) => {
-    try {
-      const { submissionId } = req.params;
+app.get('/reading/:submissionId/chart.svg', async (req, res) => {
+  try {
+    const { submissionId } = req.params;
 
-      // Check if today is November 14th (birthday surprise!)
-      const now = new Date();
-      const month = now.getMonth(); // 0-indexed, so 10 = November
-      const day = now.getDate();
-      const isBirthday = (month === 10 && day === 14);
+    // Check if today is November 14th (birthday surprise!)
+    const now = new Date();
+    const month = now.getMonth(); // 0-indexed, so 10 = November
+    const day = now.getDate();
+    const isBirthday = (month === 10 && day === 14);
 
-      if (isBirthday) {
-        // Birthday surprise SVG!
-        const svg = `<?xml version="1.0" encoding="UTF-8"?>
+    if (isBirthday) {
+      // Birthday surprise SVG!
+      const svg = `<?xml version="1.0" encoding="UTF-8"?>
 <svg width="800" height="600" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
   <!-- Background -->
   <rect width="800" height="600" fill="#1a1a2e"/>
@@ -2500,35 +2501,35 @@ function buildChartSVG(rawChart, opts = {}) {
     <animate attributeName="y" values="-50;280" dur="3.5s" begin="1s" repeatCount="indefinite"/>
   </rect>
 </svg>`;
-        return res.type('image/svg+xml').send(svg);
-      }
-
-      // Normal chart (after birthday or not Nov 14)
-      if (!submissionId) return res.status(400).send('Missing submissionId');
-
-      // Get reading → chartId
-      const reading = await prisma.reading.findFirst({
-        where: { submissionId },
-        select: { chartId: true }
-      });
-      if (!reading || !reading.chartId) return res.status(404).send('Chart not found for submission');
-
-      // Load raw chart
-      const chart = await prisma.chart.findUnique({
-        where: { id: reading.chartId },
-        select: { rawChart: true }
-      });
-      if (!chart || !chart.rawChart) return res.status(404).send('Raw chart not available');
-
-      const size = Number(req.query.size) || 640;
-      const svg = buildChartSVG(chart.rawChart, { size });
-      res.set('Content-Type', 'image/svg+xml; charset=utf-8');
-      res.send(svg);
-    } catch (e) {
-      console.error('💥 /reading/:submissionId/chart.svg error:', e);
-      res.status(500).send('Internal error');
+      return res.type('image/svg+xml').send(svg);
     }
-  });
+
+    // Normal chart (after birthday or not Nov 14)
+    if (!submissionId) return res.status(400).send('Missing submissionId');
+
+    // Get reading → chartId
+    const reading = await prisma.reading.findFirst({
+      where: { submissionId },
+      select: { chartId: true }
+    });
+    if (!reading || !reading.chartId) return res.status(404).send('Chart not found for submission');
+
+    // Load raw chart
+    const chart = await prisma.chart.findUnique({
+      where: { id: reading.chartId },
+      select: { rawChart: true }
+    });
+    if (!chart || !chart.rawChart) return res.status(404).send('Raw chart not available');
+
+    const size = Number(req.query.size) || 640;
+    const svg = buildChartSVG(chart.rawChart, { size });
+    res.set('Content-Type', 'image/svg+xml; charset=utf-8');
+    res.send(svg);
+  } catch (e) {
+    console.error('💥 /reading/:submissionId/chart.svg error:', e);
+    res.status(500).send('Internal error');
+  }
+});
 
 // === Screen 1: The Badge (Entry Ticket) =========================
 app.get('/reading/:submissionId/badge', async (req, res) => {
@@ -2537,7 +2538,7 @@ app.get('/reading/:submissionId/badge', async (req, res) => {
     if (!submissionId) return res.status(400).send('Missing submissionId');
 
     let createdAt;
-    
+
     // Check mock DB first
     if (MOCK_DB[submissionId]) {
       // Mock entries usually don't have a createdAt, so we fake it
@@ -2548,7 +2549,7 @@ app.get('/reading/:submissionId/badge', async (req, res) => {
         where: { id: submissionId },
         select: { createdAt: true }
       });
-      
+
       if (submission) {
         createdAt = submission.createdAt;
       } else {
@@ -2564,10 +2565,10 @@ app.get('/reading/:submissionId/badge', async (req, res) => {
     if (!createdAt) return res.status(404).send('Submission not found');
 
     // Format Date: "October 24, 2025"
-    const creationDate = new Date(createdAt).toLocaleDateString('en-US', { 
-      month: 'long', 
-      day: 'numeric', 
-      year: 'numeric' 
+    const creationDate = new Date(createdAt).toLocaleDateString('en-US', {
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric'
     });
 
     res.render('badge', { submissionID: submissionId, creationDate });
@@ -2584,7 +2585,7 @@ app.get('/reading/:submissionId/html', async (req, res) => {
     if (!submissionId) return res.status(400).send('Missing submissionId');
 
     let reading, chart;
-    
+
     // Check mock DB first
     if (MOCK_DB[submissionId]) {
       reading = MOCK_DB[submissionId].reading;
@@ -2607,54 +2608,54 @@ app.get('/reading/:submissionId/html', async (req, res) => {
     let chartDTO = null;
     let builtText = null;
     if (chart) {
-        const rc = chart.rawChart || {};
-        const angles = rc.angles || {};
-        const planets = rc.planets || {};
-        chartDTO = {
-          id: chart.id,
-          ascSign: angles.ascendantSign || null,
-          mcSign: angles.mcSign || null,
-          ascDeg: angles.ascendantDeg,
-          mcDeg: angles.mcDeg,
-          chartRuler: { planet: chart.chartRulerPlanet || null, house: chart.chartRulerHouse || null },
-          houseSigns: rc.houseSigns || [],
-          houseRulers: rc.houseRulers || [],
-          rawHouses: rc.houses || [],
-          planets: planets
-        };
+      const rc = chart.rawChart || {};
+      const angles = rc.angles || {};
+      const planets = rc.planets || {};
+      chartDTO = {
+        id: chart.id,
+        ascSign: angles.ascendantSign || null,
+        mcSign: angles.mcSign || null,
+        ascDeg: angles.ascendantDeg,
+        mcDeg: angles.mcDeg,
+        chartRuler: { planet: chart.chartRulerPlanet || null, house: chart.chartRulerHouse || null },
+        houseSigns: rc.houseSigns || [],
+        houseRulers: rc.houseRulers || [],
+        rawHouses: rc.houses || [],
+        planets: planets
+      };
 
-        const builderDto = {
-          ascendantSign: angles.ascendantSign || null,
-          chartRulerPlanet: chart.chartRulerPlanet || null,
-          chartRulerHouse:  chart.chartRulerHouse  || null,
-          sunSign:       planets?.sun?.sign || null,
-          sunHouse:      planets?.sun?.house || null,
-          moonSign:      planets?.moon?.sign || null,
-          moonHouse:     planets?.moon?.house || null,
-          mercurySign:   planets?.mercury?.sign || null,
-          mercuryHouse:  planets?.mercury?.house || null,
-          venusSign:     planets?.venus?.sign || null,
-          venusHouse:    planets?.venus?.house || null,
-          marsSign:      planets?.mars?.sign || null,
-          marsHouse:     planets?.mars?.house || null,
-          jupiterSign:   planets?.jupiter?.sign || null,
-          jupiterHouse:  planets?.jupiter?.house || null,
-          saturnSign:    planets?.saturn?.sign || null,
-          saturnHouse:   planets?.saturn?.house || null,
-          uranusSign:    planets?.uranus?.sign || null,
-          uranusHouse:   planets?.uranus?.house || null,
-          neptuneSign:   planets?.neptune?.sign || null,
-          neptuneHouse:  planets?.neptune?.house || null,
-          plutoSign:     planets?.pluto?.sign || null,
-          plutoHouse:    planets?.pluto?.house || null,
-          chartRulerPlanet: chart.chartRulerPlanet || null,
-          chartRulerHouse:  chart.chartRulerHouse  || null,
-        };
-        builtText = buildReadingFromContent(builderDto);
-      }
+      const builderDto = {
+        ascendantSign: angles.ascendantSign || null,
+        chartRulerPlanet: chart.chartRulerPlanet || null,
+        chartRulerHouse: chart.chartRulerHouse || null,
+        sunSign: planets?.sun?.sign || null,
+        sunHouse: planets?.sun?.house || null,
+        moonSign: planets?.moon?.sign || null,
+        moonHouse: planets?.moon?.house || null,
+        mercurySign: planets?.mercury?.sign || null,
+        mercuryHouse: planets?.mercury?.house || null,
+        venusSign: planets?.venus?.sign || null,
+        venusHouse: planets?.venus?.house || null,
+        marsSign: planets?.mars?.sign || null,
+        marsHouse: planets?.mars?.house || null,
+        jupiterSign: planets?.jupiter?.sign || null,
+        jupiterHouse: planets?.jupiter?.house || null,
+        saturnSign: planets?.saturn?.sign || null,
+        saturnHouse: planets?.saturn?.house || null,
+        uranusSign: planets?.uranus?.sign || null,
+        uranusHouse: planets?.uranus?.house || null,
+        neptuneSign: planets?.neptune?.sign || null,
+        neptuneHouse: planets?.neptune?.house || null,
+        plutoSign: planets?.pluto?.sign || null,
+        plutoHouse: planets?.pluto?.house || null,
+        chartRulerPlanet: chart.chartRulerPlanet || null,
+        chartRulerHouse: chart.chartRulerHouse || null,
+      };
+      builtText = buildReadingFromContent(builderDto);
+    }
 
     // Helpers
-    const esc = (s) => String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const esc = (s) => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     const pickVal = (map, key) => (map && map[key]) ? map[key] : '';
 
     // Styles
@@ -2786,14 +2787,14 @@ app.get('/reading/:submissionId/html', async (req, res) => {
     let contentHtml = '';
 
     if (chartDTO) {
-       // My Astro-Cinematic-Chart
-       const bDate = reading.birthDate ? new Date(reading.birthDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'Unknown Date';
-       const bTime = reading.birthTime || 'Unknown Time';
-       const bPlace = (reading.birthCity && reading.birthCountry) ? `${reading.birthCity}, ${reading.birthCountry}` : (reading.birthCity || 'Unknown Place');
-       const uName = reading.username || 'Unknown';
-       const uEmail = reading.userEmail || 'Unknown';
+      // My Astro-Cinematic-Chart
+      const bDate = reading.birthDate ? new Date(reading.birthDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'Unknown Date';
+      const bTime = reading.birthTime || 'Unknown Time';
+      const bPlace = (reading.birthCity && reading.birthCountry) ? `${reading.birthCity}, ${reading.birthCountry}` : (reading.birthCity || 'Unknown Place');
+      const uName = reading.username || 'Unknown';
+      const uEmail = reading.userEmail || 'Unknown';
 
-       contentHtml += `
+      contentHtml += `
          <div style="position: relative; margin: 30px 0;">
            <!-- Header with subtle glow -->
            <div style="text-align: center; margin-bottom: 40px;">
@@ -2838,34 +2839,34 @@ app.get('/reading/:submissionId/html', async (req, res) => {
          </div>
        `;
 
-       const p = chartDTO.planets || {};
-       const list = [
-         // Only include Rising/Ascendant if we have an ascendant sign
-         ...(chartDTO.ascSign ? [{ name: 'Rising / Ascendant', sign: chartDTO.ascSign, intro: SECTION_INTROS.ascendant, text: pickVal(ASCENDANT_TEXT, chartDTO.ascSign) }] : []),
-         { name: 'Sun', sign: p.sun?.sign, intro: SECTION_INTROS.sun_sign, text: pickVal(SUN_SIGN_TEXT, p.sun?.sign) },
-         { name: 'Moon', sign: p.moon?.sign, intro: SECTION_INTROS.moon_sign, text: pickVal(MOON_SIGN_TEXT, p.moon?.sign) },
-         { name: 'Mercury', sign: p.mercury?.sign, intro: SECTION_INTROS.mercury_sign, text: pickVal(MERCURY_SIGN_TEXT, p.mercury?.sign) },
-         { name: 'Venus', sign: p.venus?.sign, intro: SECTION_INTROS.venus_sign, text: pickVal(VENUS_SIGN_TEXT, p.venus?.sign) },
-         { name: 'Mars', sign: p.mars?.sign, intro: SECTION_INTROS.mars_sign, text: pickVal(MARS_SIGN_TEXT, p.mars?.sign) },
-         { name: 'Jupiter', sign: p.jupiter?.sign, intro: SECTION_INTROS.jupiter_sign, text: pickVal(JUPITER_SIGN_TEXT, p.jupiter?.sign) },
-         { name: 'Saturn', sign: p.saturn?.sign, intro: SECTION_INTROS.saturn_sign, text: pickVal(SATURN_SIGN_TEXT, p.saturn?.sign) },
-         { name: 'Pluto', sign: p.pluto?.sign, intro: SECTION_INTROS.pluto_sign, text: pickVal(PLUTO_SIGN_TEXT, p.pluto?.sign) },
-         { name: 'Uranus', sign: p.uranus?.sign, intro: SECTION_INTROS.uranus_sign, text: pickVal(URANUS_SIGN_TEXT, p.uranus?.sign) },
-         { name: 'Neptune', sign: p.neptune?.sign, intro: SECTION_INTROS.neptune_sign, text: pickVal(NEPTUNE_SIGN_TEXT, p.neptune?.sign) },
-       ];
+      const p = chartDTO.planets || {};
+      const list = [
+        // Only include Rising/Ascendant if we have an ascendant sign
+        ...(chartDTO.ascSign ? [{ name: 'Rising / Ascendant', sign: chartDTO.ascSign, intro: SECTION_INTROS.ascendant, text: pickVal(ASCENDANT_TEXT, chartDTO.ascSign) }] : []),
+        { name: 'Sun', sign: p.sun?.sign, intro: SECTION_INTROS.sun_sign, text: pickVal(SUN_SIGN_TEXT, p.sun?.sign) },
+        { name: 'Moon', sign: p.moon?.sign, intro: SECTION_INTROS.moon_sign, text: pickVal(MOON_SIGN_TEXT, p.moon?.sign) },
+        { name: 'Mercury', sign: p.mercury?.sign, intro: SECTION_INTROS.mercury_sign, text: pickVal(MERCURY_SIGN_TEXT, p.mercury?.sign) },
+        { name: 'Venus', sign: p.venus?.sign, intro: SECTION_INTROS.venus_sign, text: pickVal(VENUS_SIGN_TEXT, p.venus?.sign) },
+        { name: 'Mars', sign: p.mars?.sign, intro: SECTION_INTROS.mars_sign, text: pickVal(MARS_SIGN_TEXT, p.mars?.sign) },
+        { name: 'Jupiter', sign: p.jupiter?.sign, intro: SECTION_INTROS.jupiter_sign, text: pickVal(JUPITER_SIGN_TEXT, p.jupiter?.sign) },
+        { name: 'Saturn', sign: p.saturn?.sign, intro: SECTION_INTROS.saturn_sign, text: pickVal(SATURN_SIGN_TEXT, p.saturn?.sign) },
+        { name: 'Pluto', sign: p.pluto?.sign, intro: SECTION_INTROS.pluto_sign, text: pickVal(PLUTO_SIGN_TEXT, p.pluto?.sign) },
+        { name: 'Uranus', sign: p.uranus?.sign, intro: SECTION_INTROS.uranus_sign, text: pickVal(URANUS_SIGN_TEXT, p.uranus?.sign) },
+        { name: 'Neptune', sign: p.neptune?.sign, intro: SECTION_INTROS.neptune_sign, text: pickVal(NEPTUNE_SIGN_TEXT, p.neptune?.sign) },
+      ];
 
-       list.forEach(item => {
-         contentHtml += `
+      list.forEach(item => {
+        contentHtml += `
         <div class="card">
              <h2 class="section-header">${esc(item.name)}</h2>
              <div style="font-size:12px; opacity:0.7; margin-bottom:8px">${esc(item.intro || '')}</div>
              <div class="content-text">${esc(item.text || `${item.name} in ${item.sign}`)}</div>
           </div>
          `;
-       });
+      });
 
-       // Footer Text inserted before Button
-       contentHtml += `
+      // Footer Text inserted before Button
+      contentHtml += `
          <div style="text-align:center; margin: 40px 0; padding: 0 20px;">
            <img src="/assets/starglow_large.png" class="star-decoration" alt="" />
            <p style="color:#F3DCBC; font-family:'Inter',sans-serif; font-style:italic; font-size:16px; line-height:1.5;">
@@ -2877,8 +2878,8 @@ app.get('/reading/:submissionId/html', async (req, res) => {
          </div>
        `;
 
-       // Navigation buttons
-       contentHtml += `
+      // Navigation buttons
+      contentHtml += `
          <style>
            .nav-button {
              display: inline-block;
@@ -2915,7 +2916,7 @@ app.get('/reading/:submissionId/html', async (req, res) => {
        `;
 
     } else {
-       contentHtml = '<p>No chart data available.</p>';
+      contentHtml = '<p>No chart data available.</p>';
     }
 
     const html = `<!DOCTYPE html>
@@ -2948,7 +2949,7 @@ app.get('/reading/:submissionId/html/2', async (req, res) => {
     if (!submissionId) return res.status(400).send('Missing submissionId');
 
     let reading, chart;
-    
+
     // Check mock DB first
     if (MOCK_DB[submissionId]) {
       reading = MOCK_DB[submissionId].reading;
@@ -2970,25 +2971,25 @@ app.get('/reading/:submissionId/html/2', async (req, res) => {
 
     let chartDTO = null;
     if (chart) {
-        const rc = chart.rawChart || {};
-        const angles = rc.angles || {};
-        const planets = rc.planets || {};
-        chartDTO = {
-          id: chart.id,
-          ascSign: angles.ascendantSign || null,
-          mcSign: angles.mcSign || null,
-          ascDeg: angles.ascendantDeg,
-          mcDeg: angles.mcDeg,
-          chartRuler: { planet: chart.chartRulerPlanet || null, house: chart.chartRulerHouse || null },
-          houseSigns: rc.houseSigns || [],
-          houseRulers: rc.houseRulers || [],
-          rawHouses: rc.houses || [],
-          planets: planets
-        };
+      const rc = chart.rawChart || {};
+      const angles = rc.angles || {};
+      const planets = rc.planets || {};
+      chartDTO = {
+        id: chart.id,
+        ascSign: angles.ascendantSign || null,
+        mcSign: angles.mcSign || null,
+        ascDeg: angles.ascendantDeg,
+        mcDeg: angles.mcDeg,
+        chartRuler: { planet: chart.chartRulerPlanet || null, house: chart.chartRulerHouse || null },
+        houseSigns: rc.houseSigns || [],
+        houseRulers: rc.houseRulers || [],
+        rawHouses: rc.houses || [],
+        planets: planets
+      };
     }
 
     // Helpers
-    const esc = (s) => String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const esc = (s) => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     const pickVal = (map, key) => (map && map[key]) ? map[key] : '';
 
     // Styles (Same as page 1)
@@ -3103,11 +3104,11 @@ app.get('/reading/:submissionId/html/2', async (req, res) => {
     let contentHtml = '';
 
     if (chartDTO) {
-       const p = chartDTO.planets || {};
-       const ascendant = chartDTO.ascSign; // Identify variable
+      const p = chartDTO.planets || {};
+      const ascendant = chartDTO.ascSign; // Identify variable
 
-       // Refactored "No Time" Template
-       const noTimeHtml = `
+      // Refactored "No Time" Template
+      const noTimeHtml = `
           <div class="no-time" style="position: relative; padding-top: 40px; overflow: visible;">
              <!-- Top Section: Text -->
              <div style="position: relative; margin-bottom: 20px; padding: 0 20px; text-align: center;">
@@ -3173,29 +3174,29 @@ app.get('/reading/:submissionId/html/2', async (req, res) => {
           </div>
        `;
 
-       // Rule 1: No Time
-       if (!ascendant) {
-           contentHtml += noTimeHtml;
-       } else {
-           // Rule 2 & 3 Logic
-           const CO_RULERS = { Scorpio: 'Pluto', Aquarius: 'Uranus', Pisces: 'Neptune', Virgo: 'Chiron' };
-           const coRulerSigns = ['Taurus', 'Virgo', 'Scorpio', 'Aquarius', 'Pisces'];
-           const isCoRuler = coRulerSigns.includes(ascendant);
-           
-           const ruler1 = chartDTO.chartRuler?.planet;
-           const ruler2 = CO_RULERS[ascendant] || null;
-           
-           let crSignText = '', crHouseText = '';
-           if (ruler2) {
-             const r2 = ruler2.toLowerCase();
-             const mapSign = { pluto: PLUTO_SIGN_TEXT, uranus: URANUS_SIGN_TEXT, neptune: NEPTUNE_SIGN_TEXT };
-             const mapHouse = { pluto: PLUTO_HOUSE_TEXT, uranus: URANUS_HOUSE_TEXT, neptune: NEPTUNE_HOUSE_TEXT };
-             crSignText = pickVal(mapSign[r2], p[r2]?.sign);
-             crHouseText = pickVal(mapHouse[r2], String(p[r2]?.house));
-           }
+      // Rule 1: No Time
+      if (!ascendant) {
+        contentHtml += noTimeHtml;
+      } else {
+        // Rule 2 & 3 Logic
+        const CO_RULERS = { Scorpio: 'Pluto', Aquarius: 'Uranus', Pisces: 'Neptune', Virgo: 'Chiron' };
+        const coRulerSigns = ['Taurus', 'Virgo', 'Scorpio', 'Aquarius', 'Pisces'];
+        const isCoRuler = coRulerSigns.includes(ascendant);
 
-           // Title for the Ruler Section
-           contentHtml += `
+        const ruler1 = chartDTO.chartRuler?.planet;
+        const ruler2 = CO_RULERS[ascendant] || null;
+
+        let crSignText = '', crHouseText = '';
+        if (ruler2) {
+          const r2 = ruler2.toLowerCase();
+          const mapSign = { pluto: PLUTO_SIGN_TEXT, uranus: URANUS_SIGN_TEXT, neptune: NEPTUNE_SIGN_TEXT };
+          const mapHouse = { pluto: PLUTO_HOUSE_TEXT, uranus: URANUS_HOUSE_TEXT, neptune: NEPTUNE_HOUSE_TEXT };
+          crSignText = pickVal(mapSign[r2], p[r2]?.sign);
+          crHouseText = pickVal(mapHouse[r2], String(p[r2]?.house));
+        }
+
+        // Title for the Ruler Section
+        contentHtml += `
              <div class="page-break"></div>
              <!-- Header with subtle glow -->
              <div style="text-align: center; margin: 40px 0 20px;">
@@ -3213,14 +3214,14 @@ app.get('/reading/:submissionId/html/2', async (req, res) => {
              </div>
            `;
 
-           // Rule 2: Co-Ruler
-           if (isCoRuler) {
-              contentHtml += `
+        // Rule 2: Co-Ruler
+        if (isCoRuler) {
+          contentHtml += `
                 <div class="card card-gold" style="text-align:center">
                    <div class="ruler-eq">Your Chart Ruler + Co-Chart Ruler = ${ruler2 || 'Unknown'} + ${ruler1}</div>
                    
                    <div class="ruler-header">Chart Ruler in the Sign</div>
-                   <div class="card" style="border-color:#8FBCFF">${esc(pickVal(CHART_RULER_TEXT, `${ruler1}:${ZODIAC_SIGNS.indexOf(ascendant)+1}`) || `${ruler1} as Ruler`)}</div>
+                   <div class="card" style="border-color:#8FBCFF">${esc(pickVal(CHART_RULER_TEXT, `${ruler1}:${ZODIAC_SIGNS.indexOf(ascendant) + 1}`) || `${ruler1} as Ruler`)}</div>
                    
                    <div class="ruler-header">Chart Ruler in the House</div>
                    <div class="card" style="border-color:#8FBCFF">${esc(pickVal(CHART_RULER_HOUSE_TEXT, String(chartDTO.chartRuler?.house)) || `House ${chartDTO.chartRuler?.house}`)}</div>
@@ -3232,16 +3233,16 @@ app.get('/reading/:submissionId/html/2', async (req, res) => {
                    <div class="card" style="border-color:#8FBCFF">${esc(crHouseText || `House ${p[ruler2?.toLowerCase()]?.house}`)}</div>
                 </div>
               `;
-           } else {
-              // Rule 3: Single Ruler
-              const ruler1Lower = ruler1?.toLowerCase();
-              const rulerSign = p[ruler1Lower]?.sign || '';
-              const rulerHouse = chartDTO.chartRuler?.house || '';
-              
-              const rulerSignText = pickVal(CHART_RULER_TEXT, rulerSign) || `Chart Ruler in ${rulerSign}`;
-              const rulerHouseText = pickVal(CHART_RULER_HOUSE_TEXT, String(rulerHouse)) || `House ${rulerHouse}`;
-              
-              contentHtml += `
+        } else {
+          // Rule 3: Single Ruler
+          const ruler1Lower = ruler1?.toLowerCase();
+          const rulerSign = p[ruler1Lower]?.sign || '';
+          const rulerHouse = chartDTO.chartRuler?.house || '';
+
+          const rulerSignText = pickVal(CHART_RULER_TEXT, rulerSign) || `Chart Ruler in ${rulerSign}`;
+          const rulerHouseText = pickVal(CHART_RULER_HOUSE_TEXT, String(rulerHouse)) || `House ${rulerHouse}`;
+
+          contentHtml += `
                 <div style="text-align:center; margin: 30px 0;">
                    <div class="ruler-eq" style="color:#A2C5E2; font-family:'Oswald',sans-serif; font-weight:bold; font-size:18px; margin-bottom:20px;">Your Chart Ruler = ${ruler1}</div>
                    <img src="/assets/star_pink.png" style="width:140px; margin: 20px auto; display:block;" alt="Star" />
@@ -3269,11 +3270,11 @@ app.get('/reading/:submissionId/html/2', async (req, res) => {
                    </div>
                 </div>
               `;
-           }
-           
-           // Astrological Houses - only show if we have house signs (which we should if ascendant exists)
-           if (chartDTO.houseSigns && chartDTO.houseSigns.length > 0 && chartDTO.houseSigns.some(s => s !== null && s !== undefined)) {
-             contentHtml += `
+        }
+
+        // Astrological Houses - only show if we have house signs (which we should if ascendant exists)
+        if (chartDTO.houseSigns && chartDTO.houseSigns.length > 0 && chartDTO.houseSigns.some(s => s !== null && s !== undefined)) {
+          contentHtml += `
                <div class="page-break"></div>
                <div style="text-align:center; margin:40px 0 20px">
                  <h2 style="color:#FFD7F3; font-family:'Oswald',sans-serif; text-transform:uppercase;">Astrological Houses</h2>
@@ -3284,43 +3285,43 @@ app.get('/reading/:submissionId/html/2', async (req, res) => {
                  <img src="/assets/starglow_medium.png" style="width:30px; margin-top:15px;" alt="Glow" />
                </div>
              `;
-             const HOUSE_TEXTS = [HOUSE_1_TEXT, HOUSE_2_TEXT, HOUSE_3_TEXT, HOUSE_4_TEXT, HOUSE_5_TEXT, HOUSE_6_TEXT, HOUSE_7_TEXT, HOUSE_8_TEXT, HOUSE_9_TEXT, HOUSE_10_TEXT, HOUSE_11_TEXT, HOUSE_12_TEXT];
-             
-             // Archetypes for sub-headers
-             const HOUSES_ARCHETYPES = [
-               "Identity, Persona, Physical Body - AC",
-               "Money, Values, Self-Worth", 
-               "Communication, Siblings, Daily Environment", 
-               "Home, Family, Roots", 
-               "Creativity, Romance, Play", 
-               "Work, Health, Daily Routines - IC", 
-               "Partnerships, Love, Mirrors - DC", 
-               "Sex, Transformation, Power", 
-               "Travel, Philosophy, Belief", 
-               "Career, Reputation, Legacy - MC", 
-               "Friends, Future, Community", 
-               "Subconscious, Dreams, Secrets"
-             ];
+          const HOUSE_TEXTS = [HOUSE_1_TEXT, HOUSE_2_TEXT, HOUSE_3_TEXT, HOUSE_4_TEXT, HOUSE_5_TEXT, HOUSE_6_TEXT, HOUSE_7_TEXT, HOUSE_8_TEXT, HOUSE_9_TEXT, HOUSE_10_TEXT, HOUSE_11_TEXT, HOUSE_12_TEXT];
 
-             // Start Grid Wrapper
-             contentHtml += `<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">`;
-             
-             chartDTO.houseSigns.forEach((sign, i) => {
-               if (sign !== null && sign !== undefined) {
-                 const txt = pickVal(HOUSE_TEXTS[i], sign) || `${i+1} House in ${sign}`;
-                 const archetype = HOUSES_ARCHETYPES[i] || "";
-                 
-                 const suffix = (n) => {
-                     const j = n % 10, k = n % 100;
-                     if (j == 1 && k != 11) return n + "st";
-                     if (j == 2 && k != 12) return n + "nd";
-                     if (j == 3 && k != 13) return n + "rd";
-                     return n + "th";
-                 };
+          // Archetypes for sub-headers
+          const HOUSES_ARCHETYPES = [
+            "Identity, Persona, Physical Body - AC",
+            "Money, Values, Self-Worth",
+            "Communication, Siblings, Daily Environment",
+            "Home, Family, Roots",
+            "Creativity, Romance, Play",
+            "Work, Health, Daily Routines - IC",
+            "Partnerships, Love, Mirrors - DC",
+            "Sex, Transformation, Power",
+            "Travel, Philosophy, Belief",
+            "Career, Reputation, Legacy - MC",
+            "Friends, Future, Community",
+            "Subconscious, Dreams, Secrets"
+          ];
 
-                 contentHtml += `
+          // Start Grid Wrapper
+          contentHtml += `<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">`;
+
+          chartDTO.houseSigns.forEach((sign, i) => {
+            if (sign !== null && sign !== undefined) {
+              const txt = pickVal(HOUSE_TEXTS[i], sign) || `${i + 1} House in ${sign}`;
+              const archetype = HOUSES_ARCHETYPES[i] || "";
+
+              const suffix = (n) => {
+                const j = n % 10, k = n % 100;
+                if (j == 1 && k != 11) return n + "st";
+                if (j == 2 && k != 12) return n + "nd";
+                if (j == 3 && k != 13) return n + "rd";
+                return n + "th";
+              };
+
+              contentHtml += `
                     <div style="display: flex; flex-direction: column;">
-                       <h3 style="color:#FFFFFF; font-family:'Oswald',sans-serif; font-size:20px; font-weight:bold; margin:0 0 5px 0;">${suffix(i+1)} House</h3>
+                       <h3 style="color:#FFFFFF; font-family:'Oswald',sans-serif; font-size:20px; font-weight:bold; margin:0 0 5px 0;">${suffix(i + 1)} House</h3>
                        <div style="color:#B6DAF7; font-family:'Inter',sans-serif; font-size:12px; font-style:italic; margin-bottom:10px; opacity:0.8;">${archetype}</div>
                        
                        <div class="card" style="border:1px solid #8FBCFF; border-radius:12px; padding:20px; background:transparent; flex: 1; box-sizing: border-box; display: flex; flex-direction: column;">
@@ -3329,34 +3330,34 @@ app.get('/reading/:submissionId/html/2', async (req, res) => {
                        </div>
                     </div>
                  `;
-               }
-             });
-             
-             // End Grid Wrapper
-             contentHtml += `</div>`;
-           }
+            }
+          });
 
-           
-           // --- Planets in Houses (Vertical Stack) ---
-           const PLANETS_ORDER = ['Sun', 'Moon', 'Mercury', 'Venus', 'Mars', 'Jupiter', 'Saturn', 'Uranus', 'Neptune', 'Pluto'];
-           const PLANET_Keys = ['sun', 'moon', 'mercury', 'venus', 'mars', 'jupiter', 'saturn', 'uranus', 'neptune', 'pluto'];
-           const PLANET_TEXTS = [SUN_HOUSE_TEXT, MOON_HOUSE_TEXT, MERCURY_HOUSE_TEXT, VENUS_HOUSE_TEXT, MARS_HOUSE_TEXT, JUPITER_HOUSE_TEXT, SATURN_HOUSE_TEXT, URANUS_HOUSE_TEXT, NEPTUNE_HOUSE_TEXT, PLUTO_HOUSE_TEXT];
-           
-           const PLANET_ARCHETYPES = {
-             Sun: "Where You Radiate",
-             Moon: "Your Emotional Habitat",
-             Mercury: "Your Mind's Operating System",
-             Venus: "Love Language & Aesthetic Aura",
-             Mars: "Your Drive & Action Style",
-             Jupiter: "Where You Expand & Grow",
-             Saturn: "Your Responsibilities & Lessons",
-             Uranus: "Where You Innovate",
-             Neptune: "Your Imagination & Dreams",
-             Pluto: "Your Power & Transformation"
-           };
-           
+          // End Grid Wrapper
+          contentHtml += `</div>`;
+        }
 
-          contentHtml += `
+
+        // --- Planets in Houses (Vertical Stack) ---
+        const PLANETS_ORDER = ['Sun', 'Moon', 'Mercury', 'Venus', 'Mars', 'Jupiter', 'Saturn', 'Uranus', 'Neptune', 'Pluto'];
+        const PLANET_Keys = ['sun', 'moon', 'mercury', 'venus', 'mars', 'jupiter', 'saturn', 'uranus', 'neptune', 'pluto'];
+        const PLANET_TEXTS = [SUN_HOUSE_TEXT, MOON_HOUSE_TEXT, MERCURY_HOUSE_TEXT, VENUS_HOUSE_TEXT, MARS_HOUSE_TEXT, JUPITER_HOUSE_TEXT, SATURN_HOUSE_TEXT, URANUS_HOUSE_TEXT, NEPTUNE_HOUSE_TEXT, PLUTO_HOUSE_TEXT];
+
+        const PLANET_ARCHETYPES = {
+          Sun: "Where You Radiate",
+          Moon: "Your Emotional Habitat",
+          Mercury: "Your Mind's Operating System",
+          Venus: "Love Language & Aesthetic Aura",
+          Mars: "Your Drive & Action Style",
+          Jupiter: "Where You Expand & Grow",
+          Saturn: "Your Responsibilities & Lessons",
+          Uranus: "Where You Innovate",
+          Neptune: "Your Imagination & Dreams",
+          Pluto: "Your Power & Transformation"
+        };
+
+
+        contentHtml += `
             <div class="page-break"></div>
              <div style="text-align:center; margin:40px 0 40px">
                <img src="/assets/starglow_large.png" style="width:20px; vertical-align:middle; margin-right:10px;" alt="" />
@@ -3372,34 +3373,34 @@ app.get('/reading/:submissionId/html/2', async (req, res) => {
              </div>
              <div style="display: flex; flex-wrap: wrap; gap: 15px;">
            `;
-           
-           PLANETS_ORDER.forEach((pName, idx) => {
-             const pKey = PLANET_Keys[idx];
-             const houseNum = chartDTO.planets?.[pKey]?.house;
-             if (houseNum) {
-               const textMap = PLANET_TEXTS[idx];
-               let rawText = pickVal(textMap, String(houseNum));
-               
-               const suffix = (n) => {
-                   const j = n % 10, k = n % 100;
-                   if (j == 1 && k != 11) return n + "st";
-                   if (j == 2 && k != 12) return n + "nd";
-                   if (j == 3 && k != 13) return n + "rd";
-                   return n + "th";
-               };
-               
-               let title = `${pName} in the ${suffix(houseNum)} House`;
-               let body = rawText;
-               
-               if (rawText.includes('—')) {
-                   const parts = rawText.split('—');
-                   if (parts.length > 1) body = parts.slice(1).join('—').trim();
-               } else if (rawText.includes(' - ')) { 
-                   const parts = rawText.split(' - ');
-                   if (parts.length > 1) body = parts.slice(1).join(' - ').trim();
-               }
-               
-               contentHtml += `
+
+        PLANETS_ORDER.forEach((pName, idx) => {
+          const pKey = PLANET_Keys[idx];
+          const houseNum = chartDTO.planets?.[pKey]?.house;
+          if (houseNum) {
+            const textMap = PLANET_TEXTS[idx];
+            let rawText = pickVal(textMap, String(houseNum));
+
+            const suffix = (n) => {
+              const j = n % 10, k = n % 100;
+              if (j == 1 && k != 11) return n + "st";
+              if (j == 2 && k != 12) return n + "nd";
+              if (j == 3 && k != 13) return n + "rd";
+              return n + "th";
+            };
+
+            let title = `${pName} in the ${suffix(houseNum)} House`;
+            let body = rawText;
+
+            if (rawText.includes('—')) {
+              const parts = rawText.split('—');
+              if (parts.length > 1) body = parts.slice(1).join('—').trim();
+            } else if (rawText.includes(' - ')) {
+              const parts = rawText.split(' - ');
+              if (parts.length > 1) body = parts.slice(1).join(' - ').trim();
+            }
+
+            contentHtml += `
                  <div style="display: flex; flex-direction: column; flex: 1 1 calc(50% - 15px); min-width: 0; max-width: 100%;">
                     <h3 style="color:#FFFFFF; font-family:'Oswald',sans-serif; font-size:16px; font-weight:bold; margin:0 0 5px 0;">${pName} in the House</h3>
                     <div style="color:#B6DAF7; font-family:'Inter',sans-serif; font-size:12px; font-style:italic; margin-bottom:10px; opacity:0.8;">${PLANET_ARCHETYPES[pName] || ''}</div>
@@ -3410,14 +3411,14 @@ app.get('/reading/:submissionId/html/2', async (req, res) => {
                     </div>
                  </div>
                `;
-             }
-           });
-           
-           contentHtml += `</div>`; // Close grid
-       }
+          }
+        });
 
-       // Navigation buttons
-       contentHtml += `
+        contentHtml += `</div>`; // Close grid
+      }
+
+      // Navigation buttons
+      contentHtml += `
          <style>
            .nav-button {
              display: inline-block;
@@ -3450,8 +3451,8 @@ app.get('/reading/:submissionId/html/2', async (req, res) => {
          </div>
        `;
 
-       // Always render footer/disclaimer
-       contentHtml += `
+      // Always render footer/disclaimer
+      contentHtml += `
           <div class="disclaimer" style="text-align: left; margin-top: 40px; font-size: 9px; line-height: 1.4;">
              <strong>MINI-DISCLAIMER</strong><br/>
              We'll use your birth info to match you with movie recs based on planetary vibes. Your data is sacred. Like a vintage VHS. It's not sold, rented, or streamed.
@@ -3463,7 +3464,7 @@ app.get('/reading/:submissionId/html/2', async (req, res) => {
        `;
 
     } else {
-       contentHtml = '<p>No chart data available.</p>';
+      contentHtml = '<p>No chart data available.</p>';
     }
 
     const html = `<!DOCTYPE html>
@@ -3535,11 +3536,11 @@ app.post('/api/chart-houses', async (req, res) => {
     });
 
     const ascendant = normalize360(housesRes.ascendant);
-    const mc        = normalize360(housesRes.mc);
+    const mc = normalize360(housesRes.mc);
     const houseCusps = (housesRes.house || []).map(normalize360);
 
     const descendantDeg = (ascendant + 180) % 360;
-    const icDeg         = (mc + 180) % 360;
+    const icDeg = (mc + 180) % 360;
     const signOf = (deg) => ZODIAC_SIGNS[Math.floor((((deg % 360) + 360) % 360) / 30)];
     const angles = {
       ascendantDeg: ascendant,
@@ -3552,7 +3553,7 @@ app.post('/api/chart-houses', async (req, res) => {
       icSign: signOf(icDeg),
     };
 
-    const houseSigns  = houseCusps.map(signFromLongitude);
+    const houseSigns = houseCusps.map(signFromLongitude);
     const houseRulers = houseSigns.map(sign => SIGN_RULER[sign] || null);
 
     const planetsInHouses = {};
@@ -3566,7 +3567,7 @@ app.post('/api/chart-houses', async (req, res) => {
     });
 
     for (const [name, p] of Object.entries(planets)) {
-      p.sign  = signFromLongitude(p.longitude);
+      p.sign = signFromLongitude(p.longitude);
       p.house = planetsInHouses[name];
     }
 
@@ -3581,17 +3582,17 @@ app.post('/api/chart-houses', async (req, res) => {
       angles.descendantSign = null;
       angles.icDeg = null;
       angles.icSign = null;
-      
+
       // houses
       // houseCusps is an array of numbers
-      for (let i=0; i<houseCusps.length; i++) houseCusps[i] = null;
-      
-      for (let i=0; i<houseSigns.length; i++) houseSigns[i] = null;
-      for (let i=0; i<houseRulers.length; i++) houseRulers[i] = null;
-      
+      for (let i = 0; i < houseCusps.length; i++) houseCusps[i] = null;
+
+      for (let i = 0; i < houseSigns.length; i++) houseSigns[i] = null;
+      for (let i = 0; i < houseRulers.length; i++) houseRulers[i] = null;
+
       for (const k in planetsInHouses) planetsInHouses[k] = null;
-      for (let i=0; i<planetsByHouse.length; i++) planetsByHouse[i] = [];
-      
+      for (let i = 0; i < planetsByHouse.length; i++) planetsByHouse[i] = [];
+
       for (const k in planets) {
         if (planets[k]) planets[k].house = null;
       }
@@ -3682,20 +3683,20 @@ app.get('/api/geocode', async (req, res) => {
 app.post("/api/survey/submit", async (req, res) => {
   try {
     console.log("submit route v2 hit", new Date().toISOString());
-const safeBody = JSON.parse(JSON.stringify(req.body));
-if (safeBody?.survey?.section1?.chartData) safeBody.survey.section1.chartData = "(omitted)";
-console.log("submit v2 body (safe):", safeBody);
+    const safeBody = JSON.parse(JSON.stringify(req.body));
+    if (safeBody?.survey?.section1?.chartData) safeBody.survey.section1.chartData = "(omitted)";
+    console.log("submit v2 body (safe):", safeBody);
 
-const { userEmail: shimEmail, answers } = normalizeSurveyPayload(req.body);
-// Prefer shim value, else legacy section1.email
-const userEmail = shimEmail || req.body?.survey?.section1?.email || null;
+    const { userEmail: shimEmail, answers } = normalizeSurveyPayload(req.body);
+    // Prefer shim value, else legacy section1.email
+    const userEmail = shimEmail || req.body?.survey?.section1?.email || null;
 
-// Prefer explicit chartId, else meta.chartId, else section1.chartId
-const chartId =
-  req.body?.chartId ||
-  req.body?.survey?.meta?.chartId ||
-  req.body?.survey?.section1?.chartId ||
-  null;
+    // Prefer explicit chartId, else meta.chartId, else section1.chartId
+    const chartId =
+      req.body?.chartId ||
+      req.body?.survey?.meta?.chartId ||
+      req.body?.survey?.section1?.chartId ||
+      null;
 
     if (!Array.isArray(answers) || answers.length === 0) {
       return res.status(400).json({ ok: false, error: "answers[] is required" });
@@ -3715,8 +3716,8 @@ const chartId =
     for (const a of answers) {
       const key = a?.questionKey;
       if (!key) continue;
-  // Skip non-question payload keys (birth-data & meta)
-  if (key.startsWith('cosmic.') || key.startsWith('meta.')) continue;
+      // Skip non-question payload keys (birth-data & meta)
+      if (key.startsWith('cosmic.') || key.startsWith('meta.')) continue;
       const q = await prisma.surveyQuestion.findUnique({
         where: { key: a.questionKey },
         include: { options: true },
@@ -3735,15 +3736,36 @@ const chartId =
       madeResponses++;
 
       if (Array.isArray(a.optionValues) && a.optionValues.length > 0) {
-        const allowed = new Set(q.options.map(o => o.value));
-        const chosen = a.optionValues.filter(v => allowed.has(v));
-        for (const val of chosen) {
-          const opt = q.options.find(o => o.value === val);
-          if (!opt) continue;
-          await prisma.surveyResponseOption.create({
-            data: { responseId: response.id, optionId: opt.id },
-          });
-          linkedOptions++;
+        for (const val of a.optionValues) {
+          if (val == null || val === '') continue;
+
+          // 1. Try Strict Match (Value)
+          let opt = q.options.find(o => o.value === val);
+
+          // 2. Fallback: Match by Label (if strict match failed)
+          if (!opt) {
+            opt = q.options.find(o => o.label === val); // Exact label match
+            if (opt) {
+              console.warn(`⚠️  Survey Option Mismatch Resolved: Question "${q.key}" received "${val}", matched to Option "${opt.value}" via Label.`);
+            }
+          }
+
+          // 3. Fallback: Case-insensitive Label (desperate measure)
+          if (!opt && typeof val === 'string') {
+            opt = q.options.find(o => o.label.toLowerCase() === val.toLowerCase());
+            if (opt) {
+              console.warn(`⚠️  Survey Option Fuzzy Matched: Question "${q.key}" received "${val}", matched to Option "${opt.value}" via fuzzy Label.`);
+            }
+          }
+
+          if (opt) {
+            await prisma.surveyResponseOption.create({
+              data: { responseId: response.id, optionId: opt.id },
+            });
+            linkedOptions++;
+          } else {
+            console.warn(`❌ Survey Option Drop: Question "${q.key}" received "${val}" which matched NOTHING.`);
+          }
         }
       }
     }
@@ -3834,7 +3856,7 @@ app.post("/api/survey/save-answer", async (req, res) => {
 
     // Get database question key
     const dbQuestionKey = keyMapping[frontendKey] || frontendKey;
-    
+
     // Skip cosmic/meta keys
     if (dbQuestionKey.startsWith('cosmic.') || dbQuestionKey.startsWith('meta.')) {
       return res.json({ ok: true, skipped: true, reason: 'cosmic_or_meta' });

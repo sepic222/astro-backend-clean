@@ -22,7 +22,7 @@ export const surveySections = [
     title: "Your Coordinates",
     subtitle: "To cast your chart, we need your exact origins.",
     questions: [
-      { id: "username", text: "What should we call you?", type: "text", placeholder: "Name or Alias" },
+      { id: "username", text: "What name should we call you in the credits?", type: "text", placeholder: "Name or Alias" },
       { id: "date", text: "Birth Date", type: "date" },
       { id: "time", text: "Birth Time", helpText: "Crucial for your Rising Sign.", type: "time" },
       {
@@ -37,8 +37,7 @@ export const surveySections = [
           { value: "approx_midday", label: "Approximate: Midday" },
           { value: "approx_afternoon", label: "Approximate: Afternoon" },
           { value: "approx_night", label: "Approximate: Night" },
-          { value: "unknown", label: "I have no idea (still works, but a bit more vague)" },
-          { value: "other", label: "Other" }
+          { value: "unknown", label: "🤷 I have no idea (still works, but a bit more vague)" }
         ]
       },
       { id: "city", text: "Birth City", type: "text", placeholder: "e.g. Düsseldorf" },

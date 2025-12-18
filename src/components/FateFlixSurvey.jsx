@@ -5,7 +5,7 @@ import { ErrorModal } from './ErrorModal';
 
 const ProgressBar = () => {
   const { currentStep, totalSteps, currentSection } = useSurvey();
-  
+
   // Hide progress bar on Intro Hero
   if (currentSection.id === 'intro-hero') return null;
 
@@ -13,7 +13,7 @@ const ProgressBar = () => {
 
   return (
     <div className="w-full bg-gray-800 h-2 mb-8 rounded-full overflow-hidden">
-      <div 
+      <div
         className="h-full bg-gradient-to-r from-orange-500 to-cyan-400 transition-all duration-500 ease-out"
         style={{ width: `${progress}%` }}
       />
@@ -42,7 +42,7 @@ const ResultIframe = ({ content, title }) => {
         className="w-full border-0"
         style={{ minHeight: '600px' }}
         onLoad={adjustHeight}
-        sandbox="allow-scripts allow-same-origin" 
+        sandbox="allow-scripts allow-same-origin"
       />
     </div>
   );
@@ -54,77 +54,77 @@ const ResultsDashboard = ({ results }) => {
   }, [results]);
 
   return (
-  <div 
-    className="min-h-screen bg-black text-white font-sans selection:bg-orange-500 selection:text-white p-6" 
-    style={{ backgroundColor: '#000000', minHeight: '100vh' }}
-  >
-    <div className="max-w-6xl mx-auto space-y-12 animate-fade-in">
-      {/* Sticky top nav - Jony Ive Style */}
-      <div className="sticky top-6 z-50 flex justify-center pb-8 pointer-events-none">
-        <div className="pointer-events-auto flex items-center gap-1 p-1.5 rounded-full bg-zinc-900/80 backdrop-blur-xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.5)] ring-1 ring-white/5 transition-all duration-500 hover:scale-[1.02]">
-          <a href="#badge" className="px-5 py-2.5 rounded-full text-[10px] md:text-xs font-bold uppercase tracking-[0.2em] text-zinc-400 hover:text-white hover:bg-white/10 hover:shadow-[0_0_15px_rgba(255,255,255,0.1)] transition-all duration-300">
-            Badge
-          </a>
-          {results.svg && results.svg.trim() && (
-            <a href="#chart" className="px-5 py-2.5 rounded-full text-[10px] md:text-xs font-bold uppercase tracking-[0.2em] text-zinc-400 hover:text-white hover:bg-white/10 hover:shadow-[0_0_15px_rgba(255,255,255,0.1)] transition-all duration-300">
-              Chart
+    <div
+      className="min-h-screen bg-black text-white font-sans selection:bg-orange-500 selection:text-white p-6"
+      style={{ backgroundColor: '#000000', minHeight: '100vh' }}
+    >
+      <div className="max-w-6xl mx-auto space-y-12 animate-fade-in">
+        {/* Sticky top nav - Jony Ive Style */}
+        <div className="sticky top-6 z-50 flex justify-center pb-8 pointer-events-none">
+          <div className="pointer-events-auto flex items-center gap-1 p-1.5 rounded-full bg-zinc-900/80 backdrop-blur-xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.5)] ring-1 ring-white/5 transition-all duration-500 hover:scale-[1.02]">
+            <a href="#badge" className="px-5 py-2.5 rounded-full text-[10px] md:text-xs font-bold uppercase tracking-[0.2em] text-zinc-400 hover:text-white hover:bg-white/10 hover:shadow-[0_0_15px_rgba(255,255,255,0.1)] transition-all duration-300">
+              Badge
             </a>
-          )}
-          <a href="#reading1" className="px-5 py-2.5 rounded-full text-[10px] md:text-xs font-bold uppercase tracking-[0.2em] text-zinc-400 hover:text-white hover:bg-white/10 hover:shadow-[0_0_15px_rgba(255,255,255,0.1)] transition-all duration-300">
-            Part I
-          </a>
-          <a href="#reading2" className="px-5 py-2.5 rounded-full text-[10px] md:text-xs font-bold uppercase tracking-[0.2em] text-zinc-400 hover:text-white hover:bg-white/10 hover:shadow-[0_0_15px_rgba(255,255,255,0.1)] transition-all duration-300">
-            Part II
-          </a>
-        </div>
-      </div>
-      
-
-      {/* Badge Section */}
-      <div id="badge" className="flex justify-center mb-12">
-        <div 
-          className="transform hover:scale-105 transition-transform duration-500"
-          dangerouslySetInnerHTML={{ __html: results.badge }} 
-        />
-      </div>
-
-      {/* Chart Section (optional) */}
-      {results.svg && results.svg.trim() && (
-        <div id="chart" className="bg-gray-900/50 p-4 rounded-2xl border border-gray-800 shadow-2xl shadow-orange-900/5">
-          <ResultIframe content={results.svg} title="Natal Chart" />
-        </div>
-      )}
-
-      {/* Reading Content via Iframes */}
-      <div className="space-y-12">
-        {/* HTML 1 */}
-        <div id="reading1" className="bg-gray-900/50 p-4 rounded-2xl border border-gray-800 shadow-2xl shadow-orange-900/5">
-           <ResultIframe content={results.html1} title="Cosmic Chart" />
+            {results.svg && results.svg.trim() && (
+              <a href="#chart" className="px-5 py-2.5 rounded-full text-[10px] md:text-xs font-bold uppercase tracking-[0.2em] text-zinc-400 hover:text-white hover:bg-white/10 hover:shadow-[0_0_15px_rgba(255,255,255,0.1)] transition-all duration-300">
+                Chart
+              </a>
+            )}
+            <a href="#reading1" className="px-5 py-2.5 rounded-full text-[10px] md:text-xs font-bold uppercase tracking-[0.2em] text-zinc-400 hover:text-white hover:bg-white/10 hover:shadow-[0_0_15px_rgba(255,255,255,0.1)] transition-all duration-300">
+              Part I
+            </a>
+            <a href="#reading2" className="px-5 py-2.5 rounded-full text-[10px] md:text-xs font-bold uppercase tracking-[0.2em] text-zinc-400 hover:text-white hover:bg-white/10 hover:shadow-[0_0_15px_rgba(255,255,255,0.1)] transition-all duration-300">
+              Part II
+            </a>
+          </div>
         </div>
 
-        {/* HTML 2 */}
-        <div id="reading2" className="bg-gray-900/50 p-4 rounded-2xl border border-gray-800 shadow-2xl shadow-cyan-900/5">
-           <ResultIframe content={results.html2} title="Chart Details" />
+
+        {/* Badge Section */}
+        <div id="badge" className="flex justify-center mb-12">
+          <div
+            className="transform hover:scale-105 transition-transform duration-500"
+            dangerouslySetInnerHTML={{ __html: results.badge }}
+          />
         </div>
-      </div>
 
-      {/* Replay Button */}
-      <div className="text-center pt-12 pb-24">
-        <button 
-          onClick={() => {
-            // Clear URL and reload
-            window.history.pushState({}, '', '/');
-            window.location.reload();
-          }}
-          className="px-8 py-3 bg-zinc-800 hover:bg-zinc-700 text-white rounded-full font-bold tracking-wider transition-all"
-        >
-          Replay Survey
-        </button>
-      </div>
+        {/* Chart Section (optional) */}
+        {results.svg && results.svg.trim() && (
+          <div id="chart" className="bg-gray-900/50 p-4 rounded-2xl border border-gray-800 shadow-2xl shadow-orange-900/5">
+            <ResultIframe content={results.svg} title="Natal Chart" />
+          </div>
+        )}
 
+        {/* Reading Content via Iframes */}
+        <div className="space-y-12">
+          {/* HTML 1 */}
+          <div id="reading1" className="bg-gray-900/50 p-4 rounded-2xl border border-gray-800 shadow-2xl shadow-orange-900/5">
+            <ResultIframe content={results.html1} title="Cosmic Chart" />
+          </div>
+
+          {/* HTML 2 */}
+          <div id="reading2" className="bg-gray-900/50 p-4 rounded-2xl border border-gray-800 shadow-2xl shadow-cyan-900/5">
+            <ResultIframe content={results.html2} title="Chart Details" />
+          </div>
+        </div>
+
+        {/* Replay Button */}
+        <div className="text-center pt-12 pb-24">
+          <button
+            onClick={() => {
+              // Clear URL and reload
+              window.history.pushState({}, '', '/');
+              window.location.reload();
+            }}
+            className="px-8 py-3 bg-zinc-800 hover:bg-zinc-700 text-white rounded-full font-bold tracking-wider transition-all"
+          >
+            Replay Survey
+          </button>
+        </div>
+
+      </div>
     </div>
-  </div>
-);
+  );
 
 };
 
@@ -136,13 +136,13 @@ const SurveyControls = ({ submitStatus, setSubmitStatus, setResults, setErrorMod
 
   const isLastStep = currentStep === totalSteps - 1;
   const isSubmitting = submitStatus === 'loading';
-  
+
   const handleNext = async () => {
     // Validation for Section I (Astro Data)
     if (currentSection.id === 'astro-data') {
       const requiredFields = ['username', 'date', 'city', 'latitude', 'longitude', 'time_accuracy'];
       const missing = requiredFields.filter(field => !answers[field]);
-      
+
       if (missing.length > 0) {
         setErrorModal({
           isOpen: true,
@@ -169,7 +169,7 @@ const SurveyControls = ({ submitStatus, setSubmitStatus, setResults, setErrorMod
         };
 
         const apiBase = import.meta.env.PUBLIC_API_BASE || (import.meta.env.DEV ? 'http://localhost:3001' : '');
-        
+
         // Create submission + chart via chart-to-svg endpoint (but don't fetch results yet)
         const response = await fetch(`${apiBase}/api/dev/chart-to-svg`, {
           method: 'POST',
@@ -200,10 +200,10 @@ const SurveyControls = ({ submitStatus, setSubmitStatus, setResults, setErrorMod
 
     if (isLastStep) {
       setSubmitStatus('loading');
-      
+
       // 1. Logic: Handle Unknown Time
       const isUnknownTime = answers['time_accuracy'] === 'unknown';
-      
+
       const payload = {
         date: answers['date'],
         // If unknown or empty, default to 12:00
@@ -215,13 +215,13 @@ const SurveyControls = ({ submitStatus, setSubmitStatus, setResults, setErrorMod
         username: answers['username'],
         userEmail: answers['email'], // From Section IX
         timeAccuracy: answers['time_accuracy'], // Send the flag to backend
-        fullResponses: answers 
+        fullResponses: answers
       };
 
       // If we already have a submissionId, ensure all answers are saved (especially top3)
       // Then use that submissionId instead of creating a new one
       let finalSubmissionId = submissionId;
-      
+
       if (finalSubmissionId) {
         // Save top3 fields (combined into hall_of_fame)
         try {
@@ -230,7 +230,7 @@ const SurveyControls = ({ submitStatus, setSubmitStatus, setResults, setErrorMod
           if (answers.top3_films) hallOfFameParts.push(`TOP 3 FILMS:\n${answers.top3_films}`);
           if (answers.top3_series) hallOfFameParts.push(`TOP 3 SERIES:\n${answers.top3_series}`);
           if (answers.top3_docs) hallOfFameParts.push(`TOP 3 DOCS:\n${answers.top3_docs}`);
-          
+
           if (hallOfFameParts.length > 0) {
             await fetch(`${apiBase}/api/survey/save-answer`, {
               method: 'POST',
@@ -255,7 +255,7 @@ const SurveyControls = ({ submitStatus, setSubmitStatus, setResults, setErrorMod
 
       try {
         const apiBase = import.meta.env.PUBLIC_API_BASE || (import.meta.env.DEV ? 'http://localhost:3001' : '');
-        
+
         // 2. Call the Backend (will create new submission if we don't have one)
         // Backend will save all answers from fullResponses
         const response = await fetch(`${apiBase}/api/dev/chart-to-svg`, {
@@ -324,10 +324,10 @@ const SurveyControls = ({ submitStatus, setSubmitStatus, setResults, setErrorMod
           html1: html1Text,
           html2: html2Text
         });
-        
+
         // Update URL with submissionId for sharing/bookmarking
         window.history.pushState({}, '', `/?submissionId=${returnedSubmissionId}`);
-        
+
         setSubmitStatus('success');
 
       } catch (err) {
@@ -356,13 +356,13 @@ const SurveyControls = ({ submitStatus, setSubmitStatus, setResults, setErrorMod
         onClick={prevStep}
         disabled={currentStep === 0 || isSubmitting}
         className={`px-6 py-2 rounded-md font-medium transition-colors
-          ${currentStep === 0 
-            ? 'text-gray-600 cursor-not-allowed' 
+          ${currentStep === 0
+            ? 'text-gray-600 cursor-not-allowed'
             : 'text-white hover:text-cyan-400 border border-gray-700 hover:border-cyan-400'}`}
       >
         Previous
       </button>
-      
+
       <button
         onClick={handleNext}
         disabled={isSubmitting}
@@ -383,12 +383,12 @@ const CurrentSection = ({ nextStep }) => {
   const handleAutoAdvance = useCallback((questionId) => {
     // 1. Find the index of the question just answered
     const currentIndex = currentSection.questions.findIndex(q => q.id === questionId);
-    
+
     // 2. Check if there is a next question in this section
     if (currentIndex !== -1 && currentIndex < currentSection.questions.length - 1) {
       const nextQuestion = currentSection.questions[currentIndex + 1];
       const nextElement = document.getElementById(`question-${nextQuestion.id}`);
-      
+
       if (nextElement) {
         // 3. Smooth Scroll to it after a tiny delay
         setTimeout(() => {
@@ -419,7 +419,7 @@ const CurrentSection = ({ nextStep }) => {
           )}
         </div>
       )}
-      
+
       <div className={`space-y-12 ${!isIntroHero ? 'min-h-[300px]' : ''}`}>
         {currentSection.questions.length === 0 ? (
           <div className="p-8 border border-gray-800 border-dashed rounded-lg text-gray-500 text-center italic">
@@ -428,8 +428,8 @@ const CurrentSection = ({ nextStep }) => {
         ) : (
           <div className="space-y-10">
             {currentSection.questions.map((question) => (
-              <div 
-                key={question.id} 
+              <div
+                key={question.id}
                 id={`question-${question.id}`}
                 className={isIntroHero ? "" : "scroll-mt-24 transition-opacity duration-500"}
               >
@@ -472,13 +472,13 @@ const SurveyContent = () => {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const submissionIdFromUrl = params.get('submissionId');
-    
+
     if (submissionIdFromUrl && !results && submitStatus === 'idle') {
       // Load results from URL
       const loadResultsFromSubmissionId = async (submissionId) => {
         try {
           setSubmitStatus('loading');
-          
+
           const apiBase = import.meta.env.PUBLIC_API_BASE || (import.meta.env.DEV ? 'http://localhost:3001' : '');
           const [svgRes, badgeRes, html1Res, html2Res] = await Promise.all([
             fetch(`${apiBase}/reading/${submissionId}/chart.svg`),
@@ -498,7 +498,7 @@ const SurveyContent = () => {
             html1: await html1Res.text(),
             html2: await html2Res.text()
           });
-          
+
           setSubmitStatus('success');
         } catch (err) {
           console.error('Failed to load results from URL:', err);
@@ -526,22 +526,22 @@ const SurveyContent = () => {
     <div className="min-h-screen w-full bg-zinc-950 text-white flex flex-col items-center py-8 px-4 md:px-0 font-sans selection:bg-orange-500 selection:text-white">
       <div className="w-full max-w-2xl bg-transparent flex flex-col gap-8">
         {!isIntroHero && (
-            <header className="mb-12 text-center">
+          <header className="mb-12 text-center">
             <h1 className="text-4xl md:text-6xl font-extrabold tracking-tighter mb-2 text-white">
-                FATE<span className="text-orange-500">FLIX</span>
+              FATEFLIX
             </h1>
             <p className="text-gray-400 uppercase tracking-widest text-sm">Cinematic Survey</p>
-            </header>
+          </header>
         )}
 
         <ProgressBar />
-        
-        <div className={`${!isIntroHero ? 'bg-gray-900/50 backdrop-blur-sm border border-gray-800 shadow-2xl shadow-orange-900/10' : ''} w-full max-w-2xl bg-transparent flex flex-col gap-8 p-8 md:p-12 rounded-[188px] transition-all duration-500`}>
+
+        <div className={`${!isIntroHero ? '' : ''} w-full max-w-2xl bg-transparent flex flex-col gap-8 p-8 md:p-12 transition-all duration-500`}>
           <CurrentSection nextStep={nextStep} />
-          <SurveyControls 
-            submitStatus={submitStatus} 
-            setSubmitStatus={setSubmitStatus} 
-            setResults={setResults} 
+          <SurveyControls
+            submitStatus={submitStatus}
+            setSubmitStatus={setSubmitStatus}
+            setResults={setResults}
             setErrorModal={setErrorModal}
           />
         </div>

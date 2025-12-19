@@ -446,7 +446,7 @@ async function saveChartToDB(input, output) {
 // --------------------------------------------------------------
 // BADGE HTML BUILDER
 // --------------------------------------------------------------
-function buildBadgeHtml(reading) {
+function buildBadgeHtml_OLD(reading) {
   const creationDate = reading.createdAt
     ? new Date(reading.createdAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
     : 'Unknown Date';
@@ -918,8 +918,7 @@ app.get('/dev/chart-ruler', (req, res) => {
   const submissionId = 'dev-chart-ruler-' + Date.now();
   const chartId = 'dev-chart-ruler-' + Date.now();
 
-  // Mock chart with ascendant (Cancer) to show Chart Ruler section
-  // Cancer's ruler is the Moon
+  // Mock chart with Scorpio ascendant to test Rule 2 (Co-Ruler)
   MOCK_DB[submissionId] = {
     reading: {
       id: 'mock-reading-ruler',
@@ -927,7 +926,7 @@ app.get('/dev/chart-ruler', (req, res) => {
       chartId,
       createdAt: new Date(),
       userEmail: 'dev@fateflix.app',
-      summary: 'Mock Chart Ruler Reading',
+      summary: 'Mock Scorpio Chart Ruler Reading (Rule 2)',
       birthDate: '2000-01-01',
       birthTime: '12:00',
       birthCity: 'Cosmic Void',
@@ -936,21 +935,22 @@ app.get('/dev/chart-ruler', (req, res) => {
     },
     chart: {
       id: chartId,
-      chartRulerPlanet: 'Moon',
-      chartRulerHouse: 11,
+      chartRulerPlanet: 'Mars', // Traditional ruler of Scorpio
+      chartRulerHouse: 8,
       rawChart: {
         angles: {
-          ascendantSign: 'Cancer',
-          ascendantDeg: 120,
-          mcSign: 'Aries',
-          mcDeg: 30
+          ascendantSign: 'Scorpio',
+          ascendantDeg: 210,
+          mcSign: 'Leo',
+          mcDeg: 120
         },
         planets: {
-          moon: { sign: 'Taurus', house: 11, longitude: 45 },
-          sun: { sign: 'Aquarius', house: 8, longitude: 315 },
+          mars: { sign: 'Aries', house: 6, longitude: 15 },
+          pluto: { sign: 'Capricorn', house: 3, longitude: 285 },
+          moon: { sign: 'Taurus', house: 7, longitude: 45 },
+          sun: { sign: 'Aquarius', house: 4, longitude: 315 },
           mercury: { sign: 'Pisces', house: 9, longitude: 330 },
           venus: { sign: 'Capricorn', house: 7, longitude: 280 },
-          mars: { sign: 'Aries', house: 10, longitude: 15 },
           jupiter: { sign: 'Aries', house: 10, longitude: 20 },
           saturn: { sign: 'Taurus', house: 11, longitude: 50 },
           uranus: { sign: 'Aquarius', house: 8, longitude: 310 },
@@ -1269,11 +1269,11 @@ function getJulianDayFromDate(date) {
 // ------------- MAIN CHART ENDPOINT -------------
 app.post('/api/birth-chart-swisseph', async (req, res) => {
   try {
-    let { date, time, latitude, longitude } = req.body || {};
+    let { date, time, latitude, longitude, timeAccuracy } = req.body || {};
     let isUnknownTime = false;
 
-    // Default to 12:00 (noon) if time is missing
-    if (!time) {
+    // Default to 12:00 (noon) if time is missing OR accuracy is unknown
+    if (!time || timeAccuracy === 'unknown') {
       time = '12:00';
       isUnknownTime = true;
     }
@@ -1784,7 +1784,14 @@ app.post('/api/dev/chart-to-svg', async (req, res) => {
     const rChart = await fetch(`${base}/api/birth-chart-swisseph`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ date, time, latitude, longitude, userEmail })
+      body: JSON.stringify({
+        date,
+        time,
+        latitude,
+        longitude,
+        userEmail,
+        timeAccuracy: req.body.timeAccuracy // Pass this through!
+      })
     });
     if (!rChart.ok) {
       const err = await rChart.text().catch(() => '');
@@ -3179,9 +3186,9 @@ app.get('/reading/:submissionId/html/2', async (req, res) => {
         contentHtml += noTimeHtml;
       } else {
         // Rule 2 & 3 Logic
-        const CO_RULERS = { Scorpio: 'Pluto', Aquarius: 'Uranus', Pisces: 'Neptune', Virgo: 'Chiron' };
-        const coRulerSigns = ['Taurus', 'Virgo', 'Scorpio', 'Aquarius', 'Pisces'];
-        const isCoRuler = coRulerSigns.includes(ascendant);
+        const CO_RULERS = { Scorpio: 'Pluto', Aquarius: 'Uranus', Pisces: 'Neptune' };
+        const coRulerSigns = ['Scorpio', 'Aquarius', 'Pisces', 'Virgo', 'Taurus'];
+        const isCoRuler = coRulerSigns.includes(ascendant) && CO_RULERS[ascendant];
 
         const ruler1 = chartDTO.chartRuler?.planet;
         const ruler2 = CO_RULERS[ascendant] || null;
@@ -3221,7 +3228,7 @@ app.get('/reading/:submissionId/html/2', async (req, res) => {
                    <div class="ruler-eq">Your Chart Ruler + Co-Chart Ruler = ${ruler2 || 'Unknown'} + ${ruler1}</div>
                    
                    <div class="ruler-header">Chart Ruler in the Sign</div>
-                   <div class="card" style="border-color:#8FBCFF">${esc(pickVal(CHART_RULER_TEXT, `${ruler1}:${ZODIAC_SIGNS.indexOf(ascendant) + 1}`) || `${ruler1} as Ruler`)}</div>
+                   <div class="card" style="border-color:#8FBCFF">${esc(pickVal(CHART_RULER_TEXT, p[ruler1.toLowerCase()]?.sign) || `${ruler1} in Sign`)}</div>
                    
                    <div class="ruler-header">Chart Ruler in the House</div>
                    <div class="card" style="border-color:#8FBCFF">${esc(pickVal(CHART_RULER_HOUSE_TEXT, String(chartDTO.chartRuler?.house)) || `House ${chartDTO.chartRuler?.house}`)}</div>
@@ -3493,11 +3500,11 @@ app.get('/reading/:submissionId/html/2', async (req, res) => {
 // ===== House rulers & planets-in-houses (compact endpoint) =====
 app.post('/api/chart-houses', async (req, res) => {
   try {
-    let { date, time, latitude, longitude } = req.body || {};
+    let { date, time, latitude, longitude, timeAccuracy } = req.body || {};
     let isUnknownTime = false;
 
-    // Default to 12:00 (noon) if time is missing
-    if (!time) {
+    // Default to 12:00 (noon) if time is missing OR accuracy is unknown
+    if (!time || timeAccuracy === 'unknown') {
       time = '12:00';
       isUnknownTime = true;
     }

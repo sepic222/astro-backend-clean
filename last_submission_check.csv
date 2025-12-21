@@ -1,18 +1,46 @@
 Question Key,Question Text,Answer
-casting.gender,Your Gender,Non-binary
+casting.gender,Your Gender,non_binary
 taste.how_you_watch,How do you watch most of the time?,
-global.foreign_films,How do you feel about foreign films & subtitles?,"Yes, regularly"
-casting.attraction_style,Attraction style / sexuality vibe,Across spectrum
-taste.favorite_era,What’s your favourite movie era?,1970s
-core_memory.life_changing,What movie changed your life or meant everything at some point?,Eternal Sunshine of the Spotless Mind
-screen_ed.tv_taste,TV Taste Check,Prestige TV
+core_memory.first_emotional,What’s the first movie that ever made you feel something?,winnetou
+world.movie_universe,If you could live inside any movie universe… which one(s) would you pick?,
+genres.loved,Genres you never get sick of (pick your favourites),
+global.foreign_films,How do you feel about foreign films & subtitles?,lush
+fit.pick_what_to_watch,In a minefield of content… how do you pick what to watch?,
+casting.attraction_style,Attraction style / sexuality vibe,figuring_out
+taste.favorite_era,What’s your favourite movie era?,
+core_memory.life_changing,What movie changed your life or meant everything at some point?,rebel with a cause
+world.villain,Which villain do you secretly relate to? And why?,klaus kinski
+screen_ed.tv_taste,TV Taste Check,
 genres.turn_offs,What do you NOT vibe with on screen?,
-casting.love_o_meter,Where would you place yourself on the Movie Love-o-Meter?,Movie Lover
-taste.cultural_background,Where did you grow up (or feel culturally shaped by)?,Mixed heritage
-core_memory.comfort_watch,Your Ultimate Comfort Watch (Movie or TV show),Friends TV show
-casting.movie_role,In the movie of your life... what role do you play?,
-taste.childhood_environment,What kind of environment did you grow up in?,Artistic/progressive
-fit.email,We need your email to send your astro-cinematic gift,notime@test.example.com
-casting.escapism_style,Your Emotional Escapism Style,Cozy Comdown
-casting.first_obsession,Who was your first cinematic obsession or role model?,Meryl Streep in The Devil Wears Prada
-screen_ed.access_growing_up,How did you mostly access movies growing up?,Streaming services
+fit.found_survey,How did you find this survey?,founder
+casting.love_o_meter,Where would you place yourself on the Movie Love-o-Meter?,recovering
+taste.cultural_background,Where did you grow up (or feel culturally shaped by)?,
+core_memory.comfort_watch,Your Ultimate Comfort Watch (Movie or TV show),die geissens
+world.forever_crush,Who’s your forever on-screen crush?,natasha kinski
+screen_ed.favorite_tv_show,What’s your all-time favourite TV show? (and why),king of queens
+genres.hated_but_loved,What’s a film everyone else loved… but you hated? (why),clueless
+casting.movie_role,In the movie of your life... what role do you play?,disruptor
+taste.childhood_environment,What kind of environment did you grow up in?,
+core_memory.power_movie,What movie do you rewatch when you want to feel powerful?,unbreakable
+world.crave_in_movie,What do you crave most in a movie?,[object Object]
+screen_ed.cinematography,How important is cinematography?,obsessed
+fit.beta_test,Would you like to beta test the FateFlix app once it's live?,yes
+casting.escapism_style,Your Emotional Escapism Style,control
+core_memory.impress_movie,What movie do you drop to impress a date / crush / dinner guest?,city of god
+world.life_tagline,"If your life were a movie, what would the tagline be?",hotter
+genres.twin_flame,Cinematic twin flame / alter ego (pick up to 5),
+fit.email,We need your email to send your astro-cinematic gift,mi.bianca.gerer@gmail.com
+fit.hall_of_fame,BONUS — Your Hall of Fame (Top 3 Films / Series / Docs),"TOP 3 FILMS:
+das boot
+casablanca
+psycho
+
+TOP 3 SERIES:
+king of queens 
+tatort
+
+TOP 3 DOCS:
+puff daddy"
+casting.first_obsession,Who was your first cinematic obsession or role model?,Rex the policer dog
+screen_ed.favorite_directors,Favourite directors (pick up to 5 or write-in),
+screen_ed.access_growing_up,How did you mostly access movies growing up?,

@@ -80,7 +80,8 @@ export const surveySections = [
           { value: "asexual", label: "Asexual / No thanks, I'm here for plot" },
           { value: "figuring_out", label: "Still figuring it out" },
           { value: "steamy_any", label: "I love anything steamy, no matter the form" },
-          { value: "no_label", label: "I don't label it" }
+          { value: "no_label", label: "I don't label it" },
+          { value: "other", label: "Other" }
         ]
       },
       {
@@ -95,7 +96,8 @@ export const surveySections = [
           { value: "popcorn", label: "Popcorn-Only Viewer (Here for explosions and hot cast)" },
           { value: "sleepy", label: "Sleepy Streamer (Background noise to fall asleep)" },
           { value: "recovering", label: "Recovering Binger (I lie to keep watching)" },
-          { value: "scroller", label: "Lost in the Scroll (45 mins scrolling, watch nothing)" }
+          { value: "scroller", label: "Lost in the Scroll (45 mins scrolling, watch nothing)" },
+          { value: "other", label: "Other" }
         ]
       },
       {
@@ -113,7 +115,8 @@ export const surveySections = [
           { value: "comic", label: "The Comic Relief" },
           { value: "wanderer", label: "The Wanderer (Never rooted)" },
           { value: "mirror", label: "The Mirror (I become who people need)" },
-          { value: "audience", label: "Just here for the popcorn (Audience vibes)" }
+          { value: "audience", label: "Just here for the popcorn (Audience vibes)" },
+          { value: "other", label: "Other" }
         ]
       },
       {
@@ -135,7 +138,8 @@ export const surveySections = [
           { value: "control", label: "Control Watcher (Choose what I feel)" },
           { value: "decoder", label: "People Decoder (Understand psychology)" },
           { value: "offline", label: "Emotionally Offline (Don't feel them emotionally)" },
-          { value: "ambience", label: "Ambience-Only Watcher (Background energy)" }
+          { value: "ambience", label: "Ambience-Only Watcher (Background energy)" },
+          { value: "other", label: "Other" }
         ]
       },
       {
@@ -168,7 +172,8 @@ export const surveySections = [
           { value: "transit", label: "On phone/tablet in transit" },
           { value: "bed", label: "In bed, to fall asleep" },
           { value: "binge", label: "I binge no matter who's around" },
-          { value: "scroll", label: "I scroll forever, watch nothing" }
+          { value: "scroll", label: "I scroll forever, watch nothing" },
+          { value: "other", label: "Other" }
         ]
       },
       {
@@ -185,7 +190,8 @@ export const surveySections = [
           { value: "1990s", label: "1990s (Indie Boom & VHS Royalty)" },
           { value: "2000s", label: "2000s (Tumblr-core & Teen Dreams)" },
           { value: "post2010", label: "Post-2010 (A24 & Softcore Apocalypse)" },
-          { value: "fluid", label: "Era-fluid (Time is fake)" }
+          { value: "fluid", label: "Era-fluid (Time is fake)" },
+          { value: "other", label: "Other" }
         ]
       },
       {
@@ -211,7 +217,8 @@ export const surveySections = [
           { value: "middle_east", label: "Middle East / Arabic / Persian" },
           { value: "eastern_europe", label: "Eastern Europe / Balkans" },
           { value: "mixed", label: "Mixed heritage / Third culture kid" },
-          { value: "queer", label: "Queer culture / chosen family" }
+          { value: "queer", label: "Queer culture / chosen family" },
+          { value: "other", label: "Other" }
         ]
       },
       {
@@ -226,7 +233,8 @@ export const surveySections = [
           { value: "artistic", label: "Artistic / progressive / liberal" },
           { value: "disruptor", label: "I was the cultural disruptor" },
           { value: "quiet", label: "Quiet, minimal, or emotionally closed" },
-          { value: "moving", label: "Always moving / never settled" }
+          { value: "moving", label: "Always moving / never settled" },
+          { value: "other", label: "Other" }
         ]
       }
     ]
@@ -293,7 +301,8 @@ export const surveySections = [
           { value: "glamour", label: "Theatre and glamour (Moulin Rouge)" },
           { value: "thrilling", label: "Dangerously thrilling (John Wick, Kill Bill)" },
           { value: "old_world", label: "Old world elegance (Bridgerton)" },
-          { value: "gothic", label: "Gothic and strange (Pan's Labyrinth)" }
+          { value: "gothic", label: "Gothic and strange (Pan's Labyrinth)" },
+          { value: "other", label: "Other" }
         ]
       },
       {
@@ -329,7 +338,8 @@ export const surveySections = [
           { value: "fun", label: "Fun, clever & spirally" },
           { value: "weird", label: "Weird & trippy (surrealism is truth)" },
           { value: "dark", label: "Dark & seductive (noir, vampires)" },
-          { value: "crime", label: "Crime, hustle & heist" }
+          { value: "crime", label: "Crime, hustle & heist" },
+          { value: "other", label: "Other" }
         ]
       },
       {
@@ -356,7 +366,8 @@ export const surveySections = [
           { value: "script", label: "Flawed, fabulous, and still rewriting the script." },
           { value: "rules", label: "In a world that made no sense, I made my own rules." },
           { value: "loop", label: "Love, loss, reinvention. On loop." },
-          { value: "survived", label: "I laughed, I cried, I survived." }
+          { value: "survived", label: "I laughed, I cried, I survived." },
+          { value: "other", label: "Other" }
         ]
       }
     ]
@@ -384,7 +395,8 @@ export const surveySections = [
           { value: "docu", label: "Documentary & real stories" },
           { value: "no_tv", label: "I don't really watch TV (movie-only soul)" },
           { value: "addict", label: "I try not to watch - I get addicted" },
-          { value: "avoid", label: "I avoid shows to protect my peace" }
+          { value: "avoid", label: "I avoid shows to protect my peace" },
+          { value: "other", label: "Other" }
         ]
       },
       {
@@ -400,7 +412,8 @@ export const surveySections = [
           { value: "obsessed", label: "Obsessed. I pause scenes to admire lighting." },
           { value: "nice", label: "Nice to have, but not a dealbreaker" },
           { value: "palette", label: "Only if it has a colour palette worth mood-boarding" },
-          { value: "skip", label: "I skip to the dialogue" }
+          { value: "skip", label: "I skip to the dialogue" },
+          { value: "other", label: "Other" }
         ]
       },
       {
@@ -427,7 +440,8 @@ export const surveySections = [
           { value: "bong_joon_ho", label: "Bong Joon-ho" },
           { value: "almodovar", label: "Pedro Almodóvar" },
           { value: "varda", label: "Agnès Varda" },
-          { value: "other", label: "I don't know any directors / don't care" }
+          { value: "other", label: "Other" },
+          { value: "none", label: "I don't know any directors / don't care" }
         ]
       },
       {
@@ -443,7 +457,8 @@ export const surveySections = [
           { value: "mentor", label: "Film school or family curation" },
           { value: "religious", label: "Religious / censored media only" },
           { value: "late", label: "I discovered film late" },
-          { value: "rare", label: "Rare occasions only" }
+          { value: "rare", label: "Rare occasions only" },
+          { value: "other", label: "Other" }
         ]
       }
     ]
@@ -474,7 +489,8 @@ export const surveySections = [
           { value: "queer", label: "Queer Cinema" },
           { value: "fantasy", label: "Fantasy" },
           { value: "documentary", label: "Documentary" },
-          { value: "thriller", label: "Psychological / Twisted / Thrillers" }
+          { value: "thriller", label: "Psychological / Twisted / Thrillers" },
+          { value: "other", label: "Other" }
         ]
       },
       {
@@ -495,7 +511,8 @@ export const surveySections = [
           { value: "clowns", label: "Can't do clowns. Ever." },
           { value: "reality_rot", label: "Reality TV rots my brain." },
           { value: "marvel", label: "I don't do Marvel." },
-          { value: "subtitles", label: "I don't like subtitles." }
+          { value: "subtitles", label: "I don't like subtitles." },
+          { value: "other", label: "Other" }
         ]
       },
       {
@@ -517,9 +534,10 @@ export const surveySections = [
       {
         id: "character_match",
         text: "Who’s your cinematic twin flame, alter ego, or misunderstood legend?",
-        helpText: "Type your answer (e.g., Fleabag, Amélie, Tony Soprano...)",
+        helpText: "Add up to 5 characters (e.g., Fleabag, Amélie, Tony Soprano...)",
         type: "text",
-        uiType: "hero_card" // Hint for frontend to render this specially
+        uiType: "multi_entry", // Changed from hero_card to multi_entry
+        maxEntries: 5
       }
     ]
   },
@@ -540,7 +558,8 @@ export const surveySections = [
           { value: "not_really", label: "Not really" },
           { value: "lush", label: "They're visually lush/beautiful" },
           { value: "demanding", label: "Subtitles demand full attention (can't multitask)" },
-          { value: "dubbed", label: "As long as it's dubbed, I'm fine" }
+          { value: "dubbed", label: "As long as it's dubbed, I'm fine" },
+          { value: "other", label: "Other" }
         ]
       }
     ]
@@ -565,7 +584,8 @@ export const surveySections = [
           { value: "chatgpt", label: "I ask ChatGPT" },
           { value: "reviews", label: "I read reviews (IndieWire, NYT)" },
           { value: "vibes", label: "Mood / aesthetic (vibes > plot)" },
-          { value: "fateflix", label: "I'm just waiting for FateFlix to drop" }
+          { value: "fateflix", label: "I'm just waiting for FateFlix to drop" },
+          { value: "other", label: "Other" }
         ]
       },
       {
@@ -578,7 +598,8 @@ export const surveySections = [
           { value: "online", label: "Stumbled upon it online" },
           { value: "school", label: "Film school / class" },
           { value: "event", label: "Public event or street moment" },
-          { value: "cosmic", label: "Cosmic Calling" }
+          { value: "cosmic", label: "Cosmic Calling" },
+          { value: "other", label: "Other" }
         ]
       },
       {

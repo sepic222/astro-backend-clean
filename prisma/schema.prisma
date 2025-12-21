@@ -7,6 +7,9 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ... existing models ...
+
+
 model Chart {
   id               String             @id @default(cuid())
   createdAt        DateTime           @default(now())

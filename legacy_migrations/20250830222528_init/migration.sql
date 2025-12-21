@@ -1,7 +1,7 @@
 -- CreateTable
 CREATE TABLE "Chart" (
     "id" TEXT NOT NULL PRIMARY KEY,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "name" TEXT,
     "userEmail" TEXT,
     "city" TEXT,

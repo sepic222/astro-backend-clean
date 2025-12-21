@@ -1288,14 +1288,21 @@ app.post('/api/birth-chart-swisseph', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Invalid coordinates.' });
     }
 
-    // Convert input date/time (Berlin zone) → UTC
-    const birthDT = DateTime.fromISO(`${date}T${time}`, { zone: 'Europe/Berlin' });
+    // Dynamic Timezone Lookup
+    const { find } = await import('geo-tz');
+    const timezones = find(lat, lng);
+    const timeZone = timezones && timezones.length > 0 ? timezones[0] : 'UTC';
+
+    console.log(`🌍 Coordinates: ${lat}, ${lng} -> Timezone: ${timeZone}`);
+
+    // Convert input date/time (Local zone) → UTC
+    const birthDT = DateTime.fromISO(`${date}T${time}`, { zone: timeZone });
+
     if (!birthDT.isValid) {
       return res.status(400).json({ success: false, error: 'Invalid date or time.' });
     }
     const birthUTC = birthDT.toUTC().toJSDate();
-    const tzOffsetMinutes = birthDT.offset; // e.g. +120 or +60 depending on DST
-
+    const tzOffsetMinutes = birthDT.offset;
 
     const jd = getJulianDayFromDate(birthUTC);
 

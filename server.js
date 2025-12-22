@@ -2894,39 +2894,6 @@ app.get('/reading/:submissionId/html', async (req, res) => {
 
       // Navigation buttons
       contentHtml += `
-         <style>
-           .nav-button {
-             display: inline-block;
-             padding: 12px 24px;
-             font-family: 'Oswald', sans-serif;
-             font-size: 0.9rem;
-             font-weight: 700;
-             letter-spacing: 0.1em;
-             color: rgba(255, 255, 255, 0.9);
-             background: transparent;
-             border: 1px solid rgba(255, 255, 255, 0.3);
-             border-radius: 30px;
-             text-decoration: none;
-             text-transform: uppercase;
-             transition: all 0.3s ease;
-             backdrop-filter: blur(4px);
-             white-space: nowrap;
-           }
-           .nav-button:hover {
-             background: rgba(255, 255, 255, 0.1);
-             border-color: rgba(255, 255, 255, 0.6);
-             box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
-             transform: translateY(-2px);
-           }
-         </style>
-         <div style="display: flex; justify-content: space-between; align-items: center; margin: 40px 0; gap: 20px;">
-           <a href="/reading/${submissionId}/badge" class="nav-button">
-             ← My Badge
-           </a>
-           <a href="/reading/${submissionId}/html/2" class="nav-button">
-             Who's directing the scene? →
-           </a>
-         </div>
        `;
 
     } else {
@@ -3266,7 +3233,6 @@ app.get('/reading/:submissionId/html/2', async (req, res) => {
                    <!-- Left Box: Chart Ruler in the Sign -->
                    <div style="flex: 1; min-width: 200px; display: flex; flex-direction: column;">
                       <h2 style="color:#FFD7F3; font-family:'Oswald',sans-serif; text-transform:uppercase; margin-bottom:10px; text-align:center;">Chart Ruler in the Sign</h2>
-                      <div style="color:#B6DAF7; font-family:'Inter',sans-serif; font-size:12px; margin-bottom:15px; text-align:center; font-style:italic;">Who's Directing the Scene</div>
                       <div class="card" style="border-color:#8FBCFF; text-align:center; padding:20px; flex: 1; display: flex; flex-direction: column;">
                          <div style="font-weight:bold; color:#FFFFFF; font-family:'Oswald',sans-serif; margin-bottom:10px;">Chart Ruler in ${rulerSign}</div>
                          <div style="color:#B6DAF7; font-family:'Inter',sans-serif; font-size:14px; line-height:1.5; flex: 1;">${esc(rulerSignText)}</div>
@@ -3433,36 +3399,6 @@ app.get('/reading/:submissionId/html/2', async (req, res) => {
 
       // Navigation buttons
       contentHtml += `
-         <style>
-           .nav-button {
-             display: inline-block;
-             padding: 12px 24px;
-             font-family: 'Oswald', sans-serif;
-             font-size: 0.9rem;
-             font-weight: 700;
-             letter-spacing: 0.1em;
-             color: rgba(255, 255, 255, 0.9);
-             background: transparent;
-             border: 1px solid rgba(255, 255, 255, 0.3);
-             border-radius: 30px;
-             text-decoration: none;
-             text-transform: uppercase;
-             transition: all 0.3s ease;
-             backdrop-filter: blur(4px);
-             white-space: nowrap;
-           }
-           .nav-button:hover {
-             background: rgba(255, 255, 255, 0.1);
-             border-color: rgba(255, 255, 255, 0.6);
-             box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
-             transform: translateY(-2px);
-           }
-         </style>
-         <div style="display: flex; justify-content: center; margin: 60px 0 40px 0;">
-           <a href="/reading/${submissionId}/html" class="nav-button">
-             ← Back to Chart
-           </a>
-         </div>
        `;
 
       // Always render footer/disclaimer

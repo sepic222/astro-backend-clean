@@ -2521,24 +2521,64 @@ app.get('/reading/:submissionId/chart.svg', async (req, res) => {
     // Normal chart (after birthday or not Nov 14)
     if (!submissionId) return res.status(400).send('Missing submissionId');
 
-    // Get reading → chartId
-    const reading = await prisma.reading.findFirst({
-      where: { submissionId },
-      select: { chartId: true }
-    });
-    if (!reading || !reading.chartId) return res.status(404).send('Chart not found for submission');
+    let reading, chart;
 
-    // Load raw chart
-    const chart = await prisma.chart.findUnique({
-      where: { id: reading.chartId },
-      select: { rawChart: true }
-    });
-    if (!chart || !chart.rawChart) return res.status(404).send('Raw chart not available');
+    // Check mock DB first
+    if (MOCK_DB[submissionId]) {
+      reading = MOCK_DB[submissionId].reading;
+      chart = MOCK_DB[submissionId].chart;
+    } else {
+      reading = await prisma.reading.findFirst({
+        where: { submissionId },
+        select: { chartId: true }
+      });
+      if (reading && reading.chartId) {
+        chart = await prisma.chart.findUnique({
+          where: { id: reading.chartId },
+          select: { id: true, chartRulerPlanet: true, chartRulerHouse: true, rawChart: true }
+        });
+      }
+    }
 
-    const size = Number(req.query.size) || 640;
-    const svg = buildChartSVG(chart.rawChart, { size });
-    res.set('Content-Type', 'image/svg+xml; charset=utf-8');
-    res.send(svg);
+    if (!chart || !chart.rawChart) return res.status(404).send('Chart not found for submission');
+
+    // Build chartDTO for the Blue Chart Logic
+    const rc = chart.rawChart || {};
+    const angles = rc.angles || {};
+    const planets = rc.planets || {};
+
+    const chartDTO = {
+      id: chart.id,
+      ascSign: angles.ascendantSign || null,
+      mcSign: angles.mcSign || null,
+      ascDeg: angles.ascendantDeg,
+      mcDeg: angles.mcDeg,
+      chartRuler: { planet: chart.chartRulerPlanet || null, house: chart.chartRulerHouse || null },
+      houseSigns: rc.houseSigns || [],
+      houseRulers: rc.houseRulers || [],
+      rawHouses: rc.houses || [],
+      planets: planets
+    };
+
+    const htmlContent = buildChartWheelHtml(chartDTO);
+
+    // Wrap it in a basic HTML structure so it's a valid document
+    const fullHtml = `<!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="utf-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1" />
+      <style>
+        body { margin: 0; padding: 0; background: transparent; display: flex; justify-content: center; align-items: center; min-height: 100vh; overflow: hidden; }
+      </style>
+    </head>
+    <body>
+      ${htmlContent}
+    </body>
+    </html>`;
+
+    res.set('Content-Type', 'text/html; charset=utf-8');
+    res.send(fullHtml);
   } catch (e) {
     console.error('💥 /reading/:submissionId/chart.svg error:', e);
     res.status(500).send('Internal error');

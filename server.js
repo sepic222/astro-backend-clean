@@ -3600,35 +3600,6 @@ app.post('/api/survey-response', async (req, res) => {
 // --- TEMP: ping + route dump ---------------------------------
 app.post('/api/chart-houses/ping', (_req, res) => res.json({ ok: true }));
 
-// -------- Geocoding --------------
-app.get('/api/geocode', async (req, res) => {
-  try {
-    const { city, country, userEmail } = req.query || {};
-    if (!city || !country) {
-      return res.status(400).json({ error: 'City and country are required.' });
-    }
-
-    const apiKey = process.env.OPENCAGE_API_KEY;
-    if (!apiKey) return res.status(500).json({ error: 'Server geocoding key missing.' });
-
-    const query = encodeURIComponent(`${city}, ${country}`);
-    const url = `https://api.opencagedata.com/geocode/v1/json?q=${query}&key=${apiKey}`;
-
-    const response = await fetch(url);
-    const data = await response.json();
-
-    if (!data.results || !data.results.length) {
-      return res.status(404).json({ error: 'Location not found.' });
-    }
-
-    const { lat, lng } = data.results[0].geometry;
-    return res.json({ latitude: lat, longitude: lng, userEmail });
-  } catch (err) {
-    console.error('❌ Geocoding backend error:', err);
-    return res.status(500).json({ error: 'Failed to geocode location.' });
-  }
-});
-
 // === Survey submit (normalized via shim) ======================
 app.post("/api/survey/submit", async (req, res) => {
   try {

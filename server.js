@@ -739,6 +739,18 @@ function buildChartWheelHtml(chartDTO) {
         };
       };
 
+      const htmlHead = \`
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500&display=swap" rel="stylesheet">
+        <style>
+          .chart-wheel-logo-text {
+            font-family: 'Inter', sans-serif;
+            text-transform: uppercase;
+          }
+        </style>
+      \`;
+
       const describeArc = (x, y, innerRadius, outerRadius, startAngle, endAngle) => {
         if (endAngle - startAngle >= 360) endAngle = startAngle + 359.99;
         
@@ -803,7 +815,7 @@ function buildChartWheelHtml(chartDTO) {
 
           zodiacRing += '<path d="' + pathData + '" fill="' + cRing + '" stroke="none" />';
           zodiacRing += '<line x1="' + lineStart.x + '" y1="' + lineStart.y + '" x2="' + lineEnd.x + '" y2="' + lineEnd.y + '" stroke="rgba(255,255,255,0.15)" stroke-width="0.5" />';
-          zodiacRing += '<text x="' + textPos.x + '" y="' + textPos.y + '" fill="white" text-anchor="middle" dominant-baseline="central" transform="rotate(' + rotation + ', ' + textPos.x + ', ' + textPos.y + ')" style="font-size: 11px; letter-spacing: 0.2em; font-weight: 500; text-transform: uppercase;">' + sign.name + '</text>';
+          zodiacRing += '<text x="' + textPos.x + '" y="' + textPos.y + '" fill="white" text-anchor="middle" dominant-baseline="central" transform="rotate(' + rotation + ', ' + textPos.x + ', ' + textPos.y + ')" style="font-family: \'Inter\', sans-serif; font-size: 11px; letter-spacing: 0.2em; font-weight: 500; text-transform: uppercase; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;">' + sign.name + '</text>';
         });
         
         zodiacRing += '<circle cx="' + center + '" cy="' + center + '" r="' + outerRadius + '" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="0.5" />';
@@ -844,17 +856,17 @@ function buildChartWheelHtml(chartDTO) {
         svgContent += '<path d="' + describeArc(center, center, contentRadius, innerRadius, 0, 359.99) + '" fill="rgba(255,255,255,0.03)" stroke="none" />';
         svgContent += '</g>';
         svgContent += '<g class="axis">';
-        svgContent += '<text x="' + (center - outerRadius - 20) + '" y="' + center + '" text-anchor="end" dominant-baseline="middle" style="font-size: 10px; letter-spacing: 0.2em; fill: rgba(255,255,255,0.5);">AC</text>';
-        svgContent += '<text x="' + (center + outerRadius + 20) + '" y="' + center + '" text-anchor="start" dominant-baseline="middle" style="font-size: 10px; letter-spacing: 0.2em; fill: rgba(255,255,255,0.5);">DC</text>';
+        svgContent += '<text x="' + (center - outerRadius - 20) + '" y="' + center + '" text-anchor="end" dominant-baseline="middle" style="font-family: \'Inter\', sans-serif; font-size: 10px; font-weight: 400; letter-spacing: 0.2em; fill: rgba(255,255,255,0.5);">AC</text>';
+        svgContent += '<text x="' + (center + outerRadius + 20) + '" y="' + center + '" text-anchor="start" dominant-baseline="middle" style="font-family: \'Inter\', sans-serif; font-size: 10px; font-weight: 400; letter-spacing: 0.2em; fill: rgba(255,255,255,0.5);">DC</text>';
         svgContent += '</g>';
 
         // --- 5. LOGO ---
         svgContent += '<g transform="translate(' + center + ', ' + center + ')">';
-        svgContent += '<text x="0" y="0" class="chart-wheel-logo-text">FATEFLIX</text>';
+        svgContent += '<text x="0" y="0" class="chart-wheel-logo-text" style="font-family: \'Inter\', sans-serif; font-weight: 200; font-size: 28px; letter-spacing: 0.35em; opacity: 0.95; fill: white; text-anchor: middle; dominant-baseline: middle;">FATEFLIX</text>';
         svgContent += '</g>';
 
         // Final SVG structure
-        const finalSvg = '<svg viewBox="0 0 ' + size + ' ' + size + '" style="width:100%;height:auto;overflow:visible;">' +
+        const finalSvg = htmlHead + '<svg viewBox="0 0 ' + size + ' ' + size + '" style="width:100%;height:auto;overflow:visible;">' +
           '<defs><linearGradient id="chartWheelGradient" x1="0%" y1="0%" x2="100%" y2="100%">' +
           '<stop offset="0%" stop-color="rgba(255,255,255,0.02)" />' +
           '<stop offset="50%" stop-color="rgba(255,255,255,0.5)" />' +
@@ -2857,10 +2869,6 @@ app.get('/reading/:submissionId/html', async (req, res) => {
              </h1>
            </div>
            
-           <!-- Chart Wheel - Full Width -->
-           <div style="text-align: center; margin-bottom: 20px;">
-                ${buildChartWheelHtml(chartDTO)}
-           </div>
 
            <!-- Metadata below the chart -->
            <div style="display: none; justify-content: space-between; font-size: 12px; color: #fff; margin-top: 20px;">

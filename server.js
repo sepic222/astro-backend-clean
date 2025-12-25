@@ -2584,18 +2584,23 @@ app.get('/reading/:submissionId/chart.svg', async (req, res) => {
         select: {
           id: true,
           chartId: true,
-          birthDate: true,
-          birthTime: true,
-          birthCity: true,
-          birthCountry: true,
-          username: true,
           userEmail: true
         }
       });
+
       if (reading && reading.chartId) {
         chart = await prisma.chart.findUnique({
           where: { id: reading.chartId },
-          select: { id: true, chartRulerPlanet: true, chartRulerHouse: true, rawChart: true }
+          select: {
+            id: true,
+            chartRulerPlanet: true,
+            chartRulerHouse: true,
+            rawChart: true,
+            city: true,
+            country: true,
+            birthDateTimeUtc: true,
+            tzOffsetMinutes: true
+          }
         });
       }
     }
@@ -2623,10 +2628,34 @@ app.get('/reading/:submissionId/chart.svg', async (req, res) => {
     const htmlContent = buildChartWheelHtml(chartDTO);
 
     // Metadata formatting for the High-Fidelity Chart Card
-    const bDate = reading?.birthDate ? new Date(reading.birthDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'Unknown Date';
-    const bTime = reading?.birthTime || 'Unknown Time';
-    const bPlace = (reading?.birthCity && reading?.birthCountry) ? `${reading.birthCity}, ${reading.birthCountry}` : (reading?.birthCity || 'Unknown Place');
-    const uName = reading?.username || 'Unknown';
+    let uName = 'Anonymous';
+    if (submissionId) {
+      const unameResponse = await prisma.surveyResponse.findFirst({
+        where: {
+          submissionId: submissionId,
+          question: { key: 'cosmic.name' }
+        },
+        select: { answerText: true }
+      });
+      if (unameResponse?.answerText) {
+        uName = unameResponse.answerText;
+      } else if (reading?.userEmail) {
+        uName = reading.userEmail.split('@')[0];
+      }
+    }
+
+    let bDate = 'Unknown Date';
+    let bTime = 'Unknown Time';
+    let bPlace = (chart?.city && chart?.country) ? `${chart.city}, ${chart.country}` : (chart?.city || 'Unknown Place');
+
+    if (chart?.birthDateTimeUtc) {
+      // Use Luxon for accurate local time conversion
+      const utcDT = DateTime.fromJSDate(new Date(chart.birthDateTimeUtc), { zone: 'utc' });
+      const localDT = utcDT.plus({ minutes: chart.tzOffsetMinutes || 0 });
+
+      bDate = localDT.toFormat('MMMM d, yyyy');
+      bTime = localDT.toFormat('h:mm a');
+    }
 
     console.log(`📊 Rendering Chart Card for ${uName} (${submissionId})`);
 

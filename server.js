@@ -1011,7 +1011,7 @@ app.get('/dev/chart-wheel', (req, res) => {
       body { 
         background-color: #000; 
         margin: 0; 
-        padding: 40px; 
+        padding: 60px 40px; 
         display: flex; 
         flex-direction: column;
         align-items: center; 
@@ -1019,7 +1019,6 @@ app.get('/dev/chart-wheel', (req, res) => {
         box-sizing: border-box;
         font-family: 'Inter', sans-serif;
         color: white;
-        overflow: hidden;
       }
       .chart-card-header {
         text-align: center;
@@ -1992,7 +1991,8 @@ app.post('/api/dev/chart-to-svg', async (req, res) => {
               if (!key) continue;
 
               // Skip cosmic/meta keys (already in chart)
-              if (key.startsWith('cosmic.') || key.startsWith('meta.')) continue;
+              // Skip meta payload keys
+              if (key.startsWith('meta.')) continue;
 
               const q = await prisma.surveyQuestion.findUnique({
                 where: { key: a.questionKey },
@@ -2669,16 +2669,14 @@ app.get('/reading/:submissionId/chart.svg', async (req, res) => {
       <style>
         body { 
           margin: 0; 
-          padding: 40px; 
+          padding: 60px 40px; 
           background: transparent; 
           color: white;
           font-family: 'Inter', sans-serif;
           display: flex;
           flex-direction: column;
           align-items: center;
-          min-height: 100vh;
           box-sizing: border-box;
-          overflow: hidden;
         }
 
         /* Header Styling - Jony Ive / Apple Style */
@@ -3854,7 +3852,8 @@ app.post("/api/survey/submit", async (req, res) => {
       const key = a?.questionKey;
       if (!key) continue;
       // Skip non-question payload keys (birth-data & meta)
-      if (key.startsWith('cosmic.') || key.startsWith('meta.')) continue;
+      // Skip meta payload keys
+      if (key.startsWith('meta.')) continue;
       const q = await prisma.surveyQuestion.findUnique({
         where: { key: a.questionKey },
         include: { options: true },
@@ -3986,17 +3985,18 @@ app.post("/api/survey/save-answer", async (req, res) => {
       'hall_of_fame': 'fit.hall_of_fame',
     };
 
-    // Skip birth data and cosmic keys (already in chart)
-    if (['date', 'time', 'latitude', 'longitude', 'city', 'country', 'username', 'time_accuracy'].includes(frontendKey)) {
-      return res.json({ ok: true, skipped: true, reason: 'birth_data_or_cosmic' });
+    // Skip birth data keys (already in chart, but 'cosmic.name' should be saved)
+    if (['date', 'time', 'latitude', 'longitude', 'city', 'country', 'time_accuracy'].includes(frontendKey)) {
+      return res.json({ ok: true, skipped: true, reason: 'birth_data' });
     }
 
     // Get database question key
     const dbQuestionKey = keyMapping[frontendKey] || frontendKey;
 
     // Skip cosmic/meta keys
-    if (dbQuestionKey.startsWith('cosmic.') || dbQuestionKey.startsWith('meta.')) {
-      return res.json({ ok: true, skipped: true, reason: 'cosmic_or_meta' });
+    // Skip meta keys
+    if (dbQuestionKey.startsWith('meta.')) {
+      return res.json({ ok: true, skipped: true, reason: 'meta' });
     }
 
     // Find question in database

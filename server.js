@@ -1006,28 +1006,74 @@ app.get('/dev/chart-wheel', (req, res) => {
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>FateFlix Chart Wheel Preview</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@600&family=Inter:wght@200;400;500&display=swap" rel="stylesheet">
     <style>
       body { 
         background-color: #000; 
         margin: 0; 
-        padding: 40px 20px; 
+        padding: 40px; 
         display: flex; 
-        justify-content: center; 
+        flex-direction: column;
         align-items: center; 
         min-height: 100vh; 
         box-sizing: border-box;
         font-family: 'Inter', sans-serif;
+        color: white;
+        overflow: hidden;
       }
-      .preview-container {
-        max-width: 600px;
+      .chart-card-header {
+        text-align: center;
+        margin-bottom: 60px;
         width: 100%;
       }
+      .chart-card-header h1 {
+        font-family: 'Manrope', sans-serif;
+        font-size: 42px;
+        font-weight: 600;
+        letter-spacing: -0.02em;
+        margin: 0;
+        text-shadow: 0 0 30px rgba(142, 197, 252, 0.4);
+      }
+      .chart-card-content {
+        position: relative;
+        width: 100%;
+        max-width: 800px;
+        aspect-ratio: 1 / 1;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+      .metadata-block {
+        position: absolute;
+        font-size: 16px;
+        line-height: 1.5;
+        font-weight: 400;
+        color: rgba(255, 255, 255, 0.9);
+      }
+      .top-left { top: -20px; left: 0; text-align: left; }
+      .bottom-right { bottom: 20px; right: 0; text-align: right; }
+      .label { font-weight: 200; color: rgba(255, 255, 255, 0.6); }
     </style>
   </head>
   <body>
-    <div class="preview-container">
-      ${buildChartWheelHtml(mockChartDTO)}
+    <div class="chart-card-header">
+      <h1>My Astro-Cinematic Chart</h1>
+    </div>
+
+    <div class="chart-card-content">
+      <div class="metadata-block top-left">
+        <div><span class="label">Date:</span> June 10, 1991</div>
+        <div><span class="label">Time:</span> 08:15 AM</div>
+        <div><span class="label">Place:</span> Munich, Germany</div>
+      </div>
+
+      <div style="width: 100%; height: 100%;">
+        ${buildChartWheelHtml(mockChartDTO)}
+      </div>
+
+      <div class="metadata-block bottom-right">
+        <div><span class="label">username:</span> mi-gerer</div>
+      </div>
     </div>
   </body>
   </html>`;
@@ -2535,7 +2581,16 @@ app.get('/reading/:submissionId/chart.svg', async (req, res) => {
     } else {
       reading = await prisma.reading.findFirst({
         where: { submissionId },
-        select: { chartId: true }
+        select: {
+          id: true,
+          chartId: true,
+          birthDate: true,
+          birthTime: true,
+          birthCity: true,
+          birthCountry: true,
+          username: true,
+          userEmail: true
+        }
       });
       if (reading && reading.chartId) {
         chart = await prisma.chart.findUnique({
@@ -2567,18 +2622,109 @@ app.get('/reading/:submissionId/chart.svg', async (req, res) => {
 
     const htmlContent = buildChartWheelHtml(chartDTO);
 
-    // Wrap it in a basic HTML structure so it's a valid document
+    // Metadata formatting for the High-Fidelity Chart Card
+    const bDate = reading?.birthDate ? new Date(reading.birthDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'Unknown Date';
+    const bTime = reading?.birthTime || 'Unknown Time';
+    const bPlace = (reading?.birthCity && reading?.birthCountry) ? `${reading.birthCity}, ${reading.birthCountry}` : (reading?.birthCity || 'Unknown Place');
+    const uName = reading?.username || 'Unknown';
+
+    console.log(`📊 Rendering Chart Card for ${uName} (${submissionId})`);
+
+    // Wrap it in a high-fidelity HTML structure for sharing
     const fullHtml = `<!DOCTYPE html>
     <html lang="en">
     <head>
       <meta charset="utf-8" />
       <meta name="viewport" content="width=device-width, initial-scale=1" />
+      <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@600&family=Inter:wght@200;400;500&display=swap" rel="stylesheet">
       <style>
-        body { margin: 0; padding: 0; background: transparent; display: flex; justify-content: center; align-items: center; min-height: 100vh; overflow: hidden; }
+        body { 
+          margin: 0; 
+          padding: 40px; 
+          background: transparent; 
+          color: white;
+          font-family: 'Inter', sans-serif;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          min-height: 100vh;
+          box-sizing: border-box;
+          overflow: hidden;
+        }
+
+        /* Header Styling - Jony Ive / Apple Style */
+        .chart-card-header {
+          text-align: center;
+          margin-bottom: 60px;
+          width: 100%;
+        }
+        .chart-card-header h1 {
+          font-family: 'Manrope', sans-serif;
+          font-size: 42px;
+          font-weight: 600;
+          letter-spacing: -0.02em;
+          margin: 0;
+          text-shadow: 0 0 30px rgba(142, 197, 252, 0.4);
+        }
+
+        /* Layout Container */
+        .chart-card-content {
+          position: relative;
+          width: 100%;
+          max-width: 800px;
+          aspect-ratio: 1 / 1;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+        }
+
+        /* Metadata Blocks */
+        .metadata-block {
+          position: absolute;
+          font-size: 16px;
+          line-height: 1.5;
+          font-weight: 400;
+          color: rgba(255, 255, 255, 0.9);
+        }
+        .top-left {
+          top: -20px;
+          left: 0;
+          text-align: left;
+        }
+        .bottom-right {
+          bottom: 20px;
+          right: 0;
+          text-align: right;
+        }
+        .label {
+          font-weight: 200;
+          color: rgba(255, 255, 255, 0.6);
+        }
       </style>
     </head>
     <body>
-      ${htmlContent}
+      <div class="chart-card-header">
+        <h1>My Astro-Cinematic Chart</h1>
+      </div>
+
+      <div class="chart-card-content">
+        <!-- Top Left Metadata -->
+        <div class="metadata-block top-left">
+          <div><span class="label">Date:</span> ${bDate}</div>
+          <div><span class="label">Time:</span> ${bTime}</div>
+          <div><span class="label">Place:</span> ${bPlace}</div>
+        </div>
+
+        <!-- The Chart Wheel -->
+        <div style="width: 100%; height: 100%;">
+          ${htmlContent}
+        </div>
+
+        <!-- Bottom Right Metadata -->
+        <div class="metadata-block bottom-right">
+          <div><span class="label">username:</span> ${uName}</div>
+        </div>
+      </div>
     </body>
     </html>`;
 

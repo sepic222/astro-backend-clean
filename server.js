@@ -2712,6 +2712,8 @@ app.get('/reading/:submissionId/chart.svg', async (req, res) => {
           line-height: 1.5;
           font-weight: 400;
           color: rgba(255, 255, 255, 0.9);
+          z-index: 50;
+          pointer-events: none;
         }
         .top-left {
           top: -20px;

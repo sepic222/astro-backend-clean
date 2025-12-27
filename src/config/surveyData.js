@@ -7,11 +7,16 @@ export const surveySections = [
       {
         id: "start_hero",
         type: "hero_start",
-        image: "/assets/survey-logo.svg", // Logo file in public/assets/
-        title: "FATEFLIX",
-        subtitle: "PRESENTS",
-        text: "Before we decode your cinematic soul, we need to anchor you in space and time.",
-        buttonText: "Enter the Vortex"
+        image: "/assets/fateflix-planet.png",
+        subtitle: "CINEMATIC TASTE SURVEY",
+        missionText: "We're building a movie matcher that gets your vibe, not just your watch history.",
+        valueProps: [
+          "A personalised astro-cinematic reading",
+          "Beta tester access",
+          "Eternal bragging rights as an early FateFlix insider"
+        ],
+        assuranceText: "Your guilty pleasures are safe here, so are your wild opinions.",
+        buttonText: "Let's Begin"
       }
     ]
   },
@@ -19,12 +24,12 @@ export const surveySections = [
   // SECTION 2: The Data (Cosmic Origins)
   {
     id: "astro-data",
-    title: "Your Coordinates",
+    title: "Your Cosmic Identity",
     subtitle: "To cast your chart, we need your exact origins.",
     questions: [
       { id: "username", text: "What name should we call you in the credits?", type: "text", placeholder: "Name or Alias" },
       { id: "date", text: "Birth Date", type: "date" },
-      { id: "time", text: "Birth Time", helpText: "Crucial for your Rising Sign.", type: "time" },
+      { id: "time", text: "Birth Time", helpText: "Crucial for your Rising Sign.", type: "time", infoPopup: "Don't know your time? Call your mom, Check your birth certificate, Consult the galaxy you came from" },
       {
         id: "time_accuracy",
         text: "The Accuracy of your time of birth?",
@@ -40,7 +45,7 @@ export const surveySections = [
           { value: "unknown", label: "🤷 I have no idea (still works, but a bit more vague)" }
         ]
       },
-      { id: "city", text: "Birth City", type: "text", placeholder: "e.g. Düsseldorf" },
+      { id: "city", text: "Birth City", type: "text", placeholder: "e.g. Düsseldorf", disclaimer: "*P.S. We’ll use your birth data to align the stars. Your data is sacred (like a vintage VHS: not for rent, sale, or stream)." },
       // Keeping manual Lat/Long for now as requested for the Dev Endpoint
       { id: "latitude", text: "Latitude", type: "number", placeholder: "e.g. 51.22" },
       { id: "longitude", text: "Longitude", type: "number", placeholder: "e.g. 6.77" }
@@ -71,16 +76,17 @@ export const surveySections = [
         helpText: "Helps us match your movie kisses, crushes, and chaotic soul connections.",
         type: "radio",
         options: [
-          { value: "queer", label: "Queer and thriving" },
-          { value: "men", label: "Attracted to men" },
-          { value: "women", label: "Attracted to women" },
-          { value: "spectrum", label: "I love across the spectrum" },
-          { value: "bi_pan", label: "Bi/Pan/Switch energy" },
-          { value: "demi_sapio", label: "Demisexual / Sapiosexual" },
-          { value: "asexual", label: "Asexual / No thanks, I'm here for plot" },
-          { value: "figuring_out", label: "Still figuring it out" },
-          { value: "steamy_any", label: "I love anything steamy, no matter the form" },
-          { value: "no_label", label: "I don't label it" },
+          { value: "queer", label: "🌈 Queer and thriving" },
+          { value: "men", label: "💋 Attracted to men" },
+          { value: "women", label: "💅 Attracted to women" },
+          { value: "spectrum", label: "💞 I love across the spectrum" },
+          { value: "bi_pan", label: "🌪 Bi/Pan/Switch energy" },
+          { value: "demi_sapio", label: "👁️ Demisexual / Sapiosexual" },
+          { value: "asexual", label: "🧊 Asexual / No thanks, I'm here for plot" },
+          { value: "figuring_out", label: "🤷‍♀️ Still figuring it out" },
+          { value: "steamy_any", label: "🔥 I love anything steamy, no matter the form" },
+          { value: "no_label", label: "🌀 I don't label it" },
+          { value: "none", label: "🧬 None of the above — I’ll define it" },
           { value: "other", label: "Other" }
         ]
       },
@@ -90,13 +96,13 @@ export const surveySections = [
         type: "radio",
         options: [
           { value: "cinephile", label: "Cinephile Supreme (Raised at Blockbuster, evolved on MUBI)" },
-          { value: "lover", label: "Movie Lover (I've got favourites, I notice details)" },
+          { value: "lover", label: "Movie Lover (I've got favourites, I notice good dialogue and cool visuals)" },
           { value: "time_poor", label: "Time-Poor Watcher (I watch when I can, sometimes fall asleep)" },
           { value: "streaming_vortex", label: "Streaming Vortex (I consume it all, good, bad, trashy)" },
-          { value: "popcorn", label: "Popcorn-Only Viewer (Here for explosions and hot cast)" },
+          { value: "popcorn", label: "Popcorn-Only Viewer (I go to the cinema for explosions and hot cast)" },
           { value: "sleepy", label: "Sleepy Streamer (Background noise to fall asleep)" },
-          { value: "recovering", label: "Recovering Binger (I lie to keep watching)" },
-          { value: "scroller", label: "Lost in the Scroll (45 mins scrolling, watch nothing)" },
+          { value: "recovering", label: "Recovering Binger (I finish even the worst series. HELP!))" },
+          { value: "scroller", label: "Lost in the Scroll (45 mins scrolling, watch nothing, scroll socials)" },
           { value: "other", label: "Other" }
         ]
       },
@@ -109,12 +115,12 @@ export const surveySections = [
           { value: "rescuer", label: "The Rescuer (Help, save, protect, fix)" },
           { value: "disruptor", label: "The Chaotic Disruptor (I stir the plot)" },
           { value: "outsider", label: "The Dreamy Outsider (Out of step, deeply in tune)" },
-          { value: "overachiever", label: "The Overachiever / Golden Child" },
+          { value: "overachiever", label: "The Overachiever (I carry the expectations and I deliver)" },
           { value: "observer", label: "The Mysterious Observer" },
           { value: "ride_or_die", label: "The Ride-or-Die (Loyal, fierce)" },
-          { value: "comic", label: "The Comic Relief" },
+          { value: "comic", label: "The Comic Relief (I lighten the mood when it gets too heavy)" },
           { value: "wanderer", label: "The Wanderer (Never rooted)" },
-          { value: "mirror", label: "The Mirror (I become who people need)" },
+          { value: "mirror", label: "The Mirror (I become who people need me to be)" },
           { value: "audience", label: "Just here for the popcorn (Audience vibes)" },
           { value: "other", label: "Other" }
         ]
@@ -125,20 +131,21 @@ export const surveySections = [
         helpText: "How do you use movies to deal (or not deal) with your emotions?",
         type: "radio",
         options: [
-          { value: "heartbreak", label: "Heartbreak Healer (Breakup, loss, longing)" },
-          { value: "hangover", label: "Hangover Hero (Fragile, fuzzy, gentle recovery)" },
+          { value: "heartbreak", label: "Heartbreak Healer (for breakups, grief, or emotional longing survival)" },
+          { value: "hangover", label: "Hangover Hero (gentle recovery when I’m fragile)" },
           { value: "floodgate", label: "Emotional Floodgate (I want to cry/release)" },
-          { value: "analyzer", label: "Chaos Analyzer (Process life through stories)" },
-          { value: "cozy", label: "Cozy Comedown (Safe, soothed, soft)" },
+          { value: "analyzer", label: "Chaos Analyzer (Process life through movies)" },
+          { value: "cozy", label: "Cozy Comedown (safety, warmth, emotional blankets)" },
           { value: "creative", label: "Creative Kickstart (Spark ideas/ambition)" },
-          { value: "romance", label: "Romance Igniter (Butterflies, chemistry)" },
+          { value: "romance", label: "Romance Igniter (Butterflies, chemistry, connection)" },
           { value: "distraction", label: "Emotional Distraction (Laugh, forget, disassociate)" },
+          { value: "meaning", label: "Meaning Maker (Movies help me frame my life story)" },
           { value: "romanticizer", label: "Life Romanticizer (Make pain cinematic)" },
           { value: "beauty", label: "Beauty Seeker (Vibes & aesthetics over story)" },
-          { value: "control", label: "Control Watcher (Choose what I feel)" },
-          { value: "decoder", label: "People Decoder (Understand psychology)" },
+          { value: "control", label: "Control Watcher (when life is chaos, at least I choose the movie)" },
+          { value: "decoder", label: "People Decoder (I study characters to understand psychology + relationships)" },
           { value: "offline", label: "Emotionally Offline (Don't feel them emotionally)" },
-          { value: "ambience", label: "Ambience-Only Watcher (Background energy)" },
+          { value: "ambience", label: "Ambience-Only Watcher (Background energy not a full experience)" },
           { value: "other", label: "Other" }
         ]
       },

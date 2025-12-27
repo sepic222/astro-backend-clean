@@ -29,3 +29,9 @@ fateflix-badge-app/
 debug_page*.html
 *-result*.json
 no-time-result*.json
+
+# Logs
+*.log
+
+# Workspace
+*.code-workspace

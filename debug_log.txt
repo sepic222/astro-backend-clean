@@ -1,0 +1,87 @@
+{
+  "timestamp": "2025-12-26T19:34:38.603Z",
+  "submissionId": "dev-chart-ruler-1766777660689",
+  "uName": "dev",
+  "bDate": "Unknown Date",
+  "bTime": "Unknown Time",
+  "bPlace": "Unknown Place",
+  "chartDTO": {
+    "id": "dev-chart-ruler-1766777660689",
+    "ascSign": "Scorpio",
+    "mcSign": "Leo",
+    "ascDeg": 210,
+    "mcDeg": 120,
+    "chartRuler": {
+      "planet": "Mars",
+      "house": 8
+    },
+    "houseSigns": [
+      "Cancer",
+      "Leo",
+      "Virgo",
+      "Libra",
+      "Scorpio",
+      "Sagittarius",
+      "Capricorn",
+      "Aquarius",
+      "Pisces",
+      "Aries",
+      "Taurus",
+      "Gemini"
+    ],
+    "houseRulers": [],
+    "rawHouses": [],
+    "planets": {
+      "mars": {
+        "sign": "Aries",
+        "house": 6,
+        "longitude": 15
+      },
+      "pluto": {
+        "sign": "Sagittarius",
+        "house": 6,
+        "longitude": 240
+      },
+      "moon": {
+        "sign": "Taurus",
+        "house": 7,
+        "longitude": 45
+      },
+      "sun": {
+        "sign": "Aquarius",
+        "house": 4,
+        "longitude": 315
+      },
+      "mercury": {
+        "sign": "Pisces",
+        "house": 9,
+        "longitude": 330
+      },
+      "venus": {
+        "sign": "Capricorn",
+        "house": 7,
+        "longitude": 280
+      },
+      "jupiter": {
+        "sign": "Aries",
+        "house": 10,
+        "longitude": 20
+      },
+      "saturn": {
+        "sign": "Taurus",
+        "house": 11,
+        "longitude": 50
+      },
+      "uranus": {
+        "sign": "Aquarius",
+        "house": 8,
+        "longitude": 310
+      },
+      "neptune": {
+        "sign": "Aquarius",
+        "house": 8,
+        "longitude": 305
+      }
+    }
+  }
+}

@@ -16,7 +16,12 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@astrojs/react": "^4.4.2",
+    "@astrojs/tailwind": "^6.0.2",
     "@prisma/client": "^6.16.0",
+    "@tailwindcss/postcss": "^4.1.18",
+    "astro": "^5.16.6",
+    "autoprefixer": "^10.4.23",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "ejs": "^3.1.10",
@@ -25,8 +30,12 @@
     "luxon": "^3.6.1",
     "node-fetch": "^3.3.2",
     "openai": "^4.104.0",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
+    "react-google-autocomplete": "^2.7.5",
     "resend": "^6.4.0",
     "swisseph": "^0.5.17",
+    "tailwindcss": "^3.4.19",
     "tsx": "^4.20.6"
   },
   "devDependencies": {

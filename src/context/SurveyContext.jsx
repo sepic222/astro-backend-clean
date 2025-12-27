@@ -22,7 +22,7 @@ export const SurveyProvider = ({ children }) => {
   const [submissionId, setSubmissionId] = useState(null);
   const [chartId, setChartId] = useState(null);
   const [userEmail, setUserEmail] = useState(null);
-  
+
   const saveTimeoutRef = useRef({});
 
   const totalSteps = surveySections.length;
@@ -79,12 +79,12 @@ export const SurveyProvider = ({ children }) => {
         ...prev,
         [questionId]: value,
       };
-      
+
       // Save to server in real-time (if submission exists)
       if (submissionId) {
         debouncedSave(questionId, value, submissionId, userEmail);
       }
-      
+
       return newAnswers;
     });
   }, [submissionId, userEmail, debouncedSave]);

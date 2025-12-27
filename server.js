@@ -2625,9 +2625,7 @@ app.get('/reading/:submissionId/chart.svg', async (req, res) => {
       planets: planets
     };
 
-    const htmlContent = buildChartWheelHtml(chartDTO);
-
-    // Metadata formatting for the High-Fidelity Chart Card
+    // Calculate metadata variables first so we can log them
     let uName = 'Anonymous';
     if (submissionId) {
       const unameResponse = await prisma.surveyResponse.findFirst({
@@ -2649,13 +2647,30 @@ app.get('/reading/:submissionId/chart.svg', async (req, res) => {
     let bPlace = (chart?.city && chart?.country) ? `${chart.city}, ${chart.country}` : (chart?.city || 'Unknown Place');
 
     if (chart?.birthDateTimeUtc) {
-      // Use Luxon for accurate local time conversion
       const utcDT = DateTime.fromJSDate(new Date(chart.birthDateTimeUtc), { zone: 'utc' });
       const localDT = utcDT.plus({ minutes: chart.tzOffsetMinutes || 0 });
-
       bDate = localDT.toFormat('MMMM d, yyyy');
       bTime = localDT.toFormat('h:mm a');
     }
+
+    // Write persistent debug log
+    try {
+      const logData = {
+        timestamp: new Date().toISOString(),
+        submissionId,
+        uName,
+        bDate,
+        bTime,
+        bPlace,
+        chartDTO
+      };
+      fs.writeFileSync(path.join(__dirname, 'debug_log.txt'), JSON.stringify(logData, null, 2));
+      console.log('✅ DEBUG: Logged data to debug_log.txt');
+    } catch (err) {
+      console.error('❌ DEBUG: Failed to write log file:', err);
+    }
+
+    const htmlContent = buildChartWheelHtml(chartDTO);
 
     console.log(`📊 Rendering Chart Card for ${uName} (${submissionId})`);
 

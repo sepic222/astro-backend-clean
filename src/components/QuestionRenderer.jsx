@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import CitySearch from './CitySearch';
 
 const RadioInput = ({ options, value, onChange }) => {
@@ -213,41 +213,83 @@ const HeroCard = ({ question, value, onChange }) => (
 );
 
 const HeroStart = ({ question, onNext }) => (
-  <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-8 animate-fade-in">
-    <div className="w-32 h-32 md:w-48 md:h-48 mb-6 relative">
-      {/* Fallback to text if image fails or is SVG */}
-      <img
-        src={question.image}
-        alt="Logo"
-        className="w-full h-full object-contain drop-shadow-[0_0_15px_rgba(249,115,22,0.5)]"
-        style={{ boxSizing: 'content-box', borderRadius: '72px' }}
-        onError={(e) => { e.target.style.display = 'none'; }}
-      />
-    </div>
-
-    <div className="space-y-2">
-      <h2 className="text-sm md:text-base tracking-[0.5em] text-orange-400 font-bold uppercase">
+  <div className="flex flex-col items-center justify-center min-h-[90vh] text-center space-y-16 py-12 animate-fade-in max-w-4xl mx-auto overflow-hidden">
+    <div className="flex flex-col items-center space-y-6">
+      <div className="w-40 h-40 md:w-56 md:h-56 relative group">
+        <div className="absolute inset-0 bg-orange-500/20 blur-3xl rounded-full scale-75 group-hover:scale-110 transition-transform duration-1000" />
+        <img
+          src={question.image}
+          alt="Logo"
+          className="w-full h-full object-contain relative z-10 drop-shadow-[0_0_30px_rgba(249,115,22,0.3)] transition-transform duration-700 hover:scale-105"
+          onError={(e) => { e.target.style.display = 'none'; }}
+        />
+      </div>
+      <h2 className="text-[10px] md:text-xs tracking-[0.8em] text-zinc-500 font-bold uppercase transition-colors duration-500 hover:text-zinc-300">
         {question.subtitle}
       </h2>
-      <h1 className="text-5xl md:text-7xl font-black text-white tracking-tighter drop-shadow-lg">
-        {question.title}
-      </h1>
     </div>
 
-    <p className="text-lg md:text-xl text-zinc-400 max-w-lg font-light leading-relaxed">
-      {question.text}
-    </p>
+    <div className="space-y-12 max-w-2xl px-6 w-full">
+      <p className="text-xl md:text-2xl text-zinc-200 font-extralight leading-relaxed tracking-tight selection:bg-orange-500/30">
+        {question.missionText}
+      </p>
+
+      <div className="py-10 border-y border-white/[0.03] space-y-6">
+        <p className="text-[10px] uppercase tracking-[0.3em] text-orange-500/60 font-black">
+          SHARE YOUR TASTE TO UNLOCK:
+        </p>
+        <div className="space-y-4">
+          {question.valueProps.map((prop, idx) => (
+            <p key={idx} className="text-zinc-100 font-light text-base md:text-lg tracking-wide opacity-90 hover:opacity-100 transition-opacity">
+              {prop}
+            </p>
+          ))}
+        </div>
+      </div>
+
+      {/* Marquee Section */}
+      <div className="relative w-full overflow-hidden">
+        <div className="absolute inset-y-0 left-0 w-8 bg-gradient-to-r from-zinc-950 to-transparent z-10" />
+        <div className="absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-zinc-950 to-transparent z-10" />
+
+        <div className="flex whitespace-nowrap animate-marquee">
+          {[...Array(4)].map((_, i) => (
+            <span key={i} className="text-zinc-500 text-sm italic font-light tracking-wide mx-8">
+              {question.assuranceText}
+            </span>
+          ))}
+        </div>
+
+        <style dangerouslySetInnerHTML={{
+          __html: `
+            @keyframes marquee {
+              0% { transform: translateX(0); }
+              100% { transform: translateX(-50%); }
+            }
+            .animate-marquee {
+              display: inline-flex;
+              animation: marquee 20s linear infinite;
+            }
+          `
+        }} />
+      </div>
+    </div>
 
     <button
       onClick={onNext}
       className="
-        mt-8 px-12 py-4 bg-transparent border-2 border-orange-500 text-orange-400 
-        text-xl font-bold tracking-widest uppercase rounded-none
-        hover:bg-orange-500 hover:text-white transition-all duration-300
-        shadow-[0_0_20px_rgba(249,115,22,0.2)] hover:shadow-[0_0_40px_rgba(249,115,22,0.6)]
+        group relative mt-4 px-12 py-3.5 
+        overflow-hidden rounded-full
+        bg-zinc-900 border border-white/10
+        transition-all duration-500 hover:border-orange-500/50
+        hover:shadow-[0_0_30px_rgba(249,115,22,0.15)]
+        active:scale-95
       "
     >
-      {question.buttonText}
+      <div className="absolute inset-0 bg-gradient-to-r from-orange-500/0 via-orange-500/5 to-orange-500/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
+      <span className="relative z-10 text-xs md:text-sm font-bold tracking-[0.2em] uppercase text-white group-hover:text-orange-400 transition-colors">
+        {question.buttonText}
+      </span>
     </button>
   </div>
 );
@@ -332,6 +374,7 @@ const MultiEntryInput = ({ question, value = [], onChange, maxEntries = 5 }) => 
 };
 
 export const QuestionRenderer = ({ question, value, onChange, onNext, setGlobalAnswer }) => {
+  const [showInfo, setShowInfo] = useState(false);
   // Hide manual inputs that are handled by CitySearch
   if (question.id === 'latitude' || question.id === 'longitude' || question.id === 'country') return null;
 
@@ -351,25 +394,52 @@ export const QuestionRenderer = ({ question, value, onChange, onNext, setGlobalA
   // Render CitySearch for the 'city' question
   if (question.id === 'city') {
     return (
-      <CitySearch
-        onLocationSelect={({ city, country, lat, lng }) => {
-          if (setGlobalAnswer) {
-            setGlobalAnswer('city', city);
-            setGlobalAnswer('country', country);
-            setGlobalAnswer('latitude', lat);
-            setGlobalAnswer('longitude', lng);
-          }
-        }}
-      />
+      <div className="space-y-2 animate-slide-up">
+        <CitySearch
+          onLocationSelect={({ city, country, lat, lng }) => {
+            if (setGlobalAnswer) {
+              setGlobalAnswer('city', city);
+              setGlobalAnswer('country', country);
+              setGlobalAnswer('latitude', lat);
+              setGlobalAnswer('longitude', lng);
+            }
+          }}
+        />
+        {question.disclaimer && (
+          <p className="text-sm text-zinc-400 italic text-center mt-12">{question.disclaimer}</p>
+        )}
+      </div>
     );
   }
 
   return (
     <div className="space-y-3 animate-slide-up">
-      <div className="mb-4">
-        <label className="block text-lg font-semibold text-white mb-1">
-          {question.text}
-        </label>
+      <div className="mb-4 relative">
+        <div className="flex items-center gap-2 mb-1">
+          <label className="block text-lg font-semibold text-white">
+            {question.text}
+          </label>
+          {question.infoPopup && (
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setShowInfo(!showInfo)}
+                className="text-orange-500 hover:text-orange-400 transition-colors"
+                aria-label="More info"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+              </button>
+              {showInfo && (
+                <div className="absolute left-full top-1/2 -translate-y-1/2 ml-3 w-64 p-3 bg-zinc-900 border border-orange-500/30 rounded-lg shadow-[0_4px_20px_rgba(0,0,0,0.5)] z-50 animate-fade-in">
+                  <div className="absolute left-0 top-1/2 -translate-x-1 -translate-y-1/2 w-2 h-2 bg-zinc-900 border-l border-b border-orange-500/30 rotate-45 transform"></div>
+                  <p className="text-xs text-zinc-300 leading-relaxed font-light whitespace-pre-line">
+                    {question.infoPopup.split(', ').join(',\n')}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
         {question.helpText && (
           <p className="text-sm text-zinc-400 italic">{question.helpText}</p>
         )}

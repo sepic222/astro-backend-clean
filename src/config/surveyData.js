@@ -283,25 +283,29 @@ export const surveySections = [
         text: "What's the first movie that ever made you feel something?",
         helpText: "Cry, scream, gasp, any emotion counts. Do you remember why?",
         type: "textarea",
-        placeholder: "e.g. Bambi (shock + grief), E.T. (ugly cry)..."
+        placeholder: "e.g. Bambi (shock + grief), E.T. (ugly cry)...",
+        inspoPopup: "Bambi - that scene…, Matilda - discovering her powers, Cinema Paradiso - the kiss reel, E.T. - Elliot says goodbye (ouch, ugly cry), Romeo + Juliet (1996) - fish tank scene, Call Me By Your Name - final fireplace shot, Billy Elliot - dancing it out"
       },
       {
         id: "life_changing",
         text: "What movie changed your life or meant everything at some point?",
         helpText: "We're tracking your fate film. Turning point? Breakup comfort?",
         type: "textarea",
-        placeholder: "Tell us what hit you and why..."
+        placeholder: "Tell us what hit you and why...",
+        inspoPopup: "It could’ve been a turning point, a comfort during a breakup, or a story that mirrored your own. A plot twist that mirrored your own? We don’t care if it’s a cult classic, or Oscar-winner… tell us what hit you and why.\n\n• After watching The Men Who Stare at Goats, I felt powerful in the job I hated. It gave me a weirdly magical way to survive corporate life. I started using Jedi mind tricks at meetings.\n• The Darjeeling Limited: booking a solo trip, spiritual reset\n• When I saw The Other Woman, I actually gave my relationship another shot. It reminded me that real life is messy and sometimes the grass isn't greener.\n• Billy Elliot: realizing I didn't have to follow someone else’s path.\n• Everything Everywhere Al At Once, I finally forgave my mom. And myself."
       },
       {
         id: "comfort_watch",
         text: "Your Ultimate Comfort Watch?",
-        helpText: "When you need to feel safe, soothed, or seen.",
-        type: "text"
+        helpText: "(Movie or TV show)",
+        type: "text",
+        inspoPopup: "Think: Rainy Sundays, heartbreak nights, post-party comedown, or nostalgic resets.\n(Here are a few examples, but your vibe might be totally different: Gilmore Girls, Good Will Hunting, Shrek, Friends, The Office, The Holiday, Pretty Woman, Iron Man)"
       },
       {
         id: "power_watch",
         text: "What movie do you rewatch when you want to feel powerful?",
-        type: "text"
+        type: "text",
+        inspoPopup: "Here are a few examples, but your vibe might be totally different: Kill Bill, Black Swan, Erin Brockovich, Rocky, The Devil Wears Prada, Creed, Mad Max: Fury Road, Black Panther, The Favourite, The Matrix, Jennifer's Body, Everything Everywhere All at Once)"
       },
       {
         id: "date_impress",

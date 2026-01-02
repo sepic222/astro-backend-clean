@@ -1,4 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import CitySearch from './CitySearch';
 
 const RadioInput = ({ options, value, onChange }) => {
@@ -599,9 +600,9 @@ export const QuestionRenderer = ({ question, value, onChange, onNext, setGlobalA
               </button>
 
               {/* Popup Overlay - Mobile Friendly */}
-              {showInfo && (
+              {showInfo && createPortal(
                 <div
-                  className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+                  className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
                   onClick={() => setShowInfo(false)} // Click outside to close
                 >
                   <div
@@ -620,10 +621,14 @@ export const QuestionRenderer = ({ question, value, onChange, onNext, setGlobalA
                     </h4>
 
                     <p className="text-zinc-200 leading-relaxed font-light whitespace-pre-line text-base">
-                      {(question.infoPopup || question.inspoPopup).split(', ').join(',\n')}
+                      {(() => {
+                        const text = question.infoPopup || question.inspoPopup;
+                        return text.includes('\n') ? text : text.split(', ').join(',\n');
+                      })()}
                     </p>
                   </div>
-                </div>
+                </div>,
+                document.body
               )}
             </>
           )}

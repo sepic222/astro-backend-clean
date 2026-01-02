@@ -458,6 +458,7 @@ const HeroStart = ({ question, onNext }) => (
 );
 
 const MultiEntryInput = ({ question, value = [], onChange, maxEntries = 5 }) => {
+  const [showInfo, setShowInfo] = useState(false);
   const entries = Array.isArray(value) ? value : (value ? [value] : []);
 
   const handleEntryChange = (index, newValue) => {
@@ -481,18 +482,36 @@ const MultiEntryInput = ({ question, value = [], onChange, maxEntries = 5 }) => 
   const displayEntries = entries.length > 0 ? entries : [''];
 
   return (
-    <div className="flex flex-col items-center justify-center py-12 space-y-6 animate-fade-in">
+    <div className="flex flex-col items-center justify-center py-12 space-y-6 animate-fade-in relative">
       <div className="text-center space-y-4 max-w-xl">
         <div className="inline-block p-3 rounded-full bg-orange-500/10 mb-4">
           <svg className="w-8 h-8 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
         </div>
-        <h3 className="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-br from-white via-orange-200 to-orange-400 pb-2">
-          {question.text}
-        </h3>
+
+        <div className="flex items-center justify-center gap-3">
+          <h3 className="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-br from-white via-orange-200 to-orange-400 pb-2">
+            {question.text}
+          </h3>
+          {(question.infoPopup || question.inspoPopup) && (
+            <button
+              type="button"
+              onClick={() => setShowInfo(true)}
+              className="text-orange-500 hover:text-orange-400 transition-colors p-1"
+              aria-label="More info"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="16" x2="12" y2="12"></line>
+                <line x1="12" y1="8" x2="12.01" y2="8"></line>
+              </svg>
+            </button>
+          )}
+        </div>
+
         {question.helpText && (
-          <p className="text-xl text-zinc-400 font-light">{question.helpText}</p>
+          <p className="text-xl text-zinc-400 font-light whitespace-pre-line">{question.helpText}</p>
         )}
       </div>
 
@@ -532,6 +551,38 @@ const MultiEntryInput = ({ question, value = [], onChange, maxEntries = 5 }) => 
           </button>
         )}
       </div>
+
+      {/* Popup Overlay Logic */}
+      {(showInfo && (question.infoPopup || question.inspoPopup)) && createPortal(
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+          onClick={() => setShowInfo(false)}
+        >
+          <div
+            className="bg-zinc-900 border border-orange-500/30 rounded-xl p-6 shadow-2xl max-w-sm w-full relative animate-scale-in"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setShowInfo(false)}
+              className="absolute top-3 right-3 text-zinc-500 hover:text-white transition-colors"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+
+            <h4 className="text-orange-400 text-sm font-bold tracking-widest uppercase mb-3">
+              {question.inspoPopup ? "Inspiration" : "Info"}
+            </h4>
+
+            <p className="text-zinc-200 leading-relaxed font-light whitespace-pre-line text-base">
+              {(() => {
+                const text = question.infoPopup || question.inspoPopup;
+                return text.includes('\n') ? text : text.split(', ').join(',\n');
+              })()}
+            </p>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 };

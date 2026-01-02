@@ -131,30 +131,31 @@ export const surveySections = [
         helpText: "How do you use movies to deal (or not deal) with your emotions?",
         type: "radio",
         options: [
-          { value: "heartbreak", label: "Heartbreak Healer (for breakups, grief, or emotional longing survival)" },
-          { value: "hangover", label: "Hangover Hero (gentle recovery when I’m fragile)" },
-          { value: "floodgate", label: "Emotional Floodgate (I want to cry/release)" },
-          { value: "analyzer", label: "Chaos Analyzer (Process life through movies)" },
-          { value: "cozy", label: "Cozy Comedown (safety, warmth, emotional blankets)" },
-          { value: "creative", label: "Creative Kickstart (Spark ideas/ambition)" },
-          { value: "romance", label: "Romance Igniter (Butterflies, chemistry, connection)" },
-          { value: "distraction", label: "Emotional Distraction (Laugh, forget, disassociate)" },
-          { value: "meaning", label: "Meaning Maker (Movies help me frame my life story)" },
-          { value: "romanticizer", label: "Life Romanticizer (Make pain cinematic)" },
-          { value: "beauty", label: "Beauty Seeker (Vibes & aesthetics over story)" },
-          { value: "control", label: "Control Watcher (when life is chaos, at least I choose the movie)" },
-          { value: "decoder", label: "People Decoder (I study characters to understand psychology + relationships)" },
-          { value: "offline", label: "Emotionally Offline (Don't feel them emotionally)" },
-          { value: "ambience", label: "Ambience-Only Watcher (Background energy not a full experience)" },
-          { value: "other", label: "Other" }
+          { value: "heartbreak", label: "💔 Heartbreak Healer (for breakups, grief, or emotional longing survival)" },
+          { value: "hangover", label: "😵 Hangover Hero (gentle recovery when I’m fragile)" },
+          { value: "floodgate", label: "😭 Emotional Floodgate (I want to cry/release)" },
+          { value: "analyzer", label: "🧐 Chaos Analyzer (Process life through movies)" },
+          { value: "cozy", label: "🧸 Cozy Comedown (safety, warmth, emotional blankets)" },
+          { value: "creative", label: "🎨 Creative Kickstart (Spark ideas/ambition)" },
+          { value: "romance", label: "💘 Romance Igniter (Butterflies, chemistry, connection)" },
+          { value: "distraction", label: "🙈 Emotional Distraction (Laugh, forget, disassociate)" },
+          { value: "meaning", label: "🌌 Meaning Maker (Movies help me frame my life story)" },
+          { value: "romanticizer", label: "🍷 Life Romanticizer (Make pain cinematic)" },
+          { value: "beauty", label: "✨ Beauty Seeker (Vibes & aesthetics over story)" },
+          { value: "control", label: "🎮 Control Watcher (when life is chaos, at least I choose the movie)" },
+          { value: "decoder", label: "🔍 People Decoder (I study characters to understand psychology + relationships)" },
+          { value: "offline", label: "🔌 Emotionally Offline (Don't feel them emotionally)" },
+          { value: "ambience", label: "🛋️ Ambience-Only Watcher (Background energy not a full experience)" },
+          { value: "other", label: "✨ Other" }
         ]
       },
       {
         id: "first_crush",
         text: "Who was your first cinematic obsession or role model?",
-        helpText: "That one character, actor, or moment that rewired your brain.",
+        helpText: "That one character, actor, or moment that rewired your brain. This isn’t about attraction, it’s about imprinting. The scene that made you want to be someone else or finally feel more like yourself.",
         type: "textarea",
-        placeholder: "e.g. Wednesday Addams, Heath Ledger in 10 Things..."
+        placeholder: "e.g. Wednesday Addams, Heath Ledger in 10 Things...",
+        inspoPopup: "Julia Roberts in Erin Brockovich (courtroom scene), Tarantino (any film), Wednesday Addams/ Matilda, Trinity in The Matrix, Heath Ledger in 10 Things I Hate About You singing on the benches, Aragorn (LOTR), Sharon Stone in Basic Instinct (that one scene. Enough said.)"
       }
     ]
   },
@@ -188,17 +189,18 @@ export const surveySections = [
         text: "What's your favourite movie era?",
         type: "checkbox",
         options: [
-          { value: "silent", label: "Silent Era (The Originals)" },
-          { value: "1940s", label: "1940s (Shadows, Smoke & Suspense)" },
-          { value: "1950s", label: "1950s (Studio Magic & Technicolor)" },
-          { value: "1960s", label: "1960s (Revolution & Cool Chaos)" },
-          { value: "1970s", label: "1970s (Grit, Glam & Auteur Uprising)" },
-          { value: "1980s", label: "1980s (Neon, Synths & Shoulder Pads)" },
-          { value: "1990s", label: "1990s (Indie Boom & VHS Royalty)" },
-          { value: "2000s", label: "2000s (Tumblr-core & Teen Dreams)" },
-          { value: "post2010", label: "Post-2010 (A24 & Softcore Apocalypse)" },
-          { value: "fluid", label: "Era-fluid (Time is fake)" },
-          { value: "other", label: "Other" }
+          { value: "silent", label: "Silent Era - Visual storytelling before sound", examples: "(Metropolis, Nosferatu, Charlie Chaplin, Joan of Arc)" },
+          { value: "1930s", label: "1930s - Hollywood fantasy during hard times", examples: "(Dracula, Frankenstein, King Kong, Snow White)" },
+          { value: "1940s", label: "1940s - Shadows, Smoke & Suspense", examples: "(Casablanca, Double Indemnity, The Third Man)" },
+          { value: "1950s", label: "1950s - Studio Magic & Technicolor", examples: "(Rear Window, Roman Holiday, Rebel Without A Cause)" },
+          { value: "1960s", label: "1960s - Revolution, Nouvelle Vague & Cool Chaos", examples: "(The Graduate, La Dolce Vita, 8 1/2, Rosemary’s Baby)" },
+          { value: "1970s", label: "1970s - Grit, Glam & Auteur Uprising", examples: "(The Godfather, Taxi Driver, A Woman Under the Influence, Alien)" },
+          { value: "1980s", label: "1980s - Neon, Synths & Shoulder Pads", examples: "(The Breakfast Club, Labyrinth, Flashdance, Blade Runner)" },
+          { value: "1990s", label: "1990s - Indie Boom & VHS Royalty", examples: "(Clueless, Titanic, Pulp Fiction, Before Sunrise, The Matrix)" },
+          { value: "2000s", label: "2000s - Tumblr-core & Teen Dreams", examples: "(Eternal Sunshine, Donnie Darko, Marie Antoinette, Mean Girls)" },
+          { value: "post2010", label: "Post-2010 - A24 & Softcore Apocalypse", examples: "(Her, Parasite, Aftersun, The Worst Person in The World, EEAAO)" },
+          { value: "streaming", label: "Streaming Era - Prestige TV & Cultural Moments", examples: "(Stranger Things, Squid Game, Euphoria, Succession)" },
+          { value: "fluid", label: "Era-fluid: Time is fake." }
         ]
       },
       {
@@ -206,26 +208,49 @@ export const surveySections = [
         text: "Where did you grow up (or feel culturally shaped by)?",
         type: "checkbox",
         options: [
+          // THE AMERICAS
+          { value: "header_na", label: "The Americas 🌎", isHeader: true },
           { value: "usa", label: "United States" },
           { value: "canada", label: "Canada" },
+          { value: "other_na", label: "Add country / region", isInlineOther: true },
+          { value: "latin_america_sp", label: "Spanish-speaking Latin America" },
+          { value: "brazil", label: "Brazil" },
+          { value: "caribbean", label: "Caribbean / Afro-Caribbean" },
+          { value: "other_latam", label: "Add country / region", isInlineOther: true },
+
+          // EUROPE & UK
+          { value: "header_eu", label: "Europe & UK 🇪🇺", isHeader: true },
           { value: "uk_ireland", label: "United Kingdom / Ireland" },
           { value: "germany_dach", label: "Germany / Austria / Switzerland" },
           { value: "france", label: "France" },
           { value: "italy", label: "Italy" },
           { value: "spain", label: "Spain" },
-          { value: "latin_america_sp", label: "Spanish-speaking Latin America" },
-          { value: "brazil", label: "Brazil" },
-          { value: "caribbean", label: "Caribbean / Afro-Caribbean" },
+          { value: "eastern_europe", label: "Eastern Europe / Balkans" },
+          { value: "other_eu", label: "Add country / region", isInlineOther: true },
+
+          // MIDDLE EAST & WEST ASIA
+          { value: "header_me", label: "Middle East & West Asia 🕌", isHeader: true },
+          { value: "middle_east", label: "Middle East / Arabic / Persian" },
+          { value: "other_me", label: "Add country / region", isInlineOther: true },
+
+          // AFRICA & DIASPORA
+          { value: "header_africa", label: "Africa & Diaspora 🥁", isHeader: true },
           { value: "africa_west", label: "West African" },
           { value: "africa_east_south", label: "East or Southern African" },
+          { value: "other_africa", label: "Add country / region", isInlineOther: true },
+
+          // ASIA & PACIFIC
+          { value: "header_asia", label: "Asia & Pacific 🥢", isHeader: true },
           { value: "asia_east", label: "Japan / Korea / China / Taiwan" },
           { value: "asia_se", label: "SE Asia (Thailand, Vietnam, etc)" },
           { value: "asia_south", label: "South Asia (India, Pakistan, etc)" },
-          { value: "middle_east", label: "Middle East / Arabic / Persian" },
-          { value: "eastern_europe", label: "Eastern Europe / Balkans" },
+          { value: "other_asia", label: "Add country / region", isInlineOther: true },
+
+          // INTERWOVEN IDENTITY
+          { value: "header_id", label: "Interwoven Identity & Heritage ✨", isHeader: true },
           { value: "mixed", label: "Mixed heritage / Third culture kid" },
           { value: "queer", label: "Queer culture / chosen family" },
-          { value: "other", label: "Other" }
+          { value: "other", label: "Other" },
         ]
       },
       {
@@ -317,7 +342,8 @@ export const surveySections = [
         text: "Which villain do you secretly relate to? And... why?",
         helpText: "Who's your inner anti-hero?",
         type: "textarea",
-        placeholder: "e.g. Amy Dunne, Patrick Bateman, Scar..."
+        placeholder: "e.g. Amy Dunne, Patrick Bateman, Scar...",
+        inspoPopup: "Amy Dunne (Gone Girl), The Joker, Maleficent, Patrick Bateman (American Psycho), Scar (The Lion King), Miranda Priestly (The Devil Wears Prada), Tom Ripley, Loki, Ursala (The Little Mermaid), Regina George (Mean Girls)"
       },
       {
         id: "forever_crush",

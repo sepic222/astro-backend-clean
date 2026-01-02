@@ -25,6 +25,19 @@ const RadioInput = ({ options, value, onChange }) => {
     <div className="space-y-3">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {options.map((option) => {
+          if (option.isHeader) {
+            return (
+              <div
+                key={option.value}
+                className="col-span-full mt-4 mb-1 border-b border-zinc-800 pb-2"
+              >
+                <span className="text-xs font-bold tracking-widest text-zinc-500 uppercase">
+                  {option.label}
+                </span>
+              </div>
+            );
+          }
+
           const isSelected = selectedValue === option.value;
           return (
             <button
@@ -69,6 +82,32 @@ const CheckboxInput = ({ options, value = [], onChange }) => {
   const hasOtherOption = options.some(opt => opt.value === 'other');
   const isOtherSelected = selectedValues.includes('other');
 
+  // Group options by header
+  const sections = [];
+  let currentSection = { header: null, items: [] };
+
+  options.forEach(option => {
+    if (option.isHeader) {
+      if (currentSection.header || currentSection.items.length > 0) {
+        sections.push(currentSection);
+      }
+      currentSection = { header: option, items: [] };
+    } else {
+      currentSection.items.push(option);
+    }
+  });
+  sections.push(currentSection);
+
+  // State for open sections
+  const [openSections, setOpenSections] = useState({});
+
+  const toggleSection = (headerValue) => {
+    setOpenSections(prev => ({
+      ...prev,
+      [headerValue]: !prev[headerValue]
+    }));
+  };
+
   const handleChange = (optionValue) => {
     const newSelected = selectedValues.includes(optionValue)
       ? selectedValues.filter((v) => v !== optionValue)
@@ -89,33 +128,156 @@ const CheckboxInput = ({ options, value = [], onChange }) => {
 
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {options.map((option) => {
-          const isSelected = selectedValues.includes(option.value);
+      {sections.map((section, idx) => {
+        // If it's a section with a header
+        if (section.header) {
+          const isOpen = openSections[section.header.value];
+          // Check if any items in this section are selected to show a badge on closed header
+          const selectedCount = section.items.filter(item => selectedValues.includes(item.value)).length;
+
           return (
-            <button
-              key={option.value}
-              onClick={() => handleChange(option.value)}
-              className={`
-                px-4 py-3 rounded-lg text-left text-sm font-medium transition-all duration-200
-                border-2 relative overflow-hidden
-                ${isSelected
-                  ? 'bg-cyan-900/30 border-cyan-400 text-cyan-100 shadow-[0_0_15px_rgba(34,211,238,0.2)]'
-                  : 'bg-zinc-800/50 border-zinc-700 text-gray-300 hover:bg-zinc-700 hover:border-gray-500'}
-              `}
-            >
-              <div className="flex justify-between items-center">
-                <span>{option.label}</span>
-                {isSelected && (
-                  <span className="text-cyan-400 text-xs bg-cyan-900/50 px-2 py-0.5 rounded-full">
-                    Selected
+            <div key={section.header.value} className="border border-zinc-800 rounded-xl overflow-hidden mb-3">
+              <button
+                type="button"
+                onClick={() => toggleSection(section.header.value)}
+                className="w-full flex items-center justify-between p-4 bg-zinc-900/50 hover:bg-zinc-800 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-base font-bold text-zinc-200">
+                    {section.header.label}
                   </span>
-                )}
-              </div>
-            </button>
+                  {selectedCount > 0 && !isOpen && (
+                    <span className="bg-cyan-900/50 text-cyan-400 text-xs px-2 py-0.5 rounded-full">
+                      {selectedCount} selected
+                    </span>
+                  )}
+                </div>
+                <svg
+                  className={`w-5 h-5 text-zinc-500 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`}
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+
+              {isOpen && (
+                <div className="p-3 grid grid-cols-1 gap-3 bg-black/20 border-t border-zinc-800 animate-slide-down">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {section.items.map(option => {
+                      const isSelected = selectedValues.includes(option.value);
+                      const isInlineOther = option.isInlineOther;
+
+                      return (
+                        <div key={option.value} className={`relative ${isInlineOther && isSelected ? 'col-span-full' : ''}`}>
+                          <button
+                            onClick={() => handleChange(option.value)}
+                            className={`
+                              w-full px-4 py-3 rounded-lg text-left text-sm font-medium transition-all duration-200
+                              border-2 relative overflow-hidden
+                              ${isSelected
+                                ? 'bg-cyan-900/30 border-cyan-400 text-cyan-100 shadow-[0_0_15px_rgba(34,211,238,0.2)]'
+                                : 'bg-zinc-800/50 border-zinc-700 text-gray-300 hover:bg-zinc-700 hover:border-gray-500'}
+                            `}
+                          >
+                            <div className="flex justify-between items-center w-full">
+                              <div className="flex flex-col items-start text-left gap-0.5">
+                                <span className="leading-snug">{option.label}</span>
+                                {option.examples && (
+                                  <span className="text-xs text-zinc-500 italic font-light tracking-wide opacity-90 leading-tight">
+                                    {option.examples}
+                                  </span>
+                                )}
+                              </div>
+                              {isSelected && (
+                                <span className="text-cyan-400 text-xs bg-cyan-900/50 px-2 py-0.5 rounded-full ml-3 shrink-0">
+                                  Selected
+                                </span>
+                              )}
+                            </div>
+                          </button>
+
+                          {/* Inline Text Input for Special "Other" Fields */}
+                          {isInlineOther && isSelected && (
+                            <div className="mt-2 animate-fade-in pl-1">
+                              <input
+                                type="text"
+                                placeholder={`Please specify ${section.header.label} details...`}
+                                value={otherText.split(`${section.header.label}: `)[1]?.split(';')[0] || ''}
+                                onChange={(e) => {
+                                  // Simple hack to store these specific texts in the global otherText string for now
+                                  // Format: "Header: Value; Header2: Value2"
+                                  // Ideally we'd have a better data structure, but this preserves the string type
+                                  const newVal = e.target.value;
+                                  const prefix = `${section.header.label}: `;
+
+                                  // Remove existing entry for this section if present
+                                  let currentText = otherText;
+                                  const regex = new RegExp(`${prefix}[^;]+(; )?`, 'g');
+                                  currentText = currentText.replace(regex, '');
+                                  if (currentText.endsWith('; ')) currentText = currentText.slice(0, -2);
+
+                                  // Append new value
+                                  const updatedText = currentText ? `${currentText}; ${prefix}${newVal}` : `${prefix}${newVal}`;
+                                  handleOtherTextChange(updatedText);
+                                }}
+                                onClick={(e) => e.stopPropagation()}
+                                className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-4 py-2 text-white placeholder-zinc-500 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none transition-all"
+                              />
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
           );
-        })}
-      </div>
+        }
+
+        // If no header (loose items at start), just render them in a grid
+        if (section.items.length > 0) {
+          return (
+            <div key={`loose-${idx}`} className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+              {section.items.map(option => {
+                const isSelected = selectedValues.includes(option.value);
+                return (
+                  <button
+                    key={option.value}
+                    onClick={() => handleChange(option.value)}
+                    className={`
+                        px-4 py-3 rounded-lg text-left text-sm font-medium transition-all duration-200
+                        border-2 relative overflow-hidden
+                        ${isSelected
+                        ? 'bg-cyan-900/30 border-cyan-400 text-cyan-100 shadow-[0_0_15px_rgba(34,211,238,0.2)]'
+                        : 'bg-zinc-800/50 border-zinc-700 text-gray-300 hover:bg-zinc-700 hover:border-gray-500'}
+                      `}
+                  >
+                    <div className="flex justify-between items-center w-full">
+                      <div className="flex flex-col items-start text-left gap-0.5">
+                        <span className="leading-snug">{option.label}</span>
+                        {option.examples && (
+                          <span className="text-xs text-zinc-500 italic font-light tracking-wide opacity-90 leading-tight">
+                            {option.examples}
+                          </span>
+                        )}
+                      </div>
+                      {isSelected && (
+                        <span className="text-cyan-400 text-xs bg-cyan-900/50 px-2 py-0.5 rounded-full ml-3 shrink-0">
+                          Selected
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          );
+        }
+        return null;
+      })}
 
       {/* Show text input when "Other" is selected */}
       {hasOtherOption && isOtherSelected && (
@@ -419,25 +581,51 @@ export const QuestionRenderer = ({ question, value, onChange, onNext, setGlobalA
           <label className="block text-lg font-semibold text-white">
             {question.text}
           </label>
-          {question.infoPopup && (
-            <div className="relative">
+          {/* Logic to handle either infoPopup or inspoPopup */}
+          {(question.infoPopup || question.inspoPopup) && (
+            <>
               <button
                 type="button"
-                onClick={() => setShowInfo(!showInfo)}
-                className="text-orange-500 hover:text-orange-400 transition-colors"
+                onClick={() => setShowInfo(true)}
+                className="text-orange-500 hover:text-orange-400 transition-colors p-1"
                 aria-label="More info"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                {/* Use a generic Info icon for both, or could swap if inspo-only */}
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <line x1="12" y1="16" x2="12" y2="12"></line>
+                  <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                </svg>
               </button>
+
+              {/* Popup Overlay - Mobile Friendly */}
               {showInfo && (
-                <div className="absolute left-full top-1/2 -translate-y-1/2 ml-3 w-64 p-3 bg-zinc-900 border border-orange-500/30 rounded-lg shadow-[0_4px_20px_rgba(0,0,0,0.5)] z-50 animate-fade-in">
-                  <div className="absolute left-0 top-1/2 -translate-x-1 -translate-y-1/2 w-2 h-2 bg-zinc-900 border-l border-b border-orange-500/30 rotate-45 transform"></div>
-                  <p className="text-xs text-zinc-300 leading-relaxed font-light whitespace-pre-line">
-                    {question.infoPopup.split(', ').join(',\n')}
-                  </p>
+                <div
+                  className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+                  onClick={() => setShowInfo(false)} // Click outside to close
+                >
+                  <div
+                    className="bg-zinc-900 border border-orange-500/30 rounded-xl p-6 shadow-2xl max-w-sm w-full relative animate-scale-in"
+                    onClick={(e) => e.stopPropagation()} // Prevent close when clicking inside
+                  >
+                    <button
+                      onClick={() => setShowInfo(false)}
+                      className="absolute top-3 right-3 text-zinc-500 hover:text-white transition-colors"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    </button>
+
+                    <h4 className="text-orange-400 text-sm font-bold tracking-widest uppercase mb-3">
+                      {question.inspoPopup ? "Inspiration" : "Info"}
+                    </h4>
+
+                    <p className="text-zinc-200 leading-relaxed font-light whitespace-pre-line text-base">
+                      {(question.infoPopup || question.inspoPopup).split(', ').join(',\n')}
+                    </p>
+                  </div>
                 </div>
               )}
-            </div>
+            </>
           )}
         </div>
         {question.helpText && (

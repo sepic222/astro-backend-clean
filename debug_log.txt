@@ -1,22 +1,21 @@
 {
-  "timestamp": "2025-12-26T19:34:38.603Z",
-  "submissionId": "dev-chart-ruler-1766777660689",
-  "uName": "dev",
-  "bDate": "Unknown Date",
-  "bTime": "Unknown Time",
+  "timestamp": "2026-01-03T18:58:26.483Z",
+  "submissionId": "cmjymysjd00148oe6v3bg3uox",
+  "uName": "Anonymous",
+  "bDate": "November 22, 1987",
+  "bTime": "11:11 PM",
   "bPlace": "Unknown Place",
   "chartDTO": {
-    "id": "dev-chart-ruler-1766777660689",
-    "ascSign": "Scorpio",
-    "mcSign": "Leo",
-    "ascDeg": 210,
-    "mcDeg": 120,
+    "id": "cmjymysih00138oe6kaudh3qv",
+    "ascSign": "Leo",
+    "mcSign": "Taurus",
+    "ascDeg": 131.6978785550568,
+    "mcDeg": 32.71165490789861,
     "chartRuler": {
-      "planet": "Mars",
-      "house": 8
+      "planet": "Sun",
+      "house": 4
     },
     "houseSigns": [
-      "Cancer",
       "Leo",
       "Virgo",
       "Libra",
@@ -27,60 +26,92 @@
       "Pisces",
       "Aries",
       "Taurus",
-      "Gemini"
+      "Gemini",
+      "Cancer"
     ],
-    "houseRulers": [],
-    "rawHouses": [],
+    "houseRulers": {
+      "house1": "Leo",
+      "house2": "Virgo",
+      "house3": "Libra",
+      "house4": "Scorpio",
+      "house5": "Sagittarius",
+      "house6": "Capricorn",
+      "house7": "Aquarius",
+      "house8": "Pisces",
+      "house9": "Aries",
+      "house10": "Taurus",
+      "house11": "Gemini",
+      "house12": "Cancer"
+    },
+    "rawHouses": [
+      131.6978785550568,
+      153.7923297234956,
+      180.5000669890709,
+      212.7116549078986,
+      248.1152376620361,
+      281.9340775102384,
+      311.6978785550568,
+      333.7923297234955,
+      0.5000669890708878,
+      32.71165490789861,
+      68.1152376620361,
+      101.9340775102384
+    ],
     "planets": {
-      "mars": {
-        "sign": "Aries",
-        "house": 6,
-        "longitude": 15
-      },
-      "pluto": {
+      "sun": {
         "sign": "Sagittarius",
-        "house": 6,
-        "longitude": 240
+        "house": 4,
+        "longitude": 240.0713247283215
+      },
+      "mars": {
+        "sign": "Libra",
+        "house": 3,
+        "longitude": 209.2068452716877
       },
       "moon": {
-        "sign": "Taurus",
-        "house": 7,
-        "longitude": 45
+        "sign": "Sagittarius",
+        "house": 5,
+        "longitude": 261.9601508965515
       },
-      "sun": {
-        "sign": "Aquarius",
+      "pluto": {
+        "sign": "Scorpio",
         "house": 4,
-        "longitude": 315
-      },
-      "mercury": {
-        "sign": "Pisces",
-        "house": 9,
-        "longitude": 330
+        "longitude": 220.7043137090248
       },
       "venus": {
-        "sign": "Capricorn",
-        "house": 7,
-        "longitude": 280
+        "sign": "Sagittarius",
+        "house": 5,
+        "longitude": 263.5935444023721
+      },
+      "saturn": {
+        "sign": "Sagittarius",
+        "house": 5,
+        "longitude": 260.8930289988367
+      },
+      "uranus": {
+        "sign": "Sagittarius",
+        "house": 5,
+        "longitude": 265.3368483579213
       },
       "jupiter": {
         "sign": "Aries",
-        "house": 10,
-        "longitude": 20
+        "house": 9,
+        "longitude": 20.6348774122471
       },
-      "saturn": {
-        "sign": "Taurus",
-        "house": 11,
-        "longitude": 50
-      },
-      "uranus": {
-        "sign": "Aquarius",
-        "house": 8,
-        "longitude": 310
+      "mercury": {
+        "sign": "Scorpio",
+        "house": 4,
+        "longitude": 223.7590004697682
       },
       "neptune": {
-        "sign": "Aquarius",
-        "house": 8,
-        "longitude": 305
+        "sign": "Capricorn",
+        "house": 5,
+        "longitude": 276.3805669294534
+      },
+      "northNode": {
+        "sign": "Aries",
+        "house": 9,
+        "longitude": 0.5312475648247349
       }
     }
   }

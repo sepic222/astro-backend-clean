@@ -12,11 +12,13 @@ const ProgressBar = () => {
   const progress = ((currentStep + 1) / totalSteps) * 100;
 
   return (
-    <div className="w-full bg-gray-800 h-2 mb-8 rounded-full overflow-hidden">
+    <div className="w-full bg-zinc-900 h-1.5 mb-12 rounded-full overflow-hidden relative shadow-[0_0_10px_rgba(249,115,22,0.1)]">
       <div
-        className="h-full bg-gradient-to-r from-orange-500 to-cyan-400 transition-all duration-500 ease-out"
+        className="h-full bg-gradient-to-r from-orange-500 via-orange-400 to-cyan-400 transition-all duration-700 ease-out relative"
         style={{ width: `${progress}%` }}
-      />
+      >
+        <div className="absolute right-0 top-0 h-full w-8 bg-white/20 blur-md animate-pulse" />
+      </div>
     </div>
   );
 };
@@ -65,11 +67,7 @@ const ResultsDashboard = ({ results }) => {
             <a href="#badge" className="px-5 py-2.5 rounded-full text-[10px] md:text-xs font-bold uppercase tracking-[0.2em] text-zinc-400 hover:text-white hover:bg-white/10 hover:shadow-[0_0_15px_rgba(255,255,255,0.1)] transition-all duration-300">
               Badge
             </a>
-            {results.svg && results.svg.trim() && (
-              <a href="#chart" className="px-5 py-2.5 rounded-full text-[10px] md:text-xs font-bold uppercase tracking-[0.2em] text-zinc-400 hover:text-white hover:bg-white/10 hover:shadow-[0_0_15px_rgba(255,255,255,0.1)] transition-all duration-300">
-                Chart
-              </a>
-            )}
+            {/* Chart nav hidden for now */}
             <a href="#reading1" className="px-5 py-2.5 rounded-full text-[10px] md:text-xs font-bold uppercase tracking-[0.2em] text-zinc-400 hover:text-white hover:bg-white/10 hover:shadow-[0_0_15px_rgba(255,255,255,0.1)] transition-all duration-300">
               Part I
             </a>
@@ -88,12 +86,7 @@ const ResultsDashboard = ({ results }) => {
           />
         </div>
 
-        {/* Chart Section (optional) */}
-        {results.svg && results.svg.trim() && (
-          <div id="chart" className="bg-gray-900/50 p-4 rounded-2xl border border-gray-800 shadow-2xl shadow-orange-900/5">
-            <ResultIframe content={results.svg} title="Natal Chart" />
-          </div>
-        )}
+        {/* Chart Section hidden for now */}
 
         {/* Reading Content via Iframes */}
         <div className="space-y-12">
@@ -526,11 +519,18 @@ const SurveyContent = () => {
     <div className="min-h-screen w-full bg-zinc-950 text-white flex flex-col items-center py-8 px-4 md:px-0 font-sans selection:bg-orange-500 selection:text-white">
       <div className="w-full max-w-2xl bg-transparent flex flex-col gap-8">
         {!isIntroHero && (
-          <header className="mb-12 text-center">
-            <h1 className="text-4xl md:text-6xl font-extrabold tracking-tighter mb-2 text-white">
-              FATEFLIX
-            </h1>
-            <p className="text-gray-400 uppercase tracking-widest text-sm">Cinematic Survey</p>
+          <header className="mb-16 flex flex-col items-center">
+            <div className="w-20 h-20 md:w-24 md:h-24 relative group mb-4">
+              <div className="absolute inset-0 bg-orange-500/10 blur-2xl rounded-full scale-75" />
+              <img
+                src="/assets/fateflix-planet.png"
+                alt="FateFlix Logo"
+                className="w-full h-full object-contain relative z-10 drop-shadow-[0_0_20px_rgba(249,115,22,0.2)]"
+              />
+            </div>
+            <h2 className="text-[8px] md:text-[10px] tracking-[0.6em] text-zinc-500 font-bold uppercase">
+              CINEMATIC TASTE SURVEY
+            </h2>
           </header>
         )}
 

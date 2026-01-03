@@ -347,7 +347,7 @@ export const surveySections = [
         helpText: "Who's your inner anti-hero?",
         type: "textarea",
         placeholder: "e.g. Amy Dunne, Patrick Bateman, Scar...",
-        inspoPopup: "Some villains are misunderstood icons. Some are just honest about their darkness.\n\n• Miranda Priestly (The Devil Wears Prada) - “I've worked my ass off to get where I am. If that makes me cold, so be it. At least I have standards and style.”\n• Amy Dunne (Gone Girl) - underestimated for too long.\n• Patrick Bateman (American Psycho) — “We both like skincare, perfection, and clean aesthetics”\n• Tom Ripley (The Talented Mr. Ripley) - outsider energy, wanting in\n• Catherine Tramell (Basic Instinct) - smart, unreadable, in charge\n• Scar (The Lion King) - overlooked sibling plotting a comeback\n• Hannibal Lecter (Silence of the Lambs) - Disturbing, genius, well-mannered. He'll serve you your own liver, but pair it with the perfect wine.\n• Alex Forrest (Fatal Attraction) - She loved too hard, got discarded, and snapped. Is she unwell? Sure. But she's also every woman who's been gaslit, ghosted, and expected to smile through it.\n• Harley Quinn (Birds of Prey) - unhinged but self-aware (and evolving)\n• Tyler Durden (Fight Club) - Chaos, truth bombs, and no f*cks given. He's the shadow self unleashed.\n• Cersei Lannister (Game of Thrones) - vengeance, power, wine-fuelled rage\n• Marquise de Merteuil (Dangerous Liaisons) - desire as strategy\n• Gordon Gekko (Wall Street) - Greed is good. Ambition without apology"
+        inspoPopup: "Misunderstood icons or just honest about their darkness?\n\n• Miranda Priestly (The Devil Wears Prada) - I've worked my ass oﬀ to get where I am.\n• Patrick Bateman (American Psycho) - Skincare, perfection, & clean aesthetics.\n• Tom Ripley (The Talented Mr. Ripley) - Outsider energy, wanting in.\n• Catherine Tramell (Basic Instinct) - Brilliant, unreadable, fully in control.\n• Scar (The Lion King) - Overlooked sibling plotting a comeback.\n• Hannibal Lecter (Silence of the Lambs) - Disturbing genius with impeccable manners."
       },
       {
         id: "forever_crush",
@@ -652,20 +652,50 @@ export const surveySections = [
     questions: [
       {
         id: "selection_method",
-        text: "How do you actually choose your next movie or show?",
+        text: "In a minefield of content... how do you actually choose your next movie or show?",
         type: "checkbox",
         options: [
-          { value: "notes", label: "I write chaotic lists in my Notes app" },
-          { value: "letterboxd", label: "I use Letterboxd / IMDb" },
-          { value: "scroll", label: "I scroll Netflix until something clicks" },
-          { value: "top10", label: "I trust the Top 10" },
+          { value: "scroll", label: "I scroll until something clicks (Netflix/Prime/MUBI/AppleTV)" },
+          { value: "notes", label: "Chaotic Notes app lists" },
+          { value: "people", label: "I follow people, not lists (actors, directors, crushes)" },
+          { value: "google", label: "Google it (search or ratings)" },
+          { value: "reviews", label: "Ratings & reviews (Letterboxd, IMDb, Rotten Tomatoes, Reddit, Metacritic)" },
+          { value: "top10", label: "I trust what’s trending (Top 10)" },
           { value: "friend", label: "I ask my film friend" },
-          { value: "chatgpt", label: "I ask ChatGPT" },
-          { value: "reviews", label: "I read reviews (IndieWire, NYT)" },
-          { value: "vibes", label: "Mood / aesthetic (vibes > plot)" },
-          { value: "fateflix", label: "I'm just waiting for FateFlix to drop" },
+          { value: "vibes", label: "I choose by mood or aesthetic" },
+          { value: "comfort", label: "Comfort rewatch (decision successfully avoided)" },
+          { value: "fatigue", label: "Decision fatigue is real. Just pick for me." },
+          { value: "ai", label: "I ask AI" },
+          { value: "unavailable", label: "It’s never on the platform I’m paying for." },
+          { value: "trailer_spiral", label: "Trailer Spiral. Movie night becomes trailer night... again." },
+          { value: "fateflix", label: "Just waiting for FateFlix to drop 😌" },
           { value: "other", label: "Other" }
         ]
+      },
+      {
+        id: "discovery_apps",
+        text: "Which of these apps do you actually use for movie discovery?",
+        type: "checkbox",
+        options: [
+          { value: "letterboxd", label: "Letterboxd" },
+          { value: "imdb", label: "IMDb" },
+          { value: "rotten_tomatoes", label: "Rotten Tomatoes" },
+          { value: "taste_io", label: "Taste.io" },
+          { value: "social", label: "Social media (TikTok, Instagram, YouTube)" },
+          { value: "upflix", label: "Upflix" },
+          { value: "moviepal", label: "Moviepal" },
+          { value: "justwatch", label: "JustWatch" },
+          { value: "tv_time", label: "TV Time" },
+          { value: "reelgood", label: "Reelgood" },
+          { value: "metacritic", label: "Metacritic" },
+          { value: "other", label: "Other" }
+        ]
+      },
+      {
+        id: "share_qr",
+        type: "qr_share",
+        text: "Would you share this quiz with your friends?",
+        subtitle: "Screenshot the QR code for your camera roll. Perfect for date nights, dinner parties, or flexing your movie taste on the group chat."
       },
       {
         id: "discovery",

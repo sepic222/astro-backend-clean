@@ -1,6 +1,80 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import CitySearch from './CitySearch';
+import { QRCodeCanvas } from 'qrcode.react';
+
+const QRShare = ({ question, onNext }) => {
+  const [shareUrl, setShareUrl] = useState('');
+
+  useEffect(() => {
+    // Generate URL with tracking parameter
+    if (typeof window !== 'undefined') {
+      const baseUrl = window.location.origin;
+      setShareUrl(`${baseUrl}?source=qr_share`);
+    }
+  }, []);
+
+  return (
+    <div className="flex flex-col items-center justify-center py-12 space-y-8 animate-fade-in relative z-10">
+      {/* Glow effect background */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] bg-orange-500/20 blur-[100px] rounded-full -z-10 pointer-events-none" />
+
+      <div className="text-center space-y-4 max-w-xl px-4">
+        <div className="inline-block p-3 rounded-full bg-orange-500/10 mb-4 shadow-[0_0_15px_rgba(249,115,22,0.2)]">
+          <svg className="w-8 h-8 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+          </svg>
+        </div>
+        <h3 className="text-3xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-br from-white via-orange-200 to-orange-400 pb-2 leading-tight">
+          {question.text}
+        </h3>
+        {question.subtitle && (
+          <p className="text-lg md:text-xl text-zinc-400 font-light leading-relaxed max-w-lg mx-auto">
+            {question.subtitle}
+          </p>
+        )}
+      </div>
+
+      {/* QR Code Card - Designed for Screenshots */}
+      <div className="p-8 bg-zinc-900/80 backdrop-blur-xl border border-orange-500/30 rounded-3xl shadow-[0_0_50px_rgba(0,0,0,0.5)] flex flex-col items-center gap-6 transform transition-all hover:scale-105 hover:border-orange-500/50 duration-500 group">
+        <div className="bg-white p-4 rounded-2xl shadow-lg relative overflow-hidden">
+          {/* Subtle scanline effect overlay */}
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-orange-500/5 to-transparent h-full w-full animate-pulse pointer-events-none" />
+
+          {shareUrl && (
+            <QRCodeCanvas
+              value={shareUrl}
+              size={200}
+              level={"H"}
+              includeMargin={false}
+              fgColor="#000000"
+              bgColor="#ffffff"
+              imageSettings={{
+                src: "/assets/fateflix-planet.png",
+                x: undefined,
+                y: undefined,
+                height: 40,
+                width: 40,
+                excavate: true,
+              }}
+            />
+          )}
+        </div>
+        <div className="text-center space-y-1">
+          <p className="text-orange-500 font-bold tracking-[0.2em] text-xs uppercase">Scan to Match</p>
+          <p className="text-white font-black tracking-tighter text-lg">FATEFLIX</p>
+        </div>
+      </div>
+
+      <button
+        onClick={onNext}
+        className="mt-8 text-zinc-500 hover:text-white transition-colors text-sm uppercase tracking-widest font-medium border-b border-transparent hover:border-white pb-1"
+      >
+        Skip for now
+      </button>
+    </div>
+  );
+};
 
 const RadioInput = ({ options, value, onChange }) => {
   // Handle both simple string values and object values with otherText
@@ -45,14 +119,19 @@ const RadioInput = ({ options, value, onChange }) => {
               key={option.value}
               onClick={() => handleOptionChange(option.value)}
               className={`
-                px-4 py-3 rounded-lg text-left text-sm font-medium transition-all duration-200
-                border-2
-                ${isSelected
-                  ? 'bg-orange-600/20 border-orange-500 text-white shadow-[0_0_15px_rgba(249,115,22,0.3)]'
-                  : 'bg-zinc-800/50 border-zinc-700 text-gray-300 hover:bg-zinc-700 hover:border-gray-500'}
-              `}
+                  px-5 py-4 rounded-xl text-left text-sm font-medium transition-all duration-300
+                  border backdrop-blur-md
+                  ${isSelected
+                  ? 'bg-orange-500/10 border-orange-500/50 text-white shadow-[0_4px_20px_rgba(249,115,22,0.15)] ring-1 ring-orange-500/20'
+                  : 'bg-zinc-900/40 border-white/5 text-zinc-400 hover:bg-zinc-800/60 hover:border-white/10 hover:text-white'}
+                `}
             >
-              {option.label}
+              <div className="flex items-center justify-between">
+                <span>{option.label}</span>
+                {isSelected && (
+                  <div className="w-1.5 h-1.5 rounded-full bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.8)]" />
+                )}
+              </div>
             </button>
           );
         })}
@@ -60,13 +139,13 @@ const RadioInput = ({ options, value, onChange }) => {
 
       {/* Show text input when "Other" is selected */}
       {hasOtherOption && isOtherSelected && (
-        <div className="mt-3 animate-slide-up">
+        <div className="mt-4 animate-slide-up">
           <input
             type="text"
             value={otherText}
             onChange={(e) => handleOtherTextChange(e.target.value)}
             placeholder="Please specify..."
-            className="w-full bg-black border-2 border-orange-500/50 rounded-lg p-3 text-white placeholder:text-zinc-500 outline-none focus:border-orange-500 focus:shadow-[0_0_15px_rgba(249,115,22,0.2)] transition-all duration-300"
+            className="w-full bg-zinc-900/40 border border-orange-500/30 rounded-xl p-4 text-white placeholder:text-zinc-600 outline-none focus:border-orange-500/50 focus:shadow-[0_0_20px_rgba(249,115,22,0.1)] transition-all duration-500 backdrop-blur-md"
             autoFocus
           />
         </div>
@@ -137,11 +216,11 @@ const CheckboxInput = ({ options, value = [], onChange }) => {
           const selectedCount = section.items.filter(item => selectedValues.includes(item.value)).length;
 
           return (
-            <div key={section.header.value} className="border border-zinc-800 rounded-xl overflow-hidden mb-3">
+            <div key={section.header.value} className="border border-white/5 rounded-2xl overflow-hidden mb-4 bg-zinc-900/20 backdrop-blur-sm">
               <button
                 type="button"
                 onClick={() => toggleSection(section.header.value)}
-                className="w-full flex items-center justify-between p-4 bg-zinc-900/50 hover:bg-zinc-800 transition-colors"
+                className="w-full flex items-center justify-between p-5 hover:bg-white/[0.02] transition-colors"
               >
                 <div className="flex items-center gap-3">
                   <span className="text-base font-bold text-zinc-200">
@@ -175,11 +254,11 @@ const CheckboxInput = ({ options, value = [], onChange }) => {
                           <button
                             onClick={() => handleChange(option.value)}
                             className={`
-                              w-full px-4 py-3 rounded-lg text-left text-sm font-medium transition-all duration-200
-                              border-2 relative overflow-hidden
+                              w-full px-5 py-4 rounded-xl text-left text-sm font-medium transition-all duration-300
+                              border backdrop-blur-md relative overflow-hidden
                               ${isSelected
-                                ? 'bg-cyan-900/30 border-cyan-400 text-cyan-100 shadow-[0_0_15px_rgba(34,211,238,0.2)]'
-                                : 'bg-zinc-800/50 border-zinc-700 text-gray-300 hover:bg-zinc-700 hover:border-gray-500'}
+                                ? 'bg-cyan-500/10 border-cyan-400/50 text-white shadow-[0_4px_20px_rgba(34,211,238,0.15)] ring-1 ring-cyan-500/20'
+                                : 'bg-zinc-900/40 border-white/5 text-zinc-400 hover:bg-zinc-800/60 hover:border-white/10 hover:text-white'}
                             `}
                           >
                             <div className="flex justify-between items-center w-full">
@@ -201,30 +280,23 @@ const CheckboxInput = ({ options, value = [], onChange }) => {
 
                           {/* Inline Text Input for Special "Other" Fields */}
                           {isInlineOther && isSelected && (
-                            <div className="mt-2 animate-fade-in pl-1">
+                            <div className="mt-3 animate-fade-in px-1">
                               <input
                                 type="text"
                                 placeholder={`Please specify ${section.header.label} details...`}
                                 value={otherText.split(`${section.header.label}: `)[1]?.split(';')[0] || ''}
                                 onChange={(e) => {
-                                  // Simple hack to store these specific texts in the global otherText string for now
-                                  // Format: "Header: Value; Header2: Value2"
-                                  // Ideally we'd have a better data structure, but this preserves the string type
                                   const newVal = e.target.value;
                                   const prefix = `${section.header.label}: `;
-
-                                  // Remove existing entry for this section if present
                                   let currentText = otherText;
                                   const regex = new RegExp(`${prefix}[^;]+(; )?`, 'g');
                                   currentText = currentText.replace(regex, '');
                                   if (currentText.endsWith('; ')) currentText = currentText.slice(0, -2);
-
-                                  // Append new value
                                   const updatedText = currentText ? `${currentText}; ${prefix}${newVal}` : `${prefix}${newVal}`;
                                   handleOtherTextChange(updatedText);
                                 }}
                                 onClick={(e) => e.stopPropagation()}
-                                className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-4 py-2 text-white placeholder-zinc-500 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none transition-all"
+                                className="w-full bg-zinc-950/50 border border-white/5 rounded-xl px-4 py-3 text-white placeholder-zinc-600 focus:border-cyan-500/30 focus:ring-1 focus:ring-cyan-500/20 outline-none transition-all duration-500 backdrop-blur-md"
                               />
                             </div>
                           )}
@@ -249,11 +321,11 @@ const CheckboxInput = ({ options, value = [], onChange }) => {
                     key={option.value}
                     onClick={() => handleChange(option.value)}
                     className={`
-                        px-4 py-3 rounded-lg text-left text-sm font-medium transition-all duration-200
-                        border-2 relative overflow-hidden
+                        px-5 py-4 rounded-xl text-left text-sm font-medium transition-all duration-300
+                        border backdrop-blur-md relative overflow-hidden
                         ${isSelected
-                        ? 'bg-cyan-900/30 border-cyan-400 text-cyan-100 shadow-[0_0_15px_rgba(34,211,238,0.2)]'
-                        : 'bg-zinc-800/50 border-zinc-700 text-gray-300 hover:bg-zinc-700 hover:border-gray-500'}
+                        ? 'bg-cyan-500/10 border-cyan-400/50 text-white shadow-[0_4px_20px_rgba(34,211,238,0.15)] ring-1 ring-cyan-500/20'
+                        : 'bg-zinc-900/40 border-white/5 text-zinc-400 hover:bg-zinc-800/60 hover:border-white/10 hover:text-white'}
                       `}
                   >
                     <div className="flex justify-between items-center w-full">
@@ -282,13 +354,13 @@ const CheckboxInput = ({ options, value = [], onChange }) => {
 
       {/* Show text input when "Other" is selected */}
       {hasOtherOption && isOtherSelected && (
-        <div className="mt-3 animate-slide-up">
+        <div className="mt-4 animate-slide-up">
           <input
             type="text"
             value={otherText}
             onChange={(e) => handleOtherTextChange(e.target.value)}
             placeholder="Please specify..."
-            className="w-full bg-black border-2 border-cyan-400/50 rounded-lg p-3 text-white placeholder:text-zinc-500 outline-none focus:border-cyan-400 focus:shadow-[0_0_15px_rgba(34,211,238,0.2)] transition-all duration-300"
+            className="w-full bg-zinc-900/40 border border-cyan-400/30 rounded-xl p-4 text-white placeholder:text-zinc-600 outline-none focus:border-cyan-400/50 focus:shadow-[0_0_20px_rgba(34,211,238,0.1)] transition-all duration-500 backdrop-blur-md"
             autoFocus
           />
         </div>
@@ -304,11 +376,11 @@ const TextInput = ({ type = "text", placeholder, value = "", onChange, isHero })
     onChange={(e) => onChange(e.target.value)}
     placeholder={placeholder}
     className={`
-      w-full bg-black border-2 rounded-lg outline-none transition-all duration-300
-      placeholder:text-zinc-600 text-white
+      w-full bg-zinc-900/40 border rounded-xl outline-none transition-all duration-500
+      placeholder:text-zinc-600 text-white backdrop-blur-md
       ${isHero
-        ? 'p-6 text-2xl border-orange-500/50 focus:border-orange-500 focus:shadow-[0_0_30px_rgba(249,115,22,0.2)] text-center'
-        : 'p-4 border-zinc-700 focus:border-cyan-400 focus:bg-zinc-900'}
+        ? 'p-8 text-3xl border-orange-500/30 focus:border-orange-500 focus:shadow-[0_0_40px_rgba(249,115,22,0.15)] text-center font-light'
+        : 'p-4 border-white/5 focus:border-cyan-400/50 focus:bg-zinc-800/40 focus:shadow-[0_0_20px_rgba(34,211,238,0.05)]'}
     `}
   />
 );
@@ -339,10 +411,11 @@ const TextAreaInput = ({ placeholder, value = "", onChange }) => {
       placeholder={placeholder}
       rows={4}
       className="
-        w-full bg-black border-2 border-zinc-700 rounded-lg p-4 
+        w-full bg-zinc-900/40 border border-white/5 rounded-xl p-5 
         text-white placeholder:text-zinc-600 outline-none 
-        focus:border-cyan-400 focus:bg-zinc-900 transition-all duration-300
-        resize-vertical min-h-[120px]
+        focus:border-cyan-400/50 focus:bg-zinc-800/40 transition-all duration-500
+        resize-vertical min-h-[140px] backdrop-blur-md
+        focus:shadow-[0_0_20px_rgba(34,211,238,0.05)]
       "
       style={{ overflow: 'hidden' }}
     />
@@ -600,6 +673,10 @@ export const QuestionRenderer = ({ question, value, onChange, onNext, setGlobalA
     return <HeroCard question={question} value={value} onChange={onChange} />;
   }
 
+  if (question.type === 'qr_share') {
+    return <QRShare question={question} onNext={onNext} />;
+  }
+
   // Handle multi-entry input (for character_match)
   if (question.uiType === 'multi_entry') {
     return <MultiEntryInput question={question} value={value} onChange={onChange} maxEntries={question.maxEntries || 5} />;
@@ -630,7 +707,7 @@ export const QuestionRenderer = ({ question, value, onChange, onNext, setGlobalA
     <div className="space-y-3 animate-slide-up">
       <div className="mb-4 relative">
         <div className="flex items-center gap-2 mb-1">
-          <label className="block text-lg font-semibold text-white">
+          <label className="block text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-white to-zinc-400 tracking-tight">
             {question.text}
           </label>
           {/* Logic to handle either infoPopup or inspoPopup */}
@@ -685,7 +762,7 @@ export const QuestionRenderer = ({ question, value, onChange, onNext, setGlobalA
           )}
         </div>
         {question.helpText && (
-          <p className="text-sm text-zinc-400 italic">{question.helpText}</p>
+          <p className="text-base text-zinc-500 font-light tracking-wide">{question.helpText}</p>
         )}
       </div>
 

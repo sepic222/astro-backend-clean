@@ -30,6 +30,7 @@
     "luxon": "^3.6.1",
     "node-fetch": "^3.3.2",
     "openai": "^4.104.0",
+    "qrcode.react": "^4.2.0",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
     "react-google-autocomplete": "^2.7.5",

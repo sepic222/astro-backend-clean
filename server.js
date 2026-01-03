@@ -3117,7 +3117,7 @@ app.get('/reading/:submissionId/html', async (req, res) => {
              </div>
            </div>
 
-           <div style="position: relative; width: 320px; margin: 0 auto 30px auto;">
+           <div style="position: relative; width: 270px; margin: 0 auto 30px auto;">
                <img src="/assets/planet_purple.png" style="display: block; width: 100%; height: auto; opacity: 0.9;" alt="" />
                
                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 100%; text-align: center; z-index: 10; font-family: 'Futura', sans-serif; font-style: italic; font-size: 20px; color: #F3DCBC; line-height: 1.4; text-shadow: 0 2px 10px rgba(0,0,0,0.7); white-space: nowrap;">

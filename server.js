@@ -3394,7 +3394,7 @@ app.get('/reading/:submissionId/html/2', async (req, res) => {
 
              <!-- Center Image (Blue Planet) - Large -->
              <div style="text-align: center; margin: 10px 0 -60px; position: relative; z-index: 1;">
-                <img src="/assets/blue%20planet.png" class="img-responsive" style="max-width: 800px; width: 120%; filter: drop-shadow(0 0 30px rgba(78, 205, 196, 0.3)); margin-left: -10%;" alt="Earth" />
+                <img src="/assets/blue_planet.png" class="img-responsive" style="max-width: 800px; width: 120%; filter: drop-shadow(0 0 30px rgba(78, 205, 196, 0.3)); margin-left: -10%;" alt="Earth" />
              </div>
 
              <!-- Bottom Section: Green Glow Background -->

@@ -129,7 +129,7 @@ export const surveySections = [
         id: "escapism_style",
         text: "Your Emotional Escapism Style?",
         helpText: "How do you use movies to deal (or not deal) with your emotions?",
-        type: "radio",
+        type: "checkbox",
         options: [
           { value: "heartbreak", label: "💔 Heartbreak Healer (for breakups, grief, or emotional longing survival)" },
           { value: "hangover", label: "😵 Hangover Hero (gentle recovery when I’m fragile)" },
@@ -799,6 +799,13 @@ export const surveySections = [
           { value: "yes", label: "Yes, I need this" },
           { value: "no", label: "No, I gatekeep" }
         ]
+      },
+      {
+        id: "open_feedback",
+        text: "Anything we should know?",
+        helpText: "Got feedback on the survey, ideas for FateFlix, or something you wish existed in a movie app?\nThis is your moment. We read every response.",
+        type: "textarea",
+        placeholder: "Thoughts, feedback, feature ideas, wild wishes…"
       },
       {
         id: "top3_films",

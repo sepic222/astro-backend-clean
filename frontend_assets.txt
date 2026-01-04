@@ -1,0 +1,5 @@
+total 5888
+drwxr-xr-x@ 4 saraellenpicard  staff      128 Jan  3 21:07 .
+drwxr-xr-x@ 3 saraellenpicard  staff       96 Jan  3 21:07 ..
+-rw-r--r--@ 1 saraellenpicard  staff   714644 Jan  3 21:07 fateflix-planet.png
+-rw-r--r--@ 1 saraellenpicard  staff  2295675 Dec 16 22:24 survey-logo.svg

@@ -105,12 +105,13 @@ if (process.env.OPENAI_API_KEY) {
   console.warn('⚠️ OpenAI API key missing — AI routes disabled.');
 }
 
-const { Resend } = require('resend');
-let resend = null;
-if (process.env.RESEND_API_KEY) {
-  resend = new Resend(process.env.RESEND_API_KEY);
-} else {
-  console.warn('⚠️ RESEND_API_KEY missing — Email features disabled.');
+// --- email helper ---------------------------------------------
+const fetch = require('node-fetch');
+const LOOPS_API_KEY = process.env.LOOPS_API_KEY;
+const LOOPS_TRANSACTIONAL_ID = process.env.LOOPS_TRANSACTIONAL_ID;
+
+if (!LOOPS_API_KEY) {
+  console.warn('⚠️ LOOPS_API_KEY missing — Email features disabled.');
 }
 
 const { PrismaClient } = require('@prisma/client');
@@ -453,43 +454,36 @@ async function saveChartToDB(input, output) {
 
 // --- sending email helper -------------------------------------
 async function sendReadingEmail(email, submissionId) {
-  if (!resend || !email) return;
+  if (!LOOPS_API_KEY || !email) return;
 
   const baseUrl = process.env.FRONTEND_URL || 'http://localhost:4321';
   const readingUrl = `${baseUrl}/reading/${submissionId}`;
 
   try {
-    const { data, error } = await resend.emails.send({
-      from: 'FateFlix <onboarding@resend.dev>', // Update this if user has a custom domain
-      to: [email],
-      subject: 'Your FateFlix Cosmic Reading is Ready 🪐',
-      html: `
-        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #0c0c0c; color: #ffffff;">
-          <h1 style="color: #ff8c00; text-align: center;">YOUR READING IS READY</h1>
-          <p style="font-size: 16px; line-height: 1.5; color: #cccccc;">
-            The stars have aligned (and so has our code). Your personalized cinematic astrology reading is waiting for you.
-          </p>
-          <div style="text-align: center; margin: 30px 0;">
-            <a href="${readingUrl}" style="background-color: #ff8c00; color: #000000; padding: 15px 30px; text-decoration: none; font-weight: bold; border-radius: 5px; display: inline-block;">
-              Access Your Reading & Badge
-            </a>
-          </div>
-          <p style="font-size: 14px; text-align: center; color: #666666;">
-            Save this email to return to your reading anytime.
-            <br>
-            <a href="${readingUrl}" style="color: #666666;">${readingUrl}</a>
-          </p>
-        </div>
-      `
+    const response = await fetch('https://app.loops.so/api/v1/transactional', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${LOOPS_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        transactionalId: LOOPS_TRANSACTIONAL_ID,
+        email: email,
+        dataVariables: {
+          'ff-link': readingUrl
+        }
+      })
     });
 
-    if (error) {
-      console.error('Email sending failed:', error);
+    const result = await response.json();
+
+    if (response.ok && result.success) {
+      console.log(`✅ Email sent via Loops to ${email}`);
     } else {
-      console.log('✅ Email sent successfully:', data.id);
+      console.error('🟥 Loops email failure:', result);
     }
-  } catch (err) {
-    console.error('Email sending error:', err);
+  } catch (error) {
+    console.error('🟥 Error sending email via Loops:', error.message);
   }
 }
 

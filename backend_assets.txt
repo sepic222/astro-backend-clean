@@ -1,0 +1,16 @@
+total 10280
+drwxr-xr-x@ 15 saraellenpicard  staff      480 Dec 27 16:52 .
+drwxr-xr-x@  4 saraellenpicard  staff      128 Dec 27 16:52 ..
+-rw-r--r--@  1 saraellenpicard  staff   273299 Dec 24 17:07 blue planet.png
+-rw-r--r--@  1 saraellenpicard  staff   714644 Dec 27 16:52 fateflix-planet.png
+drwxr-xr-x@  4 saraellenpicard  staff      128 Dec 24 17:08 fonts
+-rw-r--r--@  1 saraellenpicard  staff  1352873 Dec 24 17:07 greenglow.png
+-rw-r--r--@  1 saraellenpicard  staff    37309 Dec 24 17:07 header_chart_wheel.png
+-rw-r--r--@  1 saraellenpicard  staff   433508 Dec 24 17:07 planet_purple.png
+-rw-r--r--@  1 saraellenpicard  staff    14272 Dec 24 17:07 planet_purple_ring.png
+-rw-r--r--@  1 saraellenpicard  staff     9816 Dec 24 17:07 planet_ring_pinkish.png
+-rw-r--r--@  1 saraellenpicard  staff      822 Dec 24 17:07 star-glow mini.png
+-rw-r--r--@  1 saraellenpicard  staff    98363 Dec 24 17:07 star_pink.png
+-rw-r--r--@  1 saraellenpicard  staff      371 Dec 24 17:07 starglow_large.png
+-rw-r--r--@  1 saraellenpicard  staff      371 Dec 24 17:07 starglow_medium.png
+-rw-r--r--@  1 saraellenpicard  staff  2295675 Dec 24 17:07 survey-logo.svg

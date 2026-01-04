@@ -361,25 +361,26 @@ export const surveySections = [
         text: "What do you crave most in a movie?",
         type: "checkbox",
         options: [
-          { value: "emotional", label: "Soft, sad & deeply felt" },
-          { value: "tension", label: "High stakes & tension (suspense, danger, edge-of-seat energy)" },
-          { value: "chaos", label: "Emotional chaos & catharsis (rage, release, revenge acts)" },
-          { value: "clever", label: "Clever & conceptual (symbolism, sharp dialogue, plot twists)" },
-          { value: "structure", label: "Satisfying structure (I care about the plot)" },
-          { value: "poetic", label: "Philosophical & poetic (existential & reflective)" },
-          { value: "depth", label: "Characters with depth (inner worlds & transformation)" },
-          { value: "performance", label: "Haunting performances" },
-          { value: "chemistry", label: "Sexy, slow chemistry (glances > gestures > tension)" },
-          { value: "stylish", label: "Cool & stylish (mood, music, fashion)" },
-          { value: "escapism", label: "Wholesome escapism (comfort, nostalgia & happy endings)" },
-          { value: "immersive", label: "Immersive Worlds (I want to live inside)" },
-          { value: "fun", label: "Fun, clever & quotable (rewatch energy)" },
-          { value: "trippy", label: "Weird & trippy (surrealism is truth)" },
-          { value: "dark", label: "Dark & seductive (noir, danger, desire)" },
-          { value: "crime", label: "Crime, hustle & heist" },
-          { value: "adrenaline", label: "Pure adrenaline (chase scenes, explosions, velocity)" },
-          { value: "not_basic", label: "Whatever makes my life feel less basic for 90 minutes" },
-          { value: "other", label: "Other" }
+          { value: "emotional", label: "🥀 Soft, sad & deeply felt" },
+          { value: "tension", label: "⚡ High stakes & tension (suspense, danger, edge-of-seat energy)" },
+          { value: "chaos", label: "🌪️ Emotional chaos & catharsis (rage, release, revenge acts)" },
+          { value: "clever", label: "🧩 Clever & conceptual (symbolism, sharp dialogue, plot twists)" },
+          { value: "structure", label: "📐 Satisfying structure (I care about the plot)" },
+          { value: "poetic", label: "🌌 Philosophical & poetic (existential & reflective)" },
+          { value: "political_social", label: "✊ Politically conscious, socially relevant" },
+          { value: "depth", label: "🧿 Characters with depth (inner worlds & transformation)" },
+          { value: "performance", label: "🎭 Haunting performances" },
+          { value: "chemistry", label: "🍷 Sexy, slow chemistry (glances > gestures > tension)" },
+          { value: "stylish", label: "✨ Cool & stylish (mood, music, fashion)" },
+          { value: "escapism", label: "🧸 Wholesome escapism (comfort, nostalgia & happy endings)" },
+          { value: "immersive", label: "🏰 Immersive Worlds (I want to live inside)" },
+          { value: "fun", label: "🍿 Fun, clever & quotable (rewatch energy)" },
+          { value: "trippy", label: "🍄 Weird & trippy (surrealism is truth)" },
+          { value: "dark", label: "🌑 Dark & seductive (noir, danger, desire)" },
+          { value: "crime", label: "💰 Crime, hustle & heist" },
+          { value: "adrenaline", label: "💥 Pure adrenaline (chase scenes, explosions, velocity)" },
+          { value: "not_basic", label: "💎 Whatever makes my life feel less basic for 90 minutes" },
+          { value: "other", label: "✨ Other" }
         ]
       }
     ]
@@ -569,6 +570,7 @@ export const surveySections = [
           { value: "pasolini", label: "Pier Paolo Pasolini", examples: "The Gospel According to St. Matthew, Salò, Teorema" },
           { value: "mizoguchi", label: "Kenji Mizoguchi", examples: "Ugetsu, Sansho the Bailiff, Street of Shame" },
           { value: "ozu", label: "Yasujiro Ozu", examples: "Tokyo Story, Late Spring, An Autumn Afternoon" },
+          { value: "pollack", label: "Sydney Pollack", examples: "Out of Africa, Tootsie, The Way We Were" },
 
           { value: "header_special", label: "SPECIAL", isHeader: true },
           { value: "none", label: "I don't know any directors and I don't care…lol" },
@@ -761,6 +763,7 @@ export const surveySections = [
           { value: "tv_time", label: "TV Time" },
           { value: "reelgood", label: "Reelgood" },
           { value: "metacritic", label: "Metacritic" },
+          { value: "none", label: "None" },
           { value: "other", label: "Other" }
         ]
       },
@@ -809,7 +812,7 @@ export const surveySections = [
       },
       {
         id: "top3_films",
-        text: "TOP 3 FILMS ★★★★★",
+        text: "TOP 3 FILMS",
         type: "textarea",
         placeholder: "1.\n2.\n3."
       },

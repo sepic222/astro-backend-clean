@@ -12,12 +12,12 @@ const ProgressBar = () => {
   const progress = ((currentStep + 1) / totalSteps) * 100;
 
   return (
-    <div className="w-full bg-zinc-900 h-1.5 mb-12 rounded-full overflow-hidden relative shadow-[0_0_10px_rgba(249,115,22,0.1)]">
+    <div className="w-full bg-zinc-900 h-1.5 mb-12 rounded-full overflow-hidden relative shadow-[0_0_15px_rgba(249,115,22,0.15)]">
       <div
-        className="h-full bg-gradient-to-r from-orange-500 via-orange-400 to-cyan-400 transition-all duration-700 ease-out relative"
+        className="h-full bg-gradient-to-r from-orange-500 via-orange-400 to-slate-50 transition-all duration-700 ease-out relative"
         style={{ width: `${progress}%` }}
       >
-        <div className="absolute right-0 top-0 h-full w-8 bg-white/20 blur-md animate-pulse" />
+        <div className="absolute right-0 top-0 h-full w-12 bg-white/40 blur-lg animate-pulse" />
       </div>
     </div>
   );

@@ -57,9 +57,10 @@ const app = express();
 // CORS configuration - allow requests from Vercel frontend
 const corsOptions = {
   origin: function (origin, callback) {
+    const sanitize = (url) => url ? url.replace(/\/$/, '') : null;
     const allowed = [
-      process.env.FRONTEND_URL,
-      process.env.BASE_URL,
+      sanitize(process.env.FRONTEND_URL),
+      sanitize(process.env.BASE_URL),
       'https://dashboard.fateflix.app',
       'https://surveyfrontend.vercel.app'
     ].filter(Boolean);
@@ -471,7 +472,8 @@ async function saveChartToDB(input, output) {
 async function sendReadingEmail(email, submissionId) {
   if (!LOOPS_API_KEY || !email) return;
 
-  const baseUrl = process.env.FRONTEND_URL || process.env.BASE_URL || 'http://localhost:4321';
+  const rawBaseUrl = process.env.FRONTEND_URL || process.env.BASE_URL || 'http://localhost:4321';
+  const baseUrl = rawBaseUrl.replace(/\/$/, '');
   const readingUrl = `${baseUrl}/reading/${submissionId}`;
 
   try {

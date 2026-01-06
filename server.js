@@ -56,7 +56,22 @@ const HOUSE_12_TEXT = loadJson(path.join(CONTENT_DIR, 'house_12.json'));
 const app = express();
 // CORS configuration - allow requests from Vercel frontend
 const corsOptions = {
-  origin: process.env.FRONTEND_URL || process.env.BASE_URL || '*', // Allow all origins in development
+  origin: function (origin, callback) {
+    const allowed = [
+      process.env.FRONTEND_URL,
+      process.env.BASE_URL,
+      'https://dashboard.fateflix.app',
+      'https://surveyfrontend.vercel.app'
+    ].filter(Boolean);
+
+    // Allow if origin is in list, or if it's a Vercel preview, or if no origin (local/mobile)
+    if (!origin || allowed.includes(origin) || origin.includes('vercel.app')) {
+      callback(null, true);
+    } else {
+      console.warn('CORS Blocked for origin:', origin);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true
 };
 app.use(cors(corsOptions));

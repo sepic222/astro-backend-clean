@@ -205,54 +205,10 @@ export const surveySections = [
       },
       {
         id: "culture_background",
-        text: "Where did you grow up (or feel culturally shaped by)?",
-        type: "checkbox",
-        options: [
-          // THE AMERICAS
-          { value: "header_na", label: "The Americas 🌎", isHeader: true },
-          { value: "usa", label: "United States" },
-          { value: "canada", label: "Canada" },
-          { value: "other_na", label: "Add country / region", isInlineOther: true },
-          { value: "latin_america_sp", label: "Spanish-speaking Latin America" },
-          { value: "brazil", label: "Brazil" },
-          { value: "caribbean", label: "Caribbean / Afro-Caribbean" },
-          { value: "other_latam", label: "Add country / region", isInlineOther: true },
-
-          // EUROPE & UK
-          { value: "header_eu", label: "Europe & UK 🇪🇺", isHeader: true },
-          { value: "uk_ireland", label: "United Kingdom / Ireland" },
-          { value: "germany_dach", label: "Germany / Austria / Switzerland" },
-          { value: "france", label: "France" },
-          { value: "italy", label: "Italy" },
-          { value: "spain", label: "Spain" },
-          { value: "eastern_europe", label: "Eastern Europe / Balkans" },
-          { value: "nordics", label: "The Nordics ❄️" },
-          { value: "other_eu", label: "Add country / region", isInlineOther: true },
-
-          // MIDDLE EAST & WEST ASIA
-          { value: "header_me", label: "Middle East & West Asia 🕌", isHeader: true },
-          { value: "middle_east", label: "Middle East / Arabic / Persian" },
-          { value: "other_me", label: "Add country / region", isInlineOther: true },
-
-          // AFRICA & DIASPORA
-          { value: "header_africa", label: "Africa & Diaspora 🥁", isHeader: true },
-          { value: "africa_west", label: "West African" },
-          { value: "africa_east_south", label: "East or Southern African" },
-          { value: "other_africa", label: "Add country / region", isInlineOther: true },
-
-          // ASIA & PACIFIC
-          { value: "header_asia", label: "Asia & Pacific 🥢", isHeader: true },
-          { value: "asia_east", label: "Japan / Korea / China / Taiwan" },
-          { value: "asia_se", label: "SE Asia (Thailand, Vietnam, etc)" },
-          { value: "asia_south", label: "South Asia (India, Pakistan, etc)" },
-          { value: "other_asia", label: "Add country / region", isInlineOther: true },
-
-          // INTERWOVEN IDENTITY
-          { value: "header_id", label: "Interwoven Identity & Heritage ✨", isHeader: true },
-          { value: "mixed", label: "Mixed heritage / Third culture kid" },
-          { value: "queer", label: "Queer culture / chosen family" },
-          { value: "other", label: "Other" },
-        ]
+        text: "🌍 Where did you grow up (or feel culturally shaped by)?\nCulture > Passport\nWhere did your movie, media, and serious worldview come from?",
+        type: "textarea",
+        helpText: "This can be one place or many... think home, heritage, language, or the culture that raised you. Type the country or countries below.",
+        placeholder: "USA (Blockbuster nights, Cartoon Network, MTV, VH1), India (Bollywood), Nordics (Scandi-Noir & dry humor), Telenovelas, Dizi...\n\nOr for our mixed heritage clan:\nBorn in Berlin, raised on Turkish cinema.\nPassport says Canada, but my screen soul is Korean."
       },
       {
         id: "environment_growing_up",

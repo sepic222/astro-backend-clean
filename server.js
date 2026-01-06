@@ -56,7 +56,7 @@ const HOUSE_12_TEXT = loadJson(path.join(CONTENT_DIR, 'house_12.json'));
 const app = express();
 // CORS configuration - allow requests from Vercel frontend
 const corsOptions = {
-  origin: process.env.FRONTEND_URL || '*', // Allow all origins in development, set FRONTEND_URL in production
+  origin: process.env.FRONTEND_URL || process.env.BASE_URL || '*', // Allow all origins in development
   credentials: true
 };
 app.use(cors(corsOptions));
@@ -456,7 +456,7 @@ async function saveChartToDB(input, output) {
 async function sendReadingEmail(email, submissionId) {
   if (!LOOPS_API_KEY || !email) return;
 
-  const baseUrl = process.env.FRONTEND_URL || 'http://localhost:4321';
+  const baseUrl = process.env.FRONTEND_URL || process.env.BASE_URL || 'http://localhost:4321';
   const readingUrl = `${baseUrl}/reading/${submissionId}`;
 
   try {

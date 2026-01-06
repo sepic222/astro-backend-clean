@@ -3991,7 +3991,8 @@ app.post("/api/survey/submit", async (req, res) => {
         }
       }
     }
-    const baseUrl = process.env.BASE_URL || '';
+    const rawBaseUrl = process.env.FRONTEND_URL || process.env.BASE_URL || '';
+    const baseUrl = rawBaseUrl.replace(/\/$/, '');
     const htmlUrl = `${baseUrl}/reading/${submission.id}/badge`;
     return res.json({ ok: true, submissionId: submission.id, htmlUrl, responses: madeResponses, optionLinks: linkedOptions });
   } catch (e) {

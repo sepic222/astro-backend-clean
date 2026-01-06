@@ -226,6 +226,7 @@ export const surveySections = [
           { value: "italy", label: "Italy" },
           { value: "spain", label: "Spain" },
           { value: "eastern_europe", label: "Eastern Europe / Balkans" },
+          { value: "nordics", label: "The Nordics ❄️" },
           { value: "other_eu", label: "Add country / region", isInlineOther: true },
 
           // MIDDLE EAST & WEST ASIA

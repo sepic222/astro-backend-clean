@@ -1,99 +1,95 @@
-# FateFlix Backend — Technical Baseline
+# 🛑 READ THIS FIRST: PROJECT BASELINE & RULES
 
-This document provides a high-level overview of the FateFlix backend architecture, core technologies, and key design principles.  
-It represents the **current stable version (v1.1-stable-backend, November 2025)** of the project.
-
----
-
-## 🧱 System Architecture
-
-![FateFlix Backend Architecture](./architecture-diagram.png)
+**To any Agent taking over this project:**
+This document is the **Source of Truth**. Ignore it at your own peril (and the user's frustration).
 
 ---
 
-## ⚙️ Core Components
+## 1. 🏗️ THE WORKSPACE RULE (CRITICAL)
 
-| Component | Description |
-|------------|-------------|
-| **server.js** | Entry point for all routes. Configures Express, loads env variables, and defines `/api` endpoints. |
-| **prisma/schema.prisma** | Database schema for all models (Charts, Surveys, Responses, Submissions, Outbox, Readings). |
-| **server/normalizeSurveyPayload.js** | Standardizes survey submissions before saving. |
-| **server/mailer.js** | Handles transactional email sending (via Resend API). |
-| **server/readings.js** | Generates the user’s personalized reading summary. |
-| **tools/** | Audit and validation scripts for ensuring data consistency. |
-| **scripts/** | Test and automation utilities (resend_failed.mjs, etc.). |
-| **context/** | Documentation for Codex/Agents and project alignment. |
+**You MUST have BOTH of these folders active in your workspace at all times:**
+
+1.  **Backend:** `astro-backend-clean-main` (The Logic & API)
+2.  **Frontend:** `fateflix-frontend` (The UI & Vercel Deployment)
+
+**The Problem:** These are two *separate* git repositories that share critical configuration. Changes often need to be mirrored. If you do not see the frontend folder, **ASK THE USER TO ADD IT** immediately.
 
 ---
 
-## 🌍 Key Endpoints
+## 2. 🔄 SYNCHRONIZATION RULES
 
-| Route | Method | Purpose |
-|-------|---------|---------|
-| `/health` | GET | Basic server health check |
-| `/api/geocode` | GET | Geocode city + country via OpenCage |
-| `/api/birth-chart-swisseph` | POST | Compute and persist a full astrological chart |
-| `/api/survey/submit` | POST | Save user survey responses and trigger email generation |
-| `/__routes` | GET | Debug: list all registered endpoints |
-| `/dev/email/preview/:outboxId` | GET | Preview a stored email HTML in the browser |
+There are files that exist in **BOTH** repositories. You must keep them identical.
 
----
+### 📜 `src/config/surveyData.js`
+*   **Role:** Defines every question, option, and logic flow for the survey.
+*   **Rule:** If you edit this file in the backend, you **MUST** copy the changes to the frontend (and vice versa).
+*   **Path Backend:** `astro-backend-clean-main/src/config/surveyData.js`
+*   **Path Frontend:** `fateflix-frontend/src/config/surveyData.js`
 
-## 🧠 Data Model Overview
-
-### Main Prisma Models
-- `Chart` — Birth data, calculated positions, and angles  
-- `SurveyQuestion` / `SurveyResponse` — Structured survey framework  
-- `SurveySubmission` — Links user responses to their chart  
-- `ResponseOption` — Multiple choice and checkbox options  
-- `Reading` — Stores generated reading summaries per submission  
-- `EmailOutbox` — Stores all outgoing email data and statuses  
-
-### Relations
-- One `Chart` → Many `SurveySubmissions`  
-- One `Submission` → Many `SurveyResponses`  
-- One `Submission` → One `Reading`  
-- One `EmailOutbox` → Optional `Chart` and `Submission` links  
+### 🎨 Static Assets
+*   **Role:** Images, planet PNGs, fonts in `public/assets`.
+*   **Rule:** If a new asset is added to the backend (e.g. for generating emails or HTML readings), it usually needs to be in the Frontend `public/assets` too so mobile users can load it.
 
 ---
 
-## 🧩 Deployment Notes
+## 3. 🗺️ ARCHITECTURE & DEPLOYMENT
 
-| Environment | Description |
-|--------------|-------------|
-| **Local** | Run with `node server.js` (port 3001). Connect frontend via `VITE_API_BASE=http://localhost:3001`. |
-| **Render** | Backend host for production (connected to main branch). |
-| **Vercel** | Frontend hosting, connected to this backend API. |
-
----
-
-## 🧰 Developer Utilities
-
-| Command | Description |
-|----------|-------------|
-| `npx prisma studio` | Opens the local database viewer |
-| `node tools/audit-prisma-vs-server.cjs` | Validates schema vs routes |
-| `node tools/audit-survey-coverage.cjs` | Checks if all survey sections are implemented |
-| `npm run dev` | Starts backend in dev mode |
-| `node scripts/resend_failed.mjs` | Retries failed emails in the outbox |
+| Repository | Role | Deployed To | Key Tech |
+| :--- | :--- | :--- | :--- |
+| **astro-backend-clean-main** | API, Database, Reading Gen, Email | **Railway** | Node.js, Express, Prisma, Loops.so |
+| **fateflix-frontend** | User Interface, Survey Flow | **Vercel** | Astro, React, Tailwind |
 
 ---
 
-## 🛠️ Versioning
+## 4. 🔌 ACTIVE API ENDPOINTS (The "List")
 
-| Version | Tag | Date | Status |
-|----------|-----|------|--------|
-| v1.1-stable-backend | `v1.1-stable-backend` | Nov 2025 | ✅ Stable |
-| v1.0.0 | `v1.0.0` | Sep 2025 | Deprecated |
+Do not assume an endpoint exists unless it is on this list. We have removed many legacy services (OpenCage, Resend, etc).
+
+### 📝 Survey & Submission
+*   **`POST /api/survey/submit`**
+    *   **Purpose:** The main handler for finishing a survey. saves data, calculates charges, creates a `Reading` record, and triggers the email.
+    *   **Status:** ✅ ACTIVE
+
+### 🔮 Reading & Results (Server-Side Rendered)
+*   **`GET /reading/:submissionId/html`**
+    *   **Purpose:** Renders Part 1 of the reading (Planets).
+    *   **Status:** ✅ ACTIVE
+*   **`GET /reading/:submissionId/html/2`**
+    *   **Purpose:** Renders Part 2 of the reading (Houses, Rulers).
+    *   **Status:** ✅ ACTIVE
+*   **`GET /api/reading/:submissionId`**
+    *   **Purpose:** Returns the raw JSON data for a reading (used by the frontend result page).
+    *   **Status:** ✅ ACTIVE
+
+### 🧮 Astrological Calculation
+*   **`POST /api/birth-chart-swisseph`**
+    *   **Purpose:** Calculates planet positions using Swiss Ephemeris.
+    *   **Status:** ✅ ACTIVE
+*   **`POST /api/chart-houses`**
+    *   **Purpose:** Calculates House cusps and rulers.
+    *   **Status:** ✅ ACTIVE
+
+### 📧 Email Service
+*   **Service Provider:** **Loops.so** (Migrated from Resend)
+*   **Required Env Vars:** `LOOPS_API_KEY`, `LOOPS_TRANSACTIONAL_ID`
+*   **Trigger:** Automated inside `sendReadingEmail()` after survey submission.
 
 ---
 
-## 🧭 Maintainers
-- **Sara-Ellen Picard** — Founder & Product Lead  
-- **Frontend:** (TBD)  
-- **Backend Support:** GPT-5 / Codex (assistant integration)
+## 5. 🗑️ DEPRECATED / GHOST CODE
+
+**DO NOT USE OR RESURRECT:**
+*   ❌ **Resend**: Completely removed. Do not import `resend`.
+*   ❌ **OpenCage**: Removed.
+*   ❌ **Old `/api/user` routes**: Mostly replaced by the direct survey flows.
 
 ---
 
-**Last Updated:** November 2025  
-© FateFlix 2025 – All rights reserved.
+## 6. 🛠️ DEBUGGING & DEV
+*   **`GET /dev/no-time`**: UI test for the "Unknown Birth Time" view.
+*   **`GET /dev/chart-wheel`**: UI test for the new chart wheel visualizations.
+*   **`GET /health`**: Simple ping to check if Railway is alive.
+
+---
+
+*Verified & Updated: Jan 6, 2026*

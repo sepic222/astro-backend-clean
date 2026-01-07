@@ -84,7 +84,156 @@ app.use('/assets', express.static(path.join(__dirname, 'public/assets'))); // Ex
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
-// TEMP sanity route (proves route attachment works)
+
+// --------------------------------------------------------------
+// ADMIN DASHBOARD HELPERS
+// --------------------------------------------------------------
+const basicAuth = (req, res, next) => {
+  const user = process.env.ADMIN_USER || 'admin';
+  const pass = process.env.ADMIN_PASS || 'cosmos';
+
+  const b64auth = (req.headers.authorization || '').split(' ')[1] || '';
+  const [login, password] = Buffer.from(b64auth, 'base64').toString().split(':');
+
+  if (login && password && login === user && password === pass) {
+    return next();
+  }
+
+  res.set('WWW-Authenticate', 'Basic realm="Fateflix Admin"');
+  res.status(401).send('Authentication required.');
+};
+
+function toCsv(headers, rows) {
+  const headerRow = headers.join(',') + '\n';
+  const dataRows = rows.map(row =>
+    row.map(cell => {
+      if (cell === null || cell === undefined) return '';
+      const str = String(cell).replace(/"/g, '""');
+      return `"${str}"`;
+    }).join(',')
+  ).join('\n');
+  return headerRow + dataRows;
+}
+
+// --- ADMIN ROUTES ---
+app.use('/admin', basicAuth);
+
+app.get('/admin/dashboard', async (req, res) => {
+  try {
+    const totalSubmissions = await prisma.surveySubmission.count();
+    const totalReadings = await prisma.reading.count();
+    const totalResponses = await prisma.surveyResponse.count();
+
+    const submissions = await prisma.surveySubmission.findMany({
+      take: 50,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        _count: {
+          select: { responses: true }
+        },
+        chart: {
+          select: { id: true }
+        }
+      }
+    });
+
+    // Manually attach reading info since relation might be tricky or indirect
+    // Ideally schema has relation, but let's check reading independently if needed
+    // Actually, schema has Reading(submissionId unique), so we can query reading by submissionId using Promise.all or findMany with include if relation exists inversely
+
+    // Schema check: Reading has `submissionId` unique. `SurveySubmission` does NOT have a relation field `reading`.
+    // We will fetch readings separately or stick to simple method.
+    // Let's fetch readings for these submissions.
+    const submissionIds = submissions.map(s => s.id);
+    const readings = await prisma.reading.findMany({
+      where: { submissionId: { in: submissionIds } },
+      select: { submissionId: true, id: true }
+    });
+
+    const readingMap = new Map(readings.map(r => [r.submissionId, r.id]));
+
+    const submissionsWithReading = submissions.map(s => ({
+      ...s,
+      readingId: readingMap.get(s.id) || null
+    }));
+
+    res.render('admin_dashboard', {
+      stats: { totalSubmissions, totalReadings, totalResponses },
+      submissions: submissionsWithReading
+    });
+  } catch (error) {
+    console.error('Dashboard Error:', error);
+    res.status(500).send('Server Error');
+  }
+});
+
+app.get('/admin/export', async (req, res) => {
+  try {
+    const submissions = await prisma.surveySubmission.findMany({
+      orderBy: { createdAt: 'desc' },
+      include: {
+        responses: {
+          include: {
+            question: true,
+            responseOptions: {
+              include: { option: true }
+            }
+          }
+        },
+        chart: true
+      }
+    });
+
+    const headers = [
+      'Submission ID', 'Date', 'User Email', 'Responses Count', 'Reading ID',
+      'Chart ID', 'Ascendant', 'Sun', 'Moon', 'Question', 'Answer'
+    ];
+
+    const rows = [];
+
+    // We can flatten this: One row per RESPONSE, duplicating submission info
+    // OR One row per submission with key info.
+    // Let's do one row per RESPONSE for detailed analysis.
+
+    for (const sub of submissions) {
+      // Look up reading
+      const reading = await prisma.reading.findUnique({ where: { submissionId: sub.id } });
+
+      const baseRow = [
+        sub.id,
+        sub.createdAt.toISOString(),
+        sub.userEmail || '',
+        sub.responses.length,
+        reading ? reading.id : '',
+        sub.chartId || '',
+        sub.chart ? (sub.chart.risingSign || sub.chart.ascendant) : '',
+        sub.chart ? sub.chart.sunSign : '',
+        sub.chart ? sub.chart.moonSign : ''
+      ];
+
+      if (sub.responses.length === 0) {
+        rows.push([...baseRow, 'NO_RESPONSES', '']);
+      } else {
+        for (const resp of sub.responses) {
+          let answer = resp.answerText || '';
+          if (resp.responseOptions && resp.responseOptions.length > 0) {
+            answer = resp.responseOptions.map(ro => ro.option.label).join('; ');
+          }
+          rows.push([...baseRow, resp.question.key || resp.questionId, answer]);
+        }
+      }
+    }
+
+    const csvContent = toCsv(headers, rows);
+    res.header('Content-Type', 'text/csv');
+    res.attachment(`fateflix_export_${new Date().toISOString().split('T')[0]}.csv`);
+    return res.send(csvContent);
+
+  } catch (error) {
+    console.error('Export Error:', error);
+    res.status(500).send('Export Failed');
+  }
+});
 app.get('/ping', (_req, res) => res.json({ ok: true, t: Date.now() }));
 // Single source of truth for PORT
 const PORT = process.env.PORT || 3001;
@@ -507,9 +656,8 @@ async function sendReadingEmail(email, submissionId, username) {
 }
 
 
-// --------------------------------------------------------------
-// BADGE HTML BUILDER
-// --------------------------------------------------------------
+
+
 function buildBadgeHtml_OLD(reading) {
   const creationDate = reading.createdAt
     ? new Date(reading.createdAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })

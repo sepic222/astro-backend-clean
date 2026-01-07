@@ -1,5 +1,13 @@
 # 🛑 READ THIS FIRST: PROJECT BASELINE & RULES
 
+## 0. 📜 AGENT ACKNOWLEDGEMENT (MANDATORY)
+**Before performing ANY task, you must:**
+1. Read this entire document.
+2. Verify you have access to both repositories (Section 1).
+3. **Acknowledge to the user** that you have read this baseline and state the current "Last Verified" date shown at the bottom.
+
+---
+
 **To any Agent taking over this project:**
 This document is the **Source of Truth**. Ignore it at your own peril (and the user's frustration).
 
@@ -92,4 +100,4 @@ Do not assume an endpoint exists unless it is on this list. We have removed many
 
 ---
 
-*Verified & Updated: Jan 6, 2026*
+*Verified & Updated: Jan 7, 2026*

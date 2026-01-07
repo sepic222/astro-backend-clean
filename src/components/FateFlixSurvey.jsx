@@ -281,6 +281,13 @@ const SurveyControls = ({ submitStatus, setSubmitStatus, setResults, setErrorMod
           if (data.chartId) setChartId(data.chartId);
         }
 
+        // 3. Redirect to the Dashboard immediately
+        if (data.htmlUrl) {
+          window.location.href = data.htmlUrl;
+          return;
+        }
+
+        /* Legacy client-side rendering logic removed in favor of direct redirect
         // 3. Fetch the Results (The backend auto-adjusts based on data)
         const [svgRes, badgeRes, html1Res, html2Res] = await Promise.all([
           fetch(`${apiBase}/reading/${returnedSubmissionId}/chart.svg`),
@@ -289,37 +296,8 @@ const SurveyControls = ({ submitStatus, setSubmitStatus, setResults, setErrorMod
           fetch(`${apiBase}/reading/${returnedSubmissionId}/html/2`)
         ]);
 
-        // Check if all requests succeeded
-        if (!svgRes.ok) {
-          console.warn(`Chart SVG failed: ${svgRes.status} ${svgRes.statusText}`);
-        }
-        if (!badgeRes.ok) {
-          throw new Error(`Badge failed: ${badgeRes.status} ${badgeRes.statusText}`);
-        }
-        if (!html1Res.ok) {
-          throw new Error(`HTML Reading 1 failed: ${html1Res.status} ${html1Res.statusText}`);
-        }
-        if (!html2Res.ok) {
-          throw new Error(`HTML Reading 2 failed: ${html2Res.status} ${html2Res.statusText}`);
-        }
-
-        // Read responses (use empty string for SVG if it failed)
-        const [svgText, badgeText, html1Text, html2Text] = await Promise.all([
-          svgRes.ok ? svgRes.text() : Promise.resolve(''),
-          badgeRes.text(),
-          html1Res.text(),
-          html2Res.text()
-        ]);
-
-        setResults({
-          svg: svgText,
-          badge: badgeText,
-          html1: html1Text,
-          html2: html2Text
-        });
-
-        // Update URL with submissionId for sharing/bookmarking
-        window.history.pushState({}, '', `/?submissionId=${returnedSubmissionId}`);
+        // ... (rest of old logic)
+        */
 
         setSubmitStatus('success');
 

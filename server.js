@@ -2135,8 +2135,16 @@ app.post('/api/dev/chart-to-svg', async (req, res) => {
     }
 
     // 4) Hand back URLs your FE can use immediately
-    const svgUrl = `${base}/reading/${submissionId}/chart.svg`;
-    const htmlUrl = `${base}/reading/${submissionId}/badge`;
+    const rawBaseUrl = process.env.FRONTEND_URL || process.env.BASE_URL || base;
+    const baseUrl = rawBaseUrl.replace(/\/$/, '');
+    const svgUrl = `${baseUrl}/reading/${submissionId}/chart.svg`;
+    const htmlUrl = `${baseUrl}/reading/${submissionId}/badge`;
+
+    // Send the "magic link" email (if we have an email)
+    if (userEmail && submissionId) {
+      console.log('📧 Attempting to send reading email via dev route to:', userEmail);
+      sendReadingEmail(userEmail, submissionId).catch(err => console.error('Dev route email trigger failed:', err));
+    }
 
     return res.json({ ok: true, chartId, submissionId: submissionId, svgUrl, htmlUrl });
   } catch (e) {

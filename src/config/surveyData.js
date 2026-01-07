@@ -746,7 +746,7 @@ export const surveySections = [
       },
       {
         id: "email",
-        text: "We need your email to send your astro-cinematic gift.",
+        text: "We need your email to send your astro-cinematic gift. (Required)",
         helpText: "No spam, just stardust.",
         type: "email",
         placeholder: "user@example.com"

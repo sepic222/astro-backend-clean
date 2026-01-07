@@ -192,6 +192,20 @@ const SurveyControls = ({ submitStatus, setSubmitStatus, setResults, setErrorMod
     }
 
     if (isLastStep) {
+      // 0. Email Validation
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      const emailValue = answers['email'];
+
+      if (!emailValue || !emailRegex.test(emailValue)) {
+        setErrorModal({
+          isOpen: true,
+          title: 'Valid Email Required',
+          message: 'Please provide a valid email address to receive your astro-cinematic gift.',
+          details: null
+        });
+        return;
+      }
+
       setSubmitStatus('loading');
 
       // 1. Logic: Handle Unknown Time

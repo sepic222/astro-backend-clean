@@ -30,16 +30,19 @@ async function testLoops() {
             }
         };
 
-        // We need a real email to test. I'll check if there's one in the args.
         const targetEmail = process.argv[2];
+        const targetName = process.argv[3];
         if (!targetEmail) {
-            console.log("⚠️  Usage: node scripts/test_loops_email.js <your-email>");
+            console.log("⚠️  Usage: node scripts/test_loops_email.js <your-email> [your-name]");
             console.log("⚠️  No email provided, skipping actual send.");
             return;
         }
         payload.email = targetEmail;
+        if (targetName) {
+            payload.dataVariables.name = targetName;
+        }
 
-        console.log(`📧 Sending test email to: ${payload.email}`);
+        console.log(`📧 Sending test email to: ${payload.email} (Name: ${payload.dataVariables.name})`);
 
         const response = await fetch('https://app.loops.so/api/v1/transactional', {
             method: 'POST',

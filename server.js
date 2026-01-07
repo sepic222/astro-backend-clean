@@ -469,7 +469,7 @@ async function saveChartToDB(input, output) {
 }
 
 // --- sending email helper -------------------------------------
-async function sendReadingEmail(email, submissionId) {
+async function sendReadingEmail(email, submissionId, username) {
   if (!LOOPS_API_KEY || !email) return;
 
   const rawBaseUrl = process.env.FRONTEND_URL || process.env.BASE_URL || 'http://localhost:4321';
@@ -488,7 +488,7 @@ async function sendReadingEmail(email, submissionId) {
         email: email,
         dataVariables: {
           'ff-link': readingUrl,
-          'name': "Film Buff"
+          'name': username || "Film Buff"
         }
       })
     });
@@ -2144,7 +2144,7 @@ app.post('/api/dev/chart-to-svg', async (req, res) => {
     // Send the "magic link" email (if we have an email)
     if (userEmail && submissionId) {
       console.log('📧 Attempting to send reading email via dev route to:', userEmail);
-      sendReadingEmail(userEmail, submissionId).catch(err => console.error('Dev route email trigger failed:', err));
+      sendReadingEmail(userEmail, submissionId, username).catch(err => console.error('Dev route email trigger failed:', err));
     }
 
     return res.json({ ok: true, chartId, submissionId: submissionId, svgUrl, htmlUrl });
@@ -3923,6 +3923,11 @@ app.post("/api/survey/submit", async (req, res) => {
 
     console.log('📧 Extracted userEmail:', userEmail);
 
+    const username = req.body?.survey?.section1?.username
+      || answers.find(a => a.questionKey === 'cosmic.username')?.answerText
+      || null;
+    console.log('👤 Extracted username for email:', username);
+
     // Prefer explicit chartId, else meta.chartId, else section1.chartId
     const chartId =
       req.body?.chartId ||
@@ -3946,7 +3951,7 @@ app.post("/api/survey/submit", async (req, res) => {
     if (userEmail) {
       console.log('📧 Attempting to send reading email to:', userEmail);
       // We don't await this so it doesn't block the UI response
-      sendReadingEmail(userEmail, submission.id).catch(err => console.error('Email trigger failed:', err));
+      sendReadingEmail(userEmail, submission.id, username).catch(err => console.error('Email trigger failed:', err));
     }
 
     let madeResponses = 0;

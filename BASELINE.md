@@ -50,16 +50,16 @@ Do not assume an endpoint exists unless it is on this list. We have removed many
     *   **Purpose:** The main handler for finishing a survey. saves data, calculates charges, creates a `Reading` record, and triggers the email.
     *   **Status:** ✅ ACTIVE
 
-### 🔮 Reading & Results (Server-Side Rendered)
-*   **`GET /reading/:submissionId/html`**
-    *   **Purpose:** Renders Part 1 of the reading (Planets).
-    *   **Status:** ✅ ACTIVE
-*   **`GET /reading/:submissionId/html/2`**
-    *   **Purpose:** Renders Part 2 of the reading (Houses, Rulers).
-    *   **Status:** ✅ ACTIVE
-*   **`GET /api/reading/:submissionId`**
-    *   **Purpose:** Returns the raw JSON data for a reading (used by the frontend result page).
-    *   **Status:** ✅ ACTIVE
+### 🔮 Reading & Results (Dashboard)
+*   **Frontend (React):** The "Reading" is a **1-page React build**. It dynamically renders the layout (e.g. "No Time" vs "Co-Ruler" view) based on the data received.
+*   **Backend (Data API):**
+    *   **`GET /api/reading/:submissionId`**
+        *   **Purpose:** Returns the **JSON data** (Planets, Houses, Rulers) used by the React Frontend to build the dashboard.
+        *   **Status:** ✅ ACTIVE (Primary Source)
+*   **Backend (HTML Views/Previews):**
+    *   *Note: These generate static HTML (Server-Side), often used for email previews or debug, but are NOT the main React interactive dashboard.*
+    *   **`GET /reading/:submissionId/html`** (Planets View)
+    *   **`GET /reading/:submissionId/html/2`** (Houses/Ruler View)
 
 ### 🧮 Astrological Calculation
 *   **`POST /api/birth-chart-swisseph`**

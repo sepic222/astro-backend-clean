@@ -2138,7 +2138,7 @@ app.post('/api/dev/chart-to-svg', async (req, res) => {
     const rawBaseUrl = process.env.FRONTEND_URL || process.env.BASE_URL || base;
     const baseUrl = rawBaseUrl.replace(/\/$/, '');
     const svgUrl = `${baseUrl}/reading/${submissionId}/chart.svg`;
-    const htmlUrl = `${baseUrl}/reading/${submissionId}/badge`;
+    const htmlUrl = `${baseUrl}/reading/${submissionId}`;
 
     // Send the "magic link" email (if we have an email)
     if (userEmail && submissionId) {
@@ -4010,7 +4010,7 @@ app.post("/api/survey/submit", async (req, res) => {
     }
     const rawBaseUrl = process.env.FRONTEND_URL || process.env.BASE_URL || '';
     const baseUrl = rawBaseUrl.replace(/\/$/, '');
-    const htmlUrl = `${baseUrl}/reading/${submission.id}/badge`;
+    const htmlUrl = `${baseUrl}/reading/${submission.id}`;
     return res.json({ ok: true, submissionId: submission.id, htmlUrl, responses: madeResponses, optionLinks: linkedOptions });
   } catch (e) {
     console.error("💥 submit error:", e);

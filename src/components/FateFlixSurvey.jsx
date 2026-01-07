@@ -426,7 +426,7 @@ const CurrentSection = ({ nextStep }) => {
   );
 };
 
-const SurveyContent = () => {
+const SurveyContent = ({ initialSubmissionId }) => {
   const { currentSection, currentStep, nextStep } = useSurvey();
   const [submitStatus, setSubmitStatus] = useState('idle'); // 'idle', 'loading', 'success', 'error'
   const [results, setResults] = useState(null);
@@ -442,7 +442,7 @@ const SurveyContent = () => {
   // Load results from URL if submissionId is present
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const submissionIdFromUrl = params.get('submissionId');
+    const submissionIdFromUrl = initialSubmissionId || params.get('submissionId');
 
     if (submissionIdFromUrl && !results && submitStatus === 'idle') {
       // Load results from URL
@@ -537,10 +537,10 @@ const SurveyContent = () => {
   );
 };
 
-export default function FateFlixSurvey() {
+export default function FateFlixSurvey({ initialSubmissionId }) {
   return (
     <SurveyProvider>
-      <SurveyContent />
+      <SurveyContent initialSubmissionId={initialSubmissionId} />
     </SurveyProvider>
   );
 }

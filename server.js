@@ -493,11 +493,12 @@ async function sendReadingEmail(email, submissionId) {
     });
 
     const result = await response.json();
+    console.log('📧 Loops.so API Response:', JSON.stringify(result, null, 2));
 
-    if (response.ok && result.success) {
+    if (response.ok && (result.success || result.status === 'success')) {
       console.log(`✅ Email sent via Loops to ${email}`);
     } else {
-      console.error('🟥 Loops email failure:', result);
+      console.error('🟥 Loops email failure:', JSON.stringify(result, null, 2));
     }
   } catch (error) {
     console.error('🟥 Error sending email via Loops:', error.message);
@@ -1467,7 +1468,7 @@ app.post('/api/birth-chart-swisseph', async (req, res) => {
     // NOTE: Chiron needs asteroid ephemeris files (e.g. seas_18.se1). If the file is missing,
     // we skip Chiron gracefully so the rest of the chart can compute.
     const extraBodies = {
-      northNode: swisseph.SE_TRUE_NODE,  // true node (works without asteroid files)
+      northNode: swisseph.SE_TRUE_NODE,  // true
       chiron: swisseph.SE_CHIRON      // requires seas_*.se1 (asteroid ephe)
     };
 
@@ -3902,8 +3903,16 @@ app.post("/api/survey/submit", async (req, res) => {
     console.log("submit v2 body (safe):", safeBody);
 
     const { userEmail: shimEmail, answers } = normalizeSurveyPayload(req.body);
-    // Prefer shim value, else legacy section1.email
-    const userEmail = shimEmail || req.body?.survey?.section1?.email || null;
+
+    // Attempt multiple locations for userEmail
+    const userEmail = shimEmail
+      || req.body?.survey?.section1?.email
+      || req.body?.survey?.['section-ix']?.email
+      || req.body?.survey?.section9?.email
+      || answers.find(a => a.questionKey?.endsWith('.email'))?.answerText
+      || null;
+
+    console.log('📧 Extracted userEmail:', userEmail);
 
     // Prefer explicit chartId, else meta.chartId, else section1.chartId
     const chartId =

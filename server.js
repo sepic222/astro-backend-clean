@@ -487,7 +487,8 @@ async function sendReadingEmail(email, submissionId) {
         transactionalId: LOOPS_TRANSACTIONAL_ID,
         email: email,
         dataVariables: {
-          'ff-link': readingUrl
+          'ff-link': readingUrl,
+          'name': "Film Buff"
         }
       })
     });

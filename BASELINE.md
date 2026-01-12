@@ -93,11 +93,29 @@ Do not assume an endpoint exists unless it is on this list. We have removed many
 
 ---
 
-## 6. 🛠️ DEBUGGING & DEV
+## 6. �️ DATABASE & DATA MODELS
+*   **Provider:** PostgreSQL (Railway)
+*   **ORM:** Prisma
+*   **Schema:** `astro-backend-clean-main/prisma/schema.prisma`
+
+### 🔑 Key Tables
+1.  **`SurveySubmission`**: The central hub for a user's session. Links `userEmail`, `chartId`, and `responses`.
+2.  **`SurveyResponse`**: Stores individual answers. Linked to `SurveySubmission`.
+3.  **`SurveyResponseOption`**: Junction table for selected options (for multi-select or specific option tracking).
+4.  **`Reading`**: Stores the generated result summary and is linked to `submissionId`.
+5.  **`Chart`**: Stores the raw astrological data (planets, houses, aspects).
+
+### 🛠️ Common Commands
+*   `npx prisma generate`: Syncs the Prisma Client with the schema (run after schema changes).
+*   `npx prisma studio`: Opens a GUI to view and edit database records.
+
+---
+
+## 7. �🛠️ DEBUGGING & DEV
 *   **`GET /dev/no-time`**: UI test for the "Unknown Birth Time" view.
 *   **`GET /dev/chart-wheel`**: UI test for the new chart wheel visualizations.
 *   **`GET /health`**: Simple ping to check if Railway is alive.
 
 ---
 
-*Verified & Updated: Jan 7, 2026*
+*Verified & Updated: Jan 10, 2026*

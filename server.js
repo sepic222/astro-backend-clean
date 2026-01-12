@@ -2038,7 +2038,7 @@ app.get('/api/chart/summary', async (req, res) => {
 // === Dev helper: one-shot compute -> save -> return SVG/HTML URLs ===========
 app.post('/api/dev/chart-to-svg', async (req, res) => {
   try {
-    let { date, time, latitude, longitude, userEmail, city, country, username } = req.body || {};
+    let { date, time, latitude, longitude, userEmail, city, country, username, submissionId: existingSubmissionId } = req.body || {};
 
     if (!date || latitude == null || longitude == null) {
       return res.status(400).json({ ok: false, error: 'Missing date, latitude, or longitude' });
@@ -2071,22 +2071,68 @@ app.post('/api/dev/chart-to-svg', async (req, res) => {
     let submissionId = null;
 
     if (chartId) {
-      // 2) Create submission + reading directly (bypass survey/submit to avoid empty answers requirement)
-      const submission = await prisma.surveySubmission.create({
-        data: { userEmail: userEmail || null, chart: { connect: { id: chartId } } },
-        select: { id: true }
-      });
-      submissionId = submission.id;
+      // 2) Create or Update submission
+      if (existingSubmissionId) {
+        // Try to verify it exists
+        const existing = await prisma.surveySubmission.findUnique({ where: { id: existingSubmissionId } });
+        if (existing) {
+          // Update the chart link
+          await prisma.surveySubmission.update({
+            where: { id: existingSubmissionId },
+            data: {
+              chart: { connect: { id: chartId } },
+              // Update email if provided and changed
+              ...(userEmail ? { userEmail } : {})
+            }
+          });
+          submissionId = existingSubmissionId;
 
-      const reading = await prisma.reading.create({
-        data: {
-          submissionId: submission.id,
-          chartId,
-          userEmail: userEmail || null,
-          summary: 'Auto-generated placeholder reading for dev preview.'
-        },
-        select: { id: true }
-      });
+          // Update or clean up old reading? We just create a new one for now or update?
+          // Let's correct the reading link too
+          /* 
+            Ideally we update the existing reading, but simplistic approach:
+            Create a new Reading linked to same submission? One-to-one?
+            Schema says Reading -> Submission (unique).
+            So we should update the existing reading if possible.
+          */
+          const existingReading = await prisma.reading.findFirst({ where: { submissionId } });
+          if (existingReading) {
+            await prisma.reading.update({
+              where: { id: existingReading.id },
+              data: { chartId, userEmail: userEmail || null }
+            });
+          } else {
+            // Create missing reading
+            await prisma.reading.create({
+              data: {
+                submissionId,
+                chartId,
+                userEmail: userEmail || null,
+                summary: 'Auto-generated placeholder reading (updated).'
+              }
+            });
+          }
+        }
+      }
+
+      // If no valid existing ID, create new
+      if (!submissionId) {
+        const submission = await prisma.surveySubmission.create({
+          data: { userEmail: userEmail || null, chart: { connect: { id: chartId } } },
+          select: { id: true }
+        });
+        submissionId = submission.id;
+
+        await prisma.reading.create({
+          data: {
+            submissionId: submission.id,
+            chartId,
+            userEmail: userEmail || null,
+            summary: 'Auto-generated placeholder reading for dev preview.'
+          },
+          select: { id: true }
+        });
+      }
 
       // 3) Save survey answers (non-fatal - don't break flow if this fails)
       if (req.body.fullResponses && typeof req.body.fullResponses === 'object') {
@@ -4013,6 +4059,66 @@ app.post('/api/chart-houses', async (req, res) => {
 app.get('/reading/:id/html', readingHtmlHandler);
 // chart.svg endpoint moved up to line 1056 with birthday logic
 chartSvgAlias(app);  // adds /api/chart/:id/svg redirect  
+
+// === Get survey state (public, for resuming progress) =================
+app.get("/api/survey/state/:submissionId", async (req, res) => {
+  try {
+    const { submissionId } = req.params;
+
+    const submission = await prisma.surveySubmission.findUnique({
+      where: { id: submissionId },
+      include: {
+        responses: {
+          include: {
+            question: {
+              select: { key: true }
+            },
+            responseOptions: {
+              include: {
+                option: {
+                  select: { value: true }
+                }
+              }
+            }
+          }
+        },
+        chart: {
+          select: { id: true }
+        }
+      }
+    });
+
+    if (!submission) {
+      return res.status(404).json({ ok: false, error: "Submission not found" });
+    }
+
+    // Transform to simple map: questionKey -> answerValue
+    const answers = {};
+    for (const r of submission.responses) {
+      if (r.responseOptions.length > 0) {
+        const values = r.responseOptions.map(ro => ro.option.value);
+        answers[r.question.key] = values.length === 1 ? values[0] : values;
+      } else {
+        answers[r.question.key] = r.answerText;
+      }
+    }
+
+    // Also include userEmail if present
+    if (submission.userEmail) {
+      answers["email"] = submission.userEmail;
+    }
+
+    res.json({
+      ok: true,
+      submissionId: submission.id,
+      chartId: submission.chart ? submission.chart.id : null,
+      answers
+    });
+  } catch (error) {
+    console.error("❌ State retrieval failed:", error);
+    res.status(500).json({ ok: false, error: "Internal Error" });
+  }
+});
 
 // === Save survey response (normalized) ========================
 app.post('/api/survey-response', async (req, res) => {

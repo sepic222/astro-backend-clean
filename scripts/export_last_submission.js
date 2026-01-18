@@ -1,6 +1,6 @@
 
 const { PrismaClient } = require('@prisma/client');
-const fs = require('fs');inter
+const fs = require('fs');
 const path = require('path');
 
 const prisma = new PrismaClient();

@@ -115,57 +115,307 @@ function toCsv(headers, rows) {
   return headerRow + dataRows;
 }
 
-// --- ADMIN ROUTES ---
+// --------------------------------------------------------------
+// TEST SUBMISSION DETECTION
+// Determines if a submission is a test vs real user submission
+// --------------------------------------------------------------
+const TEST_EMAIL_PATTERNS = [
+  '@test.com', '@example.com', '@fateflix.app',
+  'test@', 'demo@', 'admin@'
+];
+
+const FOUNDER_EMAILS = [
+  'saraellenpicard@icloud.com'
+];
+
+const TEST_NAME_PATTERNS = [
+  'test', 'demo', 'admin', 'asdf', 'xxx', 'aaa', 'bbb'
+];
+
+/**
+ * Determines if a submission is a test submission based on multiple heuristics
+ * @param {Object} submission - The submission object with email, responses, etc.
+ * @param {string} username - The username/name from the survey
+ * @param {string} discoverySource - How they found the survey (founder = test indicator)
+ * @param {number} responseCount - Number of survey responses
+ * @param {number} totalQuestions - Total number of questions in survey (default ~50)
+ * @returns {Object} { isTest: boolean, reason: string }
+ */
+function isTestSubmission(submission, username = '', discoverySource = '', responseCount = 0, totalQuestions = 50) {
+  const email = (submission?.userEmail || '').toLowerCase();
+  const nameLower = (username || '').toLowerCase().trim();
+
+  // Check for test email patterns
+  for (const pattern of TEST_EMAIL_PATTERNS) {
+    if (email.includes(pattern.toLowerCase())) {
+      return { isTest: true, reason: `Email matches test pattern: ${pattern}` };
+    }
+  }
+
+  // Check for founder emails - but allow if 90%+ of survey answered
+  const completionRate = totalQuestions > 0 ? (responseCount / totalQuestions) : 0;
+  for (const founderEmail of FOUNDER_EMAILS) {
+    if (email === founderEmail.toLowerCase()) {
+      if (completionRate < 0.9) {
+        return { isTest: true, reason: `Founder email with ${Math.round(completionRate * 100)}% completion` };
+      }
+      // Founder with 90%+ completion = real submission
+    }
+  }
+
+  // Check for test name patterns
+  for (const pattern of TEST_NAME_PATTERNS) {
+    if (nameLower === pattern || nameLower.startsWith(pattern + ' ') || nameLower.includes(pattern)) {
+      return { isTest: true, reason: `Name matches test pattern: ${pattern}` };
+    }
+  }
+
+  // Check discovery source
+  if (discoverySource && discoverySource.toLowerCase() === 'founder') {
+    // Founder discovery could still be real if survey mostly completed
+    if (completionRate < 0.5) {
+      return { isTest: true, reason: 'Found via founder with low completion' };
+    }
+  }
+
+  // Very short names often indicate test
+  if (nameLower.length > 0 && nameLower.length <= 2) {
+    return { isTest: true, reason: 'Name too short (likely test)' };
+  }
+
+  return { isTest: false, reason: 'Appears to be real user' };
+}
+
+
 app.use('/admin', basicAuth);
 
 app.get('/admin/dashboard', async (req, res) => {
   try {
+    const filterType = req.query.type || 'all'; // 'all', 'test', 'real'
+
     const totalSubmissions = await prisma.surveySubmission.count();
     const totalReadings = await prisma.reading.count();
     const totalResponses = await prisma.surveyResponse.count();
 
-    const submissions = await prisma.surveySubmission.findMany({
-      take: 50,
+    // First, get ALL submissions for accurate test/real counts (lightweight query)
+    const allSubmissionsForCount = await prisma.surveySubmission.findMany({
       orderBy: { createdAt: 'desc' },
-      include: {
-        _count: {
-          select: { responses: true }
-        },
-        chart: {
-          select: { id: true }
+      select: {
+        id: true,
+        userEmail: true,
+        _count: { select: { responses: true } },
+        responses: {
+          where: {
+            question: { key: { in: ['username', 'fit.found_survey'] } }
+          },
+          select: { answerText: true, question: { select: { key: true } } }
         }
       }
     });
 
-    // Manually attach reading info since relation might be tricky or indirect
-    // Ideally schema has relation, but let's check reading independently if needed
-    // Actually, schema has Reading(submissionId unique), so we can query reading by submissionId using Promise.all or findMany with include if relation exists inversely
+    // Calculate test/real counts from ALL submissions
+    let totalTestCount = 0;
+    let totalRealCount = 0;
+    for (const s of allSubmissionsForCount) {
+      let username = '';
+      let discoverySource = '';
+      for (const resp of s.responses || []) {
+        if (resp.question?.key === 'username') username = resp.answerText || '';
+        if (resp.question?.key === 'fit.found_survey') discoverySource = resp.answerText || '';
+      }
+      const testResult = isTestSubmission(s, username, discoverySource, s._count?.responses || 0, 50);
+      if (testResult.isTest) totalTestCount++;
+      else totalRealCount++;
+    }
 
-    // Schema check: Reading has `submissionId` unique. `SurveySubmission` does NOT have a relation field `reading`.
-    // We will fetch readings separately or stick to simple method.
-    // Let's fetch readings for these submissions.
+    // Fetch recent submissions with full data for display (limit for performance)
+    const submissions = await prisma.surveySubmission.findMany({
+      take: 100,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        _count: { select: { responses: true } },
+        chart: { select: { id: true, risingSign: true, sunSign: true, moonSign: true } },
+        responses: {
+          where: { question: { key: { in: ['username', 'discovery', 'fit.found_survey'] } } },
+          include: { question: { select: { key: true } } }
+        }
+      }
+    });
+
+    // Fetch readings for displayed submissions
     const submissionIds = submissions.map(s => s.id);
     const readings = await prisma.reading.findMany({
       where: { submissionId: { in: submissionIds } },
       select: { submissionId: true, id: true }
     });
-
     const readingMap = new Map(readings.map(r => [r.submissionId, r.id]));
 
-    const submissionsWithReading = submissions.map(s => ({
-      ...s,
-      readingId: readingMap.get(s.id) || null
-    }));
+    // Process submissions with test detection
+    let processedSubmissions = submissions.map(s => {
+      let username = '';
+      let discoverySource = '';
+      for (const resp of s.responses || []) {
+        if (resp.question?.key === 'username') username = resp.answerText || '';
+        if (resp.question?.key === 'fit.found_survey' || resp.question?.key === 'discovery') {
+          discoverySource = resp.answerText || '';
+        }
+      }
+      const testResult = isTestSubmission(s, username, discoverySource, s._count?.responses || 0, 50);
+      return {
+        ...s,
+        readingId: readingMap.get(s.id) || null,
+        username,
+        discoverySource,
+        isTest: testResult.isTest,
+        testReason: testResult.reason,
+        risingSign: s.chart?.risingSign || null,
+        sunSign: s.chart?.sunSign || null,
+        moonSign: s.chart?.moonSign || null
+      };
+    });
+
+    // Apply filter to displayed submissions
+    if (filterType === 'test') {
+      processedSubmissions = processedSubmissions.filter(s => s.isTest);
+    } else if (filterType === 'real') {
+      processedSubmissions = processedSubmissions.filter(s => !s.isTest);
+    }
 
     res.render('admin_dashboard', {
-      stats: { totalSubmissions, totalReadings, totalResponses },
-      submissions: submissionsWithReading
+      stats: {
+        totalSubmissions,
+        totalReadings,
+        totalResponses,
+        testSubmissions: totalTestCount,
+        realSubmissions: totalRealCount
+      },
+      submissions: processedSubmissions,
+      currentFilter: filterType
     });
   } catch (error) {
     console.error('Dashboard Error:', error);
     res.status(500).send('Server Error');
   }
 });
+
+// --- ADMIN API ROUTES (for AJAX refresh) ---
+app.get('/admin/api/stats', async (req, res) => {
+  try {
+    const totalSubmissions = await prisma.surveySubmission.count();
+    const totalReadings = await prisma.reading.count();
+    const totalResponses = await prisma.surveyResponse.count();
+
+    res.json({
+      totalSubmissions,
+      totalReadings,
+      totalResponses,
+      lastUpdated: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Stats API Error:', error);
+    res.status(500).json({ error: 'Failed to fetch stats' });
+  }
+});
+
+// --- ADMIN DATA VIEW (Spreadsheet-style 2D table) ---
+app.get('/admin/data', async (req, res) => {
+  try {
+    const filterType = req.query.type || 'all';
+
+    // Get all unique question keys for columns
+    const questions = await prisma.surveyQuestion.findMany({
+      orderBy: { sortOrder: 'asc' },
+      select: { id: true, key: true, text: true }
+    });
+
+    // Fetch all submissions with all responses
+    const submissions = await prisma.surveySubmission.findMany({
+      orderBy: { createdAt: 'desc' },
+      include: {
+        chart: {
+          select: { risingSign: true, sunSign: true, moonSign: true }
+        },
+        responses: {
+          include: {
+            question: { select: { key: true } },
+            responseOptions: {
+              include: { option: { select: { label: true, value: true } } }
+            }
+          }
+        }
+      }
+    });
+
+    // Process each submission into a row
+    const rows = submissions.map(sub => {
+      // Create answer map for this submission
+      const answerMap = {};
+      let username = '';
+      let discoverySource = '';
+
+      for (const resp of sub.responses) {
+        const key = resp.question?.key;
+        if (!key) continue;
+
+        let answer = resp.answerText || '';
+        if (resp.responseOptions && resp.responseOptions.length > 0) {
+          answer = resp.responseOptions.map(ro => ro.option.label || ro.option.value).join('; ');
+        }
+        answerMap[key] = answer;
+
+        if (key === 'username') username = answer;
+        if (key === 'fit.found_survey' || key === 'discovery') discoverySource = answer;
+      }
+
+      const testResult = isTestSubmission(sub, username, discoverySource, sub.responses.length, 50);
+
+      return {
+        id: sub.id,
+        createdAt: sub.createdAt,
+        userEmail: sub.userEmail || '',
+        isTest: testResult.isTest,
+        testReason: testResult.reason,
+        risingSign: sub.chart?.risingSign || '',
+        sunSign: sub.chart?.sunSign || '',
+        moonSign: sub.chart?.moonSign || '',
+        responseCount: sub.responses.length,
+        answers: answerMap
+      };
+    });
+
+    // Apply filter
+    let filteredRows = rows;
+    if (filterType === 'test') {
+      filteredRows = rows.filter(r => r.isTest);
+    } else if (filterType === 'real') {
+      filteredRows = rows.filter(r => !r.isTest);
+    }
+
+    // Define key columns to show (most important questions)
+    const keyQuestionKeys = [
+      'username', 'gender', 'attraction_style', 'cine_level', 'life_role',
+      'first_crush', 'watch_habit', 'fav_era', 'first_feeling', 'life_changing',
+      'comfort_watch', 'power_watch', 'genres_love', 'turn_offs', 'fav_tv',
+      'directors', 'foreign_films', 'selection_method', 'email', 'beta_test'
+    ];
+
+    const displayQuestions = questions.filter(q => keyQuestionKeys.includes(q.key));
+
+    res.render('admin_data', {
+      rows: filteredRows,
+      questions: displayQuestions,
+      allQuestions: questions,
+      currentFilter: filterType,
+      testCount: rows.filter(r => r.isTest).length,
+      realCount: rows.filter(r => !r.isTest).length,
+      totalCount: rows.length
+    });
+  } catch (error) {
+    console.error('Data View Error:', error);
+    res.status(500).send('Server Error: ' + error.message);
+  }
+});
+
 
 app.get('/admin/export', async (req, res) => {
   try {

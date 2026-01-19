@@ -358,9 +358,41 @@ app.get('/admin/data', async (req, res) => {
         if (!key) continue;
 
         let answer = resp.answerText || '';
+
+        // Handle responseOptions (checkbox answers stored via junction table)
         if (resp.responseOptions && resp.responseOptions.length > 0) {
           answer = resp.responseOptions.map(ro => ro.option.label || ro.option.value).join('; ');
         }
+        // Handle JSON objects/arrays stored in answerText (checkbox multi-select)
+        else if (answer && typeof answer === 'string') {
+          try {
+            const parsed = JSON.parse(answer);
+            if (Array.isArray(parsed)) {
+              answer = parsed.join('; ');
+            } else if (typeof parsed === 'object' && parsed !== null) {
+              // Handle {selected: [...], otherText: '...'} format
+              if (parsed.selected && Array.isArray(parsed.selected)) {
+                answer = parsed.selected.join('; ');
+                if (parsed.otherText) answer += '; ' + parsed.otherText;
+              } else {
+                answer = JSON.stringify(parsed);
+              }
+            }
+          } catch (e) {
+            // Not JSON, keep original string
+          }
+        } else if (typeof answer === 'object' && answer !== null) {
+          // Handle case where answer is already an object (not stringified)
+          if (Array.isArray(answer)) {
+            answer = answer.join('; ');
+          } else if (answer.selected && Array.isArray(answer.selected)) {
+            answer = answer.selected.join('; ');
+            if (answer.otherText) answer += '; ' + answer.otherText;
+          } else {
+            answer = JSON.stringify(answer);
+          }
+        }
+
         answerMap[key] = answer;
 
         if (key === 'username') username = answer;
@@ -391,20 +423,40 @@ app.get('/admin/data', async (req, res) => {
       filteredRows = rows.filter(r => !r.isTest);
     }
 
-    // Define key columns to show (most important questions)
-    const keyQuestionKeys = [
-      'username', 'gender', 'attraction_style', 'cine_level', 'life_role',
-      'first_crush', 'watch_habit', 'fav_era', 'first_feeling', 'life_changing',
-      'comfort_watch', 'power_watch', 'genres_love', 'turn_offs', 'fav_tv',
-      'directors', 'foreign_films', 'selection_method', 'email', 'beta_test'
+    // Define question order matching the frontend survey (surveyData.js)
+    const SURVEY_QUESTION_ORDER = [
+      'username', 'date', 'time', 'time_accuracy', 'city', 'latitude', 'longitude',
+      'gender', 'attraction_style', 'cine_level', 'life_role', 'escapism_style',
+      'top_3_movies', 'first_crush',
+      'watch_habit', 'fav_era', 'culture_background', 'environment_growing_up',
+      'first_feeling', 'life_changing', 'comfort_watch', 'power_watch', 'date_impress',
+      'movie_universe', 'villain_relate', 'forever_crush', 'crave_most',
+      'tv_taste', 'top_3_series_detailed', 'cinematography', 'directors', 'access_growing_up',
+      'genres_love', 'turn_offs', 'hated_film', 'hype_style',
+      'character_match',
+      'foreign_films',
+      'selection_method', 'discovery_apps', 'discovery', 'email', 'beta_test', 'open_feedback'
     ];
 
-    const displayQuestions = questions.filter(q => keyQuestionKeys.includes(q.key));
+    // Order questions according to survey order
+    const questionMap = new Map(questions.map(q => [q.key, q]));
+    const orderedQuestions = [];
+    for (const key of SURVEY_QUESTION_ORDER) {
+      if (questionMap.has(key)) {
+        orderedQuestions.push(questionMap.get(key));
+      }
+    }
+    // Add any remaining questions not in our predefined list
+    for (const q of questions) {
+      if (!SURVEY_QUESTION_ORDER.includes(q.key)) {
+        orderedQuestions.push(q);
+      }
+    }
 
     res.render('admin_data', {
       rows: filteredRows,
-      questions: displayQuestions,
-      allQuestions: questions,
+      questions: orderedQuestions,
+      allQuestions: orderedQuestions,
       currentFilter: filterType,
       testCount: rows.filter(r => r.isTest).length,
       realCount: rows.filter(r => !r.isTest).length,
@@ -419,14 +471,48 @@ app.get('/admin/data', async (req, res) => {
 
 app.get('/admin/export', async (req, res) => {
   try {
+    // Define question order matching the frontend survey (surveyData.js)
+    const SURVEY_QUESTION_ORDER = [
+      'username', 'date', 'time', 'time_accuracy', 'city', 'latitude', 'longitude',
+      'gender', 'attraction_style', 'cine_level', 'life_role', 'escapism_style',
+      'top_3_movies', 'first_crush',
+      'watch_habit', 'fav_era', 'culture_background', 'environment_growing_up',
+      'first_feeling', 'life_changing', 'comfort_watch', 'power_watch', 'date_impress',
+      'movie_universe', 'villain_relate', 'forever_crush', 'crave_most',
+      'tv_taste', 'top_3_series_detailed', 'cinematography', 'directors', 'access_growing_up',
+      'genres_love', 'turn_offs', 'hated_film', 'hype_style',
+      'character_match',
+      'foreign_films',
+      'selection_method', 'discovery_apps', 'discovery', 'email', 'beta_test', 'open_feedback'
+    ];
+
+    // Get all unique question keys from database
+    const dbQuestions = await prisma.surveyQuestion.findMany({
+      select: { id: true, key: true, text: true }
+    });
+    const dbQuestionMap = new Map(dbQuestions.map(q => [q.key, q]));
+
+    // Build ordered question list: survey order first, then any extras from DB
+    const orderedQuestions = [];
+    for (const key of SURVEY_QUESTION_ORDER) {
+      if (dbQuestionMap.has(key)) {
+        orderedQuestions.push(dbQuestionMap.get(key));
+        dbQuestionMap.delete(key);
+      }
+    }
+    // Add any remaining questions not in our predefined list
+    for (const q of dbQuestionMap.values()) {
+      orderedQuestions.push(q);
+    }
+
     const submissions = await prisma.surveySubmission.findMany({
       orderBy: { createdAt: 'desc' },
       include: {
         responses: {
           include: {
-            question: true,
+            question: { select: { key: true } },
             responseOptions: {
-              include: { option: true }
+              include: { option: { select: { label: true, value: true } } }
             }
           }
         },
@@ -434,44 +520,79 @@ app.get('/admin/export', async (req, res) => {
       }
     });
 
-    const headers = [
-      'Submission ID', 'Date', 'User Email', 'Responses Count', 'Reading ID',
-      'Chart ID', 'Ascendant', 'Sun', 'Moon', 'Question', 'Answer'
-    ];
+    // Build headers: fixed columns + one per question
+    const fixedHeaders = ['Submission ID', 'Date', 'User Email', 'Type', 'Responses Count', 'Reading ID', 'Ascendant', 'Sun', 'Moon'];
+    const questionHeaders = orderedQuestions.map(q => q.key);
+    const headers = [...fixedHeaders, ...questionHeaders];
 
     const rows = [];
 
-    // We can flatten this: One row per RESPONSE, duplicating submission info
-    // OR One row per submission with key info.
-    // Let's do one row per RESPONSE for detailed analysis.
+    // Helper to parse JSON answer values
+    const parseAnswer = (answerText, responseOptions) => {
+      if (responseOptions && responseOptions.length > 0) {
+        return responseOptions.map(ro => ro.option.label || ro.option.value).join('; ');
+      }
+
+      let answer = answerText || '';
+      if (answer && typeof answer === 'string') {
+        try {
+          const parsed = JSON.parse(answer);
+          if (Array.isArray(parsed)) {
+            return parsed.join('; ');
+          } else if (typeof parsed === 'object' && parsed !== null) {
+            if (parsed.selected && Array.isArray(parsed.selected)) {
+              let result = parsed.selected.join('; ');
+              if (parsed.otherText) result += '; ' + parsed.otherText;
+              return result;
+            }
+          }
+        } catch (e) {
+          // Not JSON, keep original string
+        }
+      }
+      return answer;
+    };
 
     for (const sub of submissions) {
       // Look up reading
       const reading = await prisma.reading.findUnique({ where: { submissionId: sub.id } });
 
-      const baseRow = [
+      // Build answer map for this submission
+      const answerMap = {};
+      let username = '';
+      let discoverySource = '';
+
+      for (const resp of sub.responses) {
+        const key = resp.question?.key;
+        if (!key) continue;
+        answerMap[key] = parseAnswer(resp.answerText, resp.responseOptions);
+
+        if (key === 'username') username = answerMap[key];
+        if (key === 'fit.found_survey' || key === 'discovery') discoverySource = answerMap[key];
+      }
+
+      // Determine if test submission
+      const testResult = isTestSubmission(sub, username, discoverySource, sub.responses.length, 50);
+
+      // Fixed columns
+      const row = [
         sub.id,
         sub.createdAt.toISOString(),
         sub.userEmail || '',
+        testResult.isTest ? 'Test' : 'Real',
         sub.responses.length,
         reading ? reading.id : '',
-        sub.chartId || '',
-        sub.chart ? (sub.chart.risingSign || sub.chart.ascendant) : '',
-        sub.chart ? sub.chart.sunSign : '',
-        sub.chart ? sub.chart.moonSign : ''
+        sub.chart ? (sub.chart.risingSign || sub.chart.ascendant || '') : '',
+        sub.chart ? (sub.chart.sunSign || '') : '',
+        sub.chart ? (sub.chart.moonSign || '') : ''
       ];
 
-      if (sub.responses.length === 0) {
-        rows.push([...baseRow, 'NO_RESPONSES', '']);
-      } else {
-        for (const resp of sub.responses) {
-          let answer = resp.answerText || '';
-          if (resp.responseOptions && resp.responseOptions.length > 0) {
-            answer = resp.responseOptions.map(ro => ro.option.label).join('; ');
-          }
-          rows.push([...baseRow, resp.question.key || resp.questionId, answer]);
-        }
+      // Add one column per question
+      for (const q of orderedQuestions) {
+        row.push(answerMap[q.key] || '');
       }
+
+      rows.push(row);
     }
 
     const csvContent = toCsv(headers, rows);

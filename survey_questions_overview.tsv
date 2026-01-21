@@ -1,0 +1,47 @@
+Section ID	Section Title	Question ID	Question Text	Input Type	Options Count
+intro-hero	(Intro/Hero Screen)	start_hero	Let's Begin (hero start screen)	hero_start	-
+astro-data	Your Cosmic Identity	username	What name should we call you in the credits?	text	-
+astro-data	Your Cosmic Identity	date	Birth Date	date	-
+astro-data	Your Cosmic Identity	time	Birth Time	time	-
+astro-data	Your Cosmic Identity	time_accuracy	The Accuracy of your time of birth?	radio	7
+astro-data	Your Cosmic Identity	city	Birth City	text	-
+astro-data	Your Cosmic Identity	latitude	Latitude	number	-
+astro-data	Your Cosmic Identity	longitude	Longitude	number	-
+section-ii	Attraction & Self-Casting	gender	Your Gender	radio	5
+section-ii	Attraction & Self-Casting	attraction_style	What's your attraction style or sexuality vibe?	radio	12
+section-ii	Attraction & Self-Casting	cine_level	Where would you place yourself on the Movie Love-o-Meter?	checkbox	8
+section-ii	Attraction & Self-Casting	life_role	In the movie of your life... what role do you play?	radio	11
+section-ii	Attraction & Self-Casting	escapism_style	Your Emotional Escapism Style?	checkbox	16
+section-ii	Attraction & Self-Casting	top_3_movies	Drop your all-time TOP 3 movies	textarea	-
+section-ii	Attraction & Self-Casting	first_crush	Who was your first cinematic obsession or role model?	textarea	-
+section-iii	Cinematic Taste	watch_habit	How do you watch most of the time?	checkbox	11
+section-iii	Cinematic Taste	fav_era	What's your favourite movie era?	checkbox	12
+section-iii	Cinematic Taste	culture_background	Where did you grow up (or feel culturally shaped by)?	textarea	-
+section-iii	Cinematic Taste	environment_growing_up	What kind of environment did you grow up in?	checkbox	9
+section-iv	Cinematic Core Memories	first_feeling	What's the first movie that ever made you feel something?	textarea	-
+section-iv	Cinematic Core Memories	life_changing	What movie changed your life or meant everything at some point?	textarea	-
+section-iv	Cinematic Core Memories	comfort_watch	Your Ultimate Comfort Watch?	text	-
+section-iv	Cinematic Core Memories	power_watch	What movie do you rewatch when you want to feel powerful?	text	-
+section-iv	Cinematic Core Memories	date_impress	What movie do you drop to impress a date / crush / dinner guest?	text	-
+section-v	Cosmic Worldbuilding & Desire	movie_universe	If you could live inside any movie universe... which one(s) would you pick?	checkbox	13
+section-v	Cosmic Worldbuilding & Desire	villain_relate	Which villain do you secretly relate to? And... why?	textarea	-
+section-v	Cosmic Worldbuilding & Desire	forever_crush	Who's your forever on-screen crush?	textarea	-
+section-v	Cosmic Worldbuilding & Desire	crave_most	What do you crave most in a movie?	checkbox	20
+section-vi	Screen Education: What Trained Your Taste	tv_taste	TV Taste Check: Pick the flavours that feed your soul.	checkbox	18
+section-vi	Screen Education: What Trained Your Taste	top_3_series_detailed	What are your top 3 Series of all time?	textarea	-
+section-vi	Screen Education: What Trained Your Taste	cinematography	How important is cinematography?	radio	5
+section-vi	Screen Education: What Trained Your Taste	directors	Do you care about directing styles?	checkbox	86
+section-vi	Screen Education: What Trained Your Taste	access_growing_up	How did you mostly access movies growing up?	checkbox	10
+section-vii	Genres & Turn-offs	genres_love	Genres you never get sick of	checkbox	19
+section-vii	Genres & Turn-offs	turn_offs	What do you NOT vibe with on screen?	checkbox	15
+section-vii	Genres & Turn-offs	hated_film	What's a film everyone else loved... but you hated? Tell us why.	textarea	-
+section-vii	Genres & Turn-offs	hype_style	Hype Tracker or Timeless Watcher?	radio	9
+section-swipe	Swipe Right on Your Movie Mirror	character_match	Who's your movie mirror? The character that feels uncomfortably… you.	text (multi_entry)	-
+section-viii	Global Culture	foreign_films	How do you feel about foreign films & shows?	radio	7
+section-ix	FateFlix Fit & Feedback	selection_method	In a minefield of content... how do you actually choose your next movie or show?	checkbox	15
+section-ix	FateFlix Fit & Feedback	discovery_apps	Which of these apps do you actually use for movie discovery?	checkbox	13
+section-ix	FateFlix Fit & Feedback	share_qr	Would you share this quiz with your friends?	qr_share	-
+section-ix	FateFlix Fit & Feedback	discovery	How did you find out about this survey?	radio	7
+section-ix	FateFlix Fit & Feedback	email	We need your email to send your astro-cinematic gift.	email	-
+section-ix	FateFlix Fit & Feedback	beta_test	Would you like to beta test the Fateflix app once it's live?	radio	2
+section-ix	FateFlix Fit & Feedback	open_feedback	Anything we should know?	textarea	-

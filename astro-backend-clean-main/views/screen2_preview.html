@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FateFlix Reading – Screen 2 Preview</title>
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+      body { background-color: #090011; color: #FFFFFF; font-family: "Graphic Web", "Futura", sans-serif; margin: 0; padding: 0; display: flex; justify-content: center; }
+      .wrap { width: 100%; max-width: 480px; padding: 20px; box-sizing: border-box; }
+      h1, h2, h3, .header-font { font-family: "Futura", sans-serif; text-transform: uppercase; margin: 0; }
+      .card { border: 1px solid #8FBCFF; border-radius: 12px; padding: 20px; margin-bottom: 16px; background: transparent; }
+      .card-gold { border-color: #FFD18F; }
+      .section-header { color: #F3DCBC; font-size: 14px; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; }
+      .content-text { font-size: 16px; line-height: 1.5; }
+      .intro-text { color: #F3DCBC; text-align: center; font-style: italic; margin: 30px 0; font-size: 18px; }
+      .disclaimer { color: #B3B3B3; font-size: 12px; text-align: left; margin-top: 40px; line-height: 1.4; }
+      .no-time { color: #B6DAF7; text-align: center; margin: 40px 0; font-size: 14px; line-height: 1.6; }
+      .ruler-header { color: #DFCDF5; font-size: 16px; margin-bottom: 10px; }
+      .ruler-eq { color: #A2C5E2; margin-bottom: 20px; font-weight: bold; }
+      
+      /* Badge Styles */
+      .badge { 
+        background: linear-gradient(135deg, #e0c3fc 0%, #8ec5fc 100%); 
+        color: #000; 
+        border-radius: 20px; 
+        padding: 0; 
+        overflow: hidden; 
+        margin-bottom: 30px; 
+        text-align: center; 
+        font-family: "Futura", sans-serif;
+      }
+      /* Chart Styles from chart_wheel.html */
+      .chart-container {
+          width: 100%;
+          max-width: 800px;
+          height: auto;
+          opacity: 0;
+          animation: fade-scale 1.5s cubic-bezier(0.16, 1, 0.3, 1) 0.1s forwards;
+      }
+      @keyframes fade-scale {
+          0% { opacity: 0; transform: scale(0.98); }
+          100% { opacity: 1; transform: scale(1); }
+      }
+      .logo-text {
+          font-size: 28px;
+          letter-spacing: 0.35em;
+          font-weight: 200;
+          opacity: 0.95;
+          fill: white;
+          text-anchor: middle;
+          dominant-baseline: middle;
+      }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    
+         <div style="position: relative; margin: 30px 0;">
+           <h1 style="font-family:'Futura',sans-serif; color:#FFFFFF; text-transform:uppercase; font-size: 24px; text-align:center; margin-bottom:30px">My Astro-Cinematic Chart</h1>
+           
+           <div style="display: flex; justify-content: space-between; align-items: center;">
+             <div style="font-size: 12px; color: #fff; line-height: 1.6; width: 25%; text-align: left;">
+                Date: October 24, 2025<br/>
+                Time: 14:30<br/>
+                Place: Los Angeles, USA
+             </div>
+
+             <div style="flex: 1; text-align: center; padding: 0 10px;">
+                <!-- Chart Root Container -->
+                <div id="chart-root" class="chart-container"></div>
+             </div>
+
+             <div style="width: 25%;"></div>
+           </div>
+
+           <div style="text-align: right; font-size: 12px; margin-top: -20px; margin-bottom: 20px; color: #fff;">
+               username: dev-user<br/>
+               email: dev@fateflix.app
+           </div>
+
+           <div style="position: relative; width: 320px; margin: 0 auto 30px auto;">
+               <!-- Placeholder for purple planet image -->
+               <div style="width: 100%; height: 100px; background: radial-gradient(circle, #8ec5fc 0%, #e0c3fc 100%); border-radius: 50%; opacity: 0.5;"></div>
+               
+               <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 100%; text-align: center; z-index: 10; font-family: 'Futura', sans-serif; font-style: italic; font-size: 18px; color: #F3DCBC; line-height: 1.4; text-shadow: 0 2px 10px rgba(0,0,0,0.7);">
+                  <span style="position: relative; top: -8px; margin-right: 4px;">★</span>
+                  Your planets = the cast.
+                  <br/>
+                  Your signs = the characters they play.
+                  <span style="position: relative; top: 8px; margin-left: 4px;">★</span>
+               </div>
+           </div>
+         </div>
+       
+        <div class="card">
+             <h2 class="section-header">Rising / Ascendant</h2>
+             <div style="font-size:12px; opacity:0.7; margin-bottom:8px">Your First Impression</div>
+             <div class="content-text">Ascendant in Scorpio.</div>
+          </div>
+         
+        <div class="card">
+             <h2 class="section-header">Sun</h2>
+             <div style="font-size:12px; opacity:0.7; margin-bottom:8px">Your Core Self</div>
+             <div class="content-text">Sun in Libra.</div>
+          </div>
+         
+        <div class="card">
+             <h2 class="section-header">Moon</h2>
+             <div style="font-size:12px; opacity:0.7; margin-bottom:8px">Your Emotional Self</div>
+             <div class="content-text">Moon in Leo.</div>
+          </div>
+         
+         <div style="text-align:center; margin: 40px 0; padding: 0 20px;">
+           <!-- Star decoration placeholder -->
+           <span style="color:#F3DCBC; font-size:20px;">★</span>
+           <p style="color:#F3DCBC; font-family:'Futura',sans-serif; font-style:italic; font-size:16px; line-height:1.5;">
+             You’re now part of Fateflix’s origin story.<br/>
+             And that’s legendary. Thank you for building the future of<br/>
+             intuitive entertainment with us.
+           </p>
+           <span style="color:#F3DCBC; font-size:20px;">★</span>
+         </div>
+       
+         <div style="text-align:center; margin: 40px 0;">
+           <a href="#" style="display:inline-block; background:linear-gradient(90deg, #e0c3fc, #8ec5fc); color:#000; padding:15px 30px; border-radius:30px; text-decoration:none; font-family:'Futura',sans-serif; font-weight:bold; text-transform:uppercase; box-shadow: 0 4px 15px rgba(142, 197, 252, 0.4);">
+             Click to see who‘s directing the scene
+           </a>
+         </div>
+       
+  </div>
+
+  <script>
+        // --- CORE GEOMETRY FUNCTIONS ---
+        const degToRad = (deg) => (deg * Math.PI) / 180;
+        
+        // Converts polar coordinates (degree 0 is North/Up) to Cartesian (x, y)
+        const polarToCartesian = (centerX, centerY, radius, angleInDegrees) => {
+            const angleInRadians = degToRad(angleInDegrees - 90);
+            return {
+                x: centerX + radius * Math.cos(angleInRadians),
+                y: centerY + radius * Math.sin(angleInRadians)
+            };
+        };
+
+        // Generates the SVG path string for a ring segment (arch)
+        const describeArc = (x, y, innerRadius, outerRadius, startAngle, endAngle) => {
+            if (endAngle - startAngle >= 360) endAngle = startAngle + 359.99;
+            
+            const start = polarToCartesian(x, y, outerRadius, endAngle);
+            const end = polarToCartesian(x, y, outerRadius, startAngle);
+            const startInner = polarToCartesian(x, y, innerRadius, endAngle);
+            const endInner = polarToCartesian(x, y, innerRadius, startAngle);
+            const largeArcFlag = endAngle - startAngle <= 180 ? "0" : "1";
+
+            return [
+                "M", start.x, start.y,
+                "A", outerRadius, outerRadius, 0, largeArcFlag, 0, end.x, end.y,
+                "L", endInner.x, endInner.y,
+                "A", innerRadius, innerRadius, 0, largeArcFlag, 1, startInner.x, startInner.y,
+                "Z"
+            ].join(" ");
+        };
+
+        // --- CONSTANTS AND DIMENSIONS ---
+        const ZODIACS = [
+            { name: 'Aries', symbol: '♈︎' }, { name: 'Pisces', symbol: '♓︎' },
+            { name: 'Aquarius', symbol: '♒︎' }, { name: 'Capricorn', symbol: '♑︎' },
+            { name: 'Sagittarius', symbol: '♐︎' }, { name: 'Scorpio', symbol: '♏︎' },
+            { name: 'Libra', symbol: '♎︎' }, { name: 'Virgo', symbol: '♍︎' },
+            { name: 'Leo', symbol: '♌︎' }, { name: 'Cancer', symbol: '♋︎' },
+            { name: 'Gemini', symbol: '♊︎' }, { name: 'Taurus', symbol: '♉︎' },
+        ];
+
+        const size = 800; 
+        const center = size / 2;
+        const outerRadius = 320;
+        const ringThickness = 52; 
+        const innerRadius = outerRadius - ringThickness;
+        const textRadius = outerRadius - (ringThickness / 2);
+        const contentRadius = innerRadius - 20; 
+
+        const cRing = "#2563EB"; 
+        const cLine = "rgba(255, 255, 255, 0.12)";
+
+        /**
+         * Main function to render the SVG chart using dynamic data.
+         * @param {Array<Object>} planetData - Planet positions: { name, symbol, degree }
+         * @param {Array<Object>} aspectData - Aspects: { p1: PlanetName1, p2: PlanetName2, type }
+         */
+        function renderChart(planetData, aspectData) {
+            const chartRoot = document.getElementById('chart-root');
+            let svgContent = '';
+
+            // --- 1. ZODIAC RING ---
+            let zodiacRing = '';
+            ZODIACS.forEach((sign, index) => {
+                const startAngle = index * 30;
+                const endAngle = (index + 1) * 30;
+                const midAngle = startAngle + 15;
+                
+                const pathData = describeArc(center, center, innerRadius, outerRadius, startAngle, endAngle);
+                const textPos = polarToCartesian(center, center, textRadius, midAngle);
+                const lineStart = polarToCartesian(center, center, innerRadius, startAngle);
+                const lineEnd = polarToCartesian(center, center, outerRadius, startAngle);
+
+                let rotation = midAngle;
+                if (midAngle > 90 && midAngle < 270) {
+                    rotation += 180;
+                }
+
+                zodiacRing += `
+                    <path d="${pathData}" fill="${cRing}" stroke="none" />
+                    <line x1="${lineStart.x}" y1="${lineStart.y}" x2="${lineEnd.x}" y2="${lineEnd.y}" 
+                          stroke="rgba(255,255,255,0.15)" stroke-width="0.5" />
+                    <text x="${textPos.x}" y="${textPos.y}" fill="white" text-anchor="middle" dominant-baseline="central"
+                          transform="rotate(${rotation}, ${textPos.x}, ${textPos.y})"
+                          class="uppercase antialiased"
+                          style="font-size: 11px; letter-spacing: 0.2em; font-weight: 500;">
+                        ${sign.name}
+                    </text>
+                `;
+            });
+            
+            zodiacRing += `<circle cx="${center}" cy="${center}" r="${outerRadius}" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="0.5" />`;
+            zodiacRing += `<circle cx="${center}" cy="${center}" r="${innerRadius}" fill="none" stroke="white" stroke-width="1.2" opacity="0.9" />`;
+            svgContent += `<g class="zodiac-ring">${zodiacRing}</g>`;
+
+
+            // --- 2. ASPECTS ---
+            let aspectsSvg = '';
+            aspectData.forEach((aspect) => {
+                const p1 = planetData.find(p => p.name === aspect.p1);
+                const p2 = planetData.find(p => p.name === aspect.p2);
+                if (!p1 || !p2) return;
+
+                const pos1 = polarToCartesian(center, center, contentRadius, p1.degree);
+                const pos2 = polarToCartesian(center, center, contentRadius, p2.degree);
+
+                aspectsSvg += `
+                    <line x1="${pos1.x}" y1="${pos1.y}" x2="${pos2.x}" y2="${pos2.y}" 
+                          stroke="url(#cleanGradient)" stroke-width="0.6" opacity="0.9" />
+                `;
+            });
+            svgContent += `<g class="aspects">${aspectsSvg}</g>`;
+
+
+            // --- 3. PLANETS ---
+            let planetsSvg = '';
+            planetData.forEach((planet) => {
+                const pos = polarToCartesian(center, center, contentRadius, planet.degree);
+                const tickStart = polarToCartesian(center, center, innerRadius, planet.degree);
+                
+                planetsSvg += `
+                    <g class="planet-group cursor-pointer" data-planet-name="${planet.name}">
+                        <line x1="${pos.x}" y1="${pos.y}" x2="${tickStart.x}" y2="${tickStart.y}"
+                              stroke="white" stroke-width="0.5" opacity="0.5" />
+                        <circle cx="${pos.x}" cy="${pos.y}" r="12" fill="black" stroke="white" stroke-width="0.8" />
+                        <text x="${pos.x}" y="${pos.y}" fill="white" font-size="14" dy="0.5"
+                              text-anchor="middle" dominant-baseline="central" class="pointer-events-none">
+                            ${planet.symbol}
+                        </text>
+                    </g>
+                `;
+            });
+            svgContent += `<g class="planets">${planetsSvg}</g>`;
+
+
+            // --- 4. INNER MECHANICS & AXIS ---
+            const innerMechanics = `
+                <circle cx="${center}" cy="${center}" r="${contentRadius}" fill="none" stroke="${cLine}" stroke-width="0.5" />
+                <path d="${describeArc(center, center, contentRadius, innerRadius, 0, 359.99)}" fill="rgba(255,255,255,0.03)" stroke="none" />
+            `;
+            const axisMarkers = `
+                <text x="${center - outerRadius - 20}" y="${center}" text-anchor="end" dominant-baseline="middle" style="font-size: 10px; letter-spacing: 0.2em; fill: rgba(255,255,255,0.5);">AC</text>
+                <text x="${center + outerRadius + 20}" y="${center}" text-anchor="start" dominant-baseline="middle" style="font-size: 10px; letter-spacing: 0.2em; fill: rgba(255,255,255,0.5);">DC</text>
+            `;
+            svgContent += `<g class="inner-mechanics">${innerMechanics}</g>`;
+            svgContent += `<g class="axis">${axisMarkers}</g>`;
+
+
+            // --- 5. LOGO & HOVER DISPLAY ---
+            const logo = `
+                <g transform="translate(${center}, ${center})">
+                    <text x="0" y="0" class="logo-text">FATEFLIX</text>
+                    <text id="hover-planet-name" x="0" y="35" text-anchor="middle" fill="${cRing}"
+                          class="uppercase" style="font-size: 10px; letter-spacing: 0.4em; font-weight: 500; opacity: 0; transition: opacity 0.4s ease-in-out;">
+                    </text>
+                </g>
+            `;
+            svgContent += logo;
+
+
+            // Final SVG structure
+            const finalSvg = `
+                <svg viewBox="0 0 ${size} ${size}" class="w-full h-auto" style="overflow: visible;">
+                    <defs>
+                        <linearGradient id="cleanGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stop-color="rgba(255,255,255,0.02)" />
+                            <stop offset="50%" stop-color="rgba(255,255,255,0.5)" />
+                            <stop offset="100%" stop-color="rgba(255,255,255,0.02)" />
+                        </linearGradient>
+                    </defs>
+                    ${svgContent}
+                </svg>
+            `;
+
+            chartRoot.innerHTML = finalSvg;
+
+            // --- HOVER LOGIC (Pure JS) ---
+            const planetGroups = chartRoot.querySelectorAll('.planet-group');
+            const hoverDisplay = document.getElementById('hover-planet-name');
+            const defaultPlanetColor = 'white';
+            const hoverPlanetColor = cRing;
+
+            planetGroups.forEach(group => {
+                const planetCircle = group.querySelector('circle');
+                const planetName = group.getAttribute('data-planet-name');
+
+                group.addEventListener('mouseenter', () => {
+                    hoverDisplay.textContent = planetName;
+                    hoverDisplay.style.opacity = 1;
+                    planetCircle.setAttribute('stroke', hoverPlanetColor);
+                    planetCircle.setAttribute('stroke-width', 1.2);
+                    planetGroups.forEach(g => {
+                        if (g !== group) g.style.opacity = 0.2;
+                    });
+                });
+
+                group.addEventListener('mouseleave', () => {
+                    hoverDisplay.style.opacity = 0;
+                    planetCircle.setAttribute('stroke', defaultPlanetColor);
+                    planetCircle.setAttribute('stroke-width', 0.8);
+                    planetGroups.forEach(g => {
+                        g.style.opacity = 1;
+                    });
+                });
+            });
+        }
+
+        const PLANET_DATA = [
+            { name: 'Sun', symbol: '☉', degree: 45 },
+            { name: 'Moon', symbol: '☽', degree: 340 },
+            { name: 'Mercury', symbol: '☿', degree: 65 },
+            { name: 'Venus', symbol: '♀', degree: 25 },
+            { name: 'Mars', symbol: '♂', degree: 280 },
+            { name: 'Jupiter', symbol: '♃', degree: 120 },
+            { name: 'Saturn', symbol: '♄', degree: 310 },
+            { name: 'Pluto', symbol: '♇', degree: 185 },
+        ];
+        
+        const ASPECT_DATA = [
+            { p1: 'Sun', p2: 'Moon', type: 'Trine' },
+            { p1: 'Sun', p2: 'Jupiter', type: 'Square' },
+            { p1: 'Venus', p2: 'Mars', type: 'Sextile' },
+            { p1: 'Saturn', p2: 'Jupiter', type: 'Opposition' },
+            { p1: 'Pluto', p2: 'Venus', type: 'Opposition' },
+        ];
+
+        document.addEventListener('DOMContentLoaded', () => {
+            renderChart(PLANET_DATA, ASPECT_DATA);
+        });
+  </script>
+</body>
+</html>

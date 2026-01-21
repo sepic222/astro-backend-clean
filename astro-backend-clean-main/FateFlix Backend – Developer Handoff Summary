@@ -1,0 +1,68 @@
+📍 Repository
+
+GitHub: https://github.com/sepic222/astro-backend-clean
+Branch: main
+Tag: v1.1-stable-backend (✅ fully functional)
+
+⸻
+
+🧭 Current Status
+	•	Backend runs cleanly with all major endpoints working
+	•	Database (Prisma + SQLite) seeded and verified
+	•	Frontend connects successfully via http://localhost:3001
+	•	Project structure cleaned and standardized (no nested folders)
+	•	Documentation suite complete:
+	•	README.md → full setup & API overview
+	•	CHANGELOG.md → version history
+	•	CONTRIBUTING.md → developer workflow
+	•	SECURITY.md → vulnerability reporting
+	•	BASELINE.md → architecture & system map
+	•	architecture-diagram.png → visual flow
+
+⚙️ Quickstart for New Devs
+
+git clone https://github.com/sepic222/astro-backend-clean.git
+cd astro-backend-clean
+npm install
+cp .env.example .env
+# Add your OpenAI + OpenCage keys
+node server.js
+
+Then open:
+	•	Backend health check → http://localhost:3001/health
+	•	Prisma DB viewer → npx prisma studio
+	•	Frontend (if local) → http://localhost:5173/survey?new=1
+
+🔩 Verified Endpoints
+
+(Method
+Route
+Description)
+GET
+/health
+Returns { ok: true, status: 'healthy' } to confirm the backend is running.
+GET
+/api/geocode?city=Berlin&country=Germany
+Performs forward geocoding using the OpenCage API and returns latitude/longitude.
+POST
+/api/birth-chart-swisseph
+Computes a full birth chart using Swiss Ephemeris and saves the record in the database.
+POST
+/api/survey/submit
+Receives user survey responses, links them to a chart, builds the reading, and triggers email generation.
+GET
+/__routes
+Lists all registered Express routes for debugging.
+GET
+/dev/email/preview/:outboxId
+Displays a stored email HTML preview (useful for local testing).
+
+
+🧱 Key Technologies
+
+	•	Node.js (Express)
+	•	Prisma ORM (SQLite)
+	•	Swiss Ephemeris
+	•	OpenCage API
+	•	OpenAI API
+	•	React (Vite frontend)

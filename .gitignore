@@ -1,1 +1,25 @@
 .DS_Store
+
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Production
+dist/
+build/
+
+# Astro
+.astro/
+
+# Env
+.env
+.env.*
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Archive
+ARCHIVE/

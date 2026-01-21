@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FateFlix V2 Structure Test</title>
+  <style>
+      /* Styles copied from server.js */
+      body { background-color: #090011; color: #FFFFFF; font-family: "Graphic Web", "Futura", sans-serif; margin: 0; padding: 0; display: flex; justify-content: center; }
+      .wrap { width: 100%; max-width: 480px; padding: 20px; box-sizing: border-box; }
+      h1, h2, h3, .header-font { font-family: "Futura", sans-serif; text-transform: uppercase; margin: 0; }
+      .card { border: 1px solid #8FBCFF; border-radius: 12px; padding: 20px; margin-bottom: 16px; background: transparent; }
+      .card-gold { border-color: #FFD18F; }
+      .section-header { color: #F3DCBC; font-size: 14px; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; }
+      .content-text { font-size: 16px; line-height: 1.5; }
+      .intro-text { color: #F3DCBC; text-align: center; font-style: italic; margin: 30px 0; font-size: 18px; }
+      .disclaimer { color: #B3B3B3; font-size: 12px; text-align: center; margin-top: 40px; line-height: 1.4; }
+      .no-time { color: #B6DAF7; text-align: center; margin: 40px 0; font-size: 14px; line-height: 1.6; }
+      .ruler-header { color: #DFCDF5; font-size: 16px; margin-bottom: 10px; }
+      .ruler-eq { color: #A2C5E2; margin-bottom: 20px; font-weight: bold; }
+      .page-break { margin-top: 50px; margin-bottom: 50px; border-bottom: 1px dashed #333; } /* Added border for test visibility */
+      .img-responsive { max-width: 100%; height: auto; display: block; margin: 0 auto; }
+      .star-decoration { width: 20px; height: 20px; display: inline-block; vertical-align: middle; margin: 0 5px; }
+      
+      /* Test helper styles */
+      .test-label { background: #333; color: #0f0; padding: 5px; font-family: monospace; text-align: center; margin: 40px 0 20px; border: 1px solid #0f0; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+
+    <!-- ================================================================= -->
+    <!-- SCENARIO 1: NO TIME (Rule 1)                                      -->
+    <!-- ================================================================= -->
+    <div class="test-label">SCENARIO 1: NO TIME (Ascendant is null)</div>
+
+          <div class="no-time" style="position: relative; padding-top: 20px;">
+             <!-- Top Section: Text + Purple Ring -->
+             <div style="position: relative; margin-bottom: 30px; padding: 0 20px;">
+                <img src="/assets/starglow_medium.png" style="position:absolute; left: 0; top: -10px; width: 15px; opacity: 0.8;" alt="" />
+                
+                <p style="color:#F3DCBC; font-family:'Futura', sans-serif; font-weight:bold; line-height: 1.5; font-size: 16px; margin: 0; position: relative; z-index: 2;">
+                  No exact birth time?<br/>
+                  Then your Rising sign, chart ruler, and house<br/>
+                  placements will stay a mystery<br/>
+                  ...for now
+                </p>
+
+                <!-- Purple Ring: Right and slightly underneath the text block -->
+                <img src="/assets/planet_purple_ring.png" style="width:50px; position:absolute; right: 0; top: 40px; z-index: 1; opacity: 0.9;" alt="" />
+                <img src="/assets/starglow_medium.png" style="position:absolute; right: 20px; top: 90px; width: 10px; opacity: 0.6;" alt="" />
+             </div>
+
+             <!-- Blue Planet (Center) -->
+             <div style="text-align: center; margin-bottom: 10px;">
+                <img src="/assets/blue%20planet.png" class="img-responsive" style="max-width: 240px; width: 100%;" alt="Earth" />
+             </div>
+
+             <!-- Bottom Section: Green Glow Background -->
+             <div style="
+                background: url('/assets/greenglow.png') no-repeat center center;
+                background-size: contain;
+                padding: 50px 20px;
+                position: relative;
+                margin-top: -20px; /* Pull up slightly to overlap planet if needed */
+             ">
+                <!-- Left Star -->
+                <img src="/assets/starglow_large.png" style="position:absolute; left: 0; top: 40%; width: 20px;" alt="" />
+
+                <p style="color: #FFFFFF; font-family: 'Futura', sans-serif; font-style: italic; font-size: 16px; margin-bottom: 25px; line-height: 1.4;">
+                  If you don't know the timecode from<br/>
+                  when you entered this planet earth, do<br/>
+                  yourself a favour
+                </p>
+                
+                <p style="color: #B6DAF7; font-family: 'Futura', sans-serif; font-size: 18px; line-height: 1.6;">
+                  Call your mom.<br/>
+                  Check your birth certificate.<br/>
+                  Or contact the galaxy you came from<br/>
+                  for the correct digits.
+                </p>
+
+                <!-- Right Star -->
+                <img src="/assets/starglow_large.png" style="position:absolute; right: -10px; bottom: 30px; width: 25px;" alt="" />
+             </div>
+          </div>
+    
+    <div class="disclaimer">
+        <img src="/assets/starglow_large.png" class="star-decoration" alt="" />
+        <strong>MINI-DISCLAIMER</strong><br/>
+        We’ll use your birth info to match you with movie recs based on planetary vibes. Your data is sacred. Like a vintage VHS. It’s not sold, rented, or streamed.
+    </div>
+    <div style="text-align:center; margin-top:30px">
+        <a href="#" style="color:#fff; text-decoration:none">www.fateflix.app</a>
+        <span style="margin:0 10px">•</span>
+        <span>@fateflixapp</span>
+    </div>
+
+
+    <!-- ================================================================= -->
+    <!-- SCENARIO 2: SINGLE RULER (Rule 3) - e.g. Aries                    -->
+    <!-- ================================================================= -->
+    <div class="test-label">SCENARIO 2: SINGLE RULER (e.g. Aries)</div>
+
+    <div class="page-break"></div>
+    <div style="text-align:center; margin: 40px 0 20px">
+      <img src="/assets/planet_purple_ring.png" style="width:40px; margin-bottom:10px;" alt="Saturn" />
+      <h2 style="color:#FFD7F3; font-family:'Futura',sans-serif; text-transform:uppercase;">Chart Ruler</h2>
+      <div style="color:#FFFFFF; font-family:'Futura',sans-serif; font-size:12px; margin-top:5px;">
+        Who's Directing the Scene
+      </div>
+    </div>
+
+    <!-- Rule 3 Content -->
+    <div class="card card-gold" style="text-align:center">
+        <div class="ruler-eq">Your Chart Ruler = Mars</div>
+        <div class="ruler-header">Chart Ruler in the Sign</div>
+        <div class="card" style="border-color:#8FBCFF">Mars in Leo acts like a main character who knows their lighting.</div>
+        
+        <div class="ruler-header">Chart Ruler in the House</div>
+        <div class="card" style="border-color:#8FBCFF">The 5th House is about creativity and drama.</div>
+    </div>
+
+    <!-- Houses Section -->
+    <div class="page-break"></div>
+    <div style="text-align:center; margin:40px 0 20px">
+        <h2 style="color:#FFD7F3; font-family:'Futura',sans-serif; text-transform:uppercase;">Astrological Houses</h2>
+        <div style="font-size:14px; color:#FAF1E4; font-family:'Futura',sans-serif; font-style:italic; margin-top:10px; line-height:1.4;">
+        Every house is a different part of your life: identity, money, love, glow-ups, chaos, karma — all of it.<br/>
+        The sign on each house shows how you express yourself in that area. It's not the "what," it's the vibe.
+        </div>
+        <img src="/assets/starglow_medium.png" style="width:30px; margin-top:15px;" alt="Glow" />
+    </div>
+
+    <div class="card" style="border-color:#8FBCFF">
+        <div style="font-weight:bold; color:#DFCDF5; margin-bottom:5px">1 House</div>
+        <div style="font-size:14px; opacity:0.8; margin-bottom:8px">Aries</div>
+        <div class="content-text">The First House is the movie poster...</div>
+    </div>
+    
+    <div class="disclaimer">
+        <img src="/assets/starglow_large.png" class="star-decoration" alt="" />
+        <strong>MINI-DISCLAIMER</strong><br/>
+        We’ll use your birth info to match you with movie recs based on planetary vibes. Your data is sacred. Like a vintage VHS. It’s not sold, rented, or streamed.
+    </div>
+
+
+    <!-- ================================================================= -->
+    <!-- SCENARIO 3: CO-RULER (Rule 2) - e.g. Scorpio                      -->
+    <!-- ================================================================= -->
+    <div class="test-label">SCENARIO 3: CO-RULER (e.g. Scorpio)</div>
+
+    <div class="page-break"></div>
+    <div style="text-align:center; margin: 40px 0 20px">
+      <img src="/assets/planet_purple_ring.png" style="width:40px; margin-bottom:10px;" alt="Saturn" />
+      <h2 style="color:#FFD7F3; font-family:'Futura',sans-serif; text-transform:uppercase;">Chart Ruler</h2>
+      <div style="color:#FFFFFF; font-family:'Futura',sans-serif; font-size:12px; margin-top:5px;">
+        Who's Directing the Scene
+      </div>
+    </div>
+
+    <!-- Rule 2 Content -->
+    <div class="card card-gold" style="text-align:center">
+        <div class="ruler-eq">Your Chart Ruler + Co-Chart Ruler = Pluto + Mars</div>
+        
+        <div class="ruler-header">Chart Ruler in the Sign</div>
+        <div class="card" style="border-color:#8FBCFF">Mars in Scorpio is intense and strategic.</div>
+        
+        <div class="ruler-header">Chart Ruler in the House</div>
+        <div class="card" style="border-color:#8FBCFF">The 1st House is all about self-expression.</div>
+
+        <div class="ruler-header">Co-Chart Ruler in the Sign</div>
+        <div class="card" style="border-color:#8FBCFF">Pluto in Sagittarius is transformative and philosophical.</div>
+
+        <div class="ruler-header">Co-Chart Ruler in the House</div>
+        <div class="card" style="border-color:#8FBCFF">The 2nd House deals with values and possessions.</div>
+    </div>
+
+    <!-- Houses Section -->
+    <div class="page-break"></div>
+    <div style="text-align:center; margin:40px 0 20px">
+        <h2 style="color:#FFD7F3; font-family:'Futura',sans-serif; text-transform:uppercase;">Astrological Houses</h2>
+        <div style="font-size:14px; color:#FAF1E4; font-family:'Futura',sans-serif; font-style:italic; margin-top:10px; line-height:1.4;">
+        Every house is a different part of your life: identity, money, love, glow-ups, chaos, karma — all of it.<br/>
+        The sign on each house shows how you express yourself in that area. It's not the "what," it's the vibe.
+        </div>
+        <img src="/assets/starglow_medium.png" style="width:30px; margin-top:15px;" alt="Glow" />
+    </div>
+
+    <div class="card" style="border-color:#8FBCFF">
+        <div style="font-weight:bold; color:#DFCDF5; margin-bottom:5px">1 House</div>
+        <div style="font-size:14px; opacity:0.8; margin-bottom:8px">Scorpio</div>
+        <div class="content-text">The First House is the movie poster...</div>
+    </div>
+
+    <div class="disclaimer">
+        <img src="/assets/starglow_large.png" class="star-decoration" alt="" />
+        <strong>MINI-DISCLAIMER</strong><br/>
+        We’ll use your birth info to match you with movie recs based on planetary vibes. Your data is sacred. Like a vintage VHS. It’s not sold, rented, or streamed.
+    </div>
+
+  </div>
+</body>
+</html>
+

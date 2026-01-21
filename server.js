@@ -316,7 +316,7 @@ app.get('/admin/dashboard', async (req, res) => {
       orderBy: { createdAt: 'desc' },
       include: {
         _count: { select: { responses: true } },
-        chart: { select: { id: true, risingSign: true, sunSign: true, moonSign: true } },
+        chart: { select: { id: true, risingSign: true, sunSign: true, moonSign: true, birthCity: true, birthDate: true, birthTime: true } },
         responses: {
           where: { question: { key: { in: ['username', 'cosmic.username', 'discovery', 'fit.found_survey', 'fit.discovery'] } } },
           include: { question: { select: { key: true } } }
@@ -352,7 +352,10 @@ app.get('/admin/dashboard', async (req, res) => {
         testReason: testResult.reason,
         risingSign: s.chart?.risingSign || null,
         sunSign: s.chart?.sunSign || null,
-        moonSign: s.chart?.moonSign || null
+        moonSign: s.chart?.moonSign || null,
+        birthCity: s.chart?.birthCity || null,
+        birthDate: s.chart?.birthDate || null,
+        birthTime: s.chart?.birthTime || null,
       };
     });
 
@@ -415,7 +418,7 @@ app.get('/admin/data', async (req, res) => {
       orderBy: { createdAt: 'desc' },
       include: {
         chart: {
-          select: { risingSign: true, sunSign: true, moonSign: true }
+          select: { risingSign: true, sunSign: true, moonSign: true, birthCity: true, birthDate: true, birthTime: true }
         },
         responses: {
           include: {
@@ -456,6 +459,9 @@ app.get('/admin/data', async (req, res) => {
         risingSign: sub.chart?.risingSign || '',
         sunSign: sub.chart?.sunSign || '',
         moonSign: sub.chart?.moonSign || '',
+        birthCity: sub.chart?.birthCity || '',
+        birthDate: sub.chart?.birthDate || '',
+        birthTime: sub.chart?.birthTime || '',
         responseCount: sub.responses.length,
         answers: answerMap
       };
@@ -2592,51 +2598,52 @@ app.post('/api/dev/chart-to-svg', async (req, res) => {
 
           const keyMapping = {
             // Section I: Cosmic
-            'username': 'cosmic.name',
+            'username': 'cosmic.username',
             // Section II: Casting
             'gender': 'casting.gender',
             'attraction_style': 'casting.attraction_style',
-            'cine_level': 'casting.love_o_meter',
-            'life_role': 'casting.movie_role',
+            'cine_level': 'casting.cine_level',
+            'life_role': 'casting.life_role',
             'escapism_style': 'casting.escapism_style',
-            'first_crush': 'casting.first_obsession',
+            'first_crush': 'casting.first_crush',
             // Section III: Taste
-            'watch_habit': 'taste.how_you_watch',
-            'fav_era': 'taste.favorite_era',
-            'culture_background': 'taste.cultural_background',
-            'environment_growing_up': 'taste.childhood_environment',
+            'watch_habit': 'taste.watch_habit',
+            'fav_era': 'taste.fav_era',
+            'culture_background': 'taste.culture_background',
+            'environment_growing_up': 'taste.environment_growing_up',
             // Section IV: Core Memory
-            'first_feeling': 'core_memory.first_emotional',
+            'first_feeling': 'core_memory.first_feeling',
             'life_changing': 'core_memory.life_changing',
             'comfort_watch': 'core_memory.comfort_watch',
-            'power_watch': 'core_memory.power_movie',
-            'date_impress': 'core_memory.impress_movie',
+            'power_watch': 'core_memory.power_watch',
+            'date_impress': 'core_memory.date_impress',
             // Section V: World
             'movie_universe': 'world.movie_universe',
-            'villain_relate': 'world.villain',
+            'villain_relate': 'world.villain_relate',
             'forever_crush': 'world.forever_crush',
-            'crave_most': 'world.crave_in_movie',
-            'life_tagline': 'world.life_tagline',
+            'crave_most': 'world.crave_most',
             // Section VI: Screen Ed
             'tv_taste': 'screen_ed.tv_taste',
-            'fav_tv': 'screen_ed.favorite_tv_show',
+            'fav_tv': 'screen_ed.fav_tv',
             'cinematography': 'screen_ed.cinematography',
-            'directors': 'screen_ed.favorite_directors',
+            'directors': 'screen_ed.directors',
             'access_growing_up': 'screen_ed.access_growing_up',
             // Section VII: Genres
-            'genres_love': 'genres.loved',
+            'genres_love': 'genres.genres_love',
             'turn_offs': 'genres.turn_offs',
-            'hated_film': 'genres.hated_but_loved',
+            'hated_film': 'genres.hated_film',
+            'hype_style': 'genres.hype_style',
             // Section Swipe
-            'character_match': 'genres.twin_flame',
+            'character_match': 'genres.character_match',
             // Section VIII: Global
             'foreign_films': 'global.foreign_films',
             // Section IX: Fit
-            'selection_method': 'fit.pick_what_to_watch',
-            'discovery': 'fit.found_survey',
+            'selection_method': 'fit.selection_method',
+            'discovery_apps': 'fit.discovery_apps',
+            'discovery': 'fit.discovery',
             'email': 'fit.email',
             'beta_test': 'fit.beta_test',
-            // top3_films, top3_series, top3_docs handled separately (combined into fit.hall_of_fame)
+            'open_feedback': 'fit.open_feedback',
           };
 
           // Build answers array from fullResponses

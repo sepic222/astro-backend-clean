@@ -35,3 +35,4 @@ no-time-result*.json
 
 # Workspace
 *.code-workspace
+node_modules

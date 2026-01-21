@@ -1,44 +1,45 @@
 section_number;section_id;section_title;question_order;id;prompt;type;required;multiple;has_other;options_keywords
-I;cosmic;Cosmic Identity;1;cosmic.name;What name should we call you in the credits?;text;FALSE;FALSE;FALSE;
-I;cosmic;Cosmic Identity;2;cosmic.birth_location;City + Country of Birth;text;TRUE;FALSE;FALSE;
-I;cosmic;Cosmic Identity;3;cosmic.birth_time;Time of Birth;text;FALSE;FALSE;FALSE;
-I;cosmic;Cosmic Identity;4;cosmic.time_accuracy;The accuracy of your birth time?;radio;TRUE;FALSE;FALSE;Exact | Approximate | Unknown
-II;casting;Attraction & Self-Casting;1;casting.gender;Your Gender;radio;TRUE;FALSE;TRUE;Male | Female | Non-binary | Trans / Gender-expansive | Other
-II;casting;Attraction & Self-Casting;2;casting.attraction_style;Attraction style / sexuality vibe;radio;FALSE;FALSE;TRUE;Attracted to men | Attracted to women | Across spectrum
-II;casting;Attraction & Self-Casting;3;casting.love_o_meter;Where would you place yourself on the Movie Love-o-Meter?;radio;FALSE;FALSE;TRUE;Cinephile Supreme | Movie Lover
-II;casting;Attraction & Self-Casting;4;casting.movie_role;In the movie of your life... what role do you play?;radio;FALSE;TRUE;TRUE;Rescuer | Dreamy outsider
-II;casting;Attraction & Self-Casting;5;casting.escapism_style;Your Emotional Escapism Style;radio;TRUE;FALSE;TRUE;Heartbreak Healer | Cozy Comedown
-II;casting;Attraction & Self-Casting;6;casting.first_obsession;Who was your first cinematic obsession or role model?;textarea;FALSE;FALSE;FALSE;
-III;taste;Cinematic Taste;1;taste.how_you_watch;How do you watch most of the time?;radio;TRUE;TRUE;TRUE;Alone | With friends
-III;taste;Cinematic Taste;2;taste.favorite_era;What’s your favourite movie era?;radio;FALSE;TRUE;TRUE;1940s | 1970s
-III;taste;Cinematic Taste;3;taste.cultural_background;Where did you grow up (or feel culturally shaped by)?;radio;TRUE;TRUE;TRUE;Region keyword | Mixed heritage
-III;taste;Cinematic Taste;4;taste.childhood_environment;What kind of environment did you grow up in?;radio;TRUE;TRUE;TRUE;Artistic/progressive | Religious/structured
-IV;core_memory;Cinematic Core Memories;1;core_memory.first_emotional;What’s the first movie that ever made you feel something?;textarea;FALSE;FALSE;FALSE;
+I;cosmic;Cosmic Identity;1;cosmic.username;What name should we call you in the credits?;text;FALSE;FALSE;FALSE;
+I;cosmic;Cosmic Identity;2;cosmic.date;Birth Date;text;TRUE;FALSE;FALSE;
+I;cosmic;Cosmic Identity;3;cosmic.time;Birth Time;text;FALSE;FALSE;FALSE;
+I;cosmic;Cosmic Identity;4;cosmic.time_accuracy;The accuracy of your time of birth?;radio;TRUE;FALSE;FALSE;exact|approx_early|approx_morning|approx_midday|approx_afternoon|approx_night|unknown
+I;cosmic;Cosmic Identity;5;cosmic.city;Birth City;text;TRUE;FALSE;FALSE;
+I;cosmic;Cosmic Identity;6;cosmic.latitude;Latitude;text;FALSE;FALSE;FALSE;
+I;cosmic;Cosmic Identity;7;cosmic.longitude;Longitude;text;FALSE;FALSE;FALSE;
+II;casting;Attraction & Self-Casting;1;casting.gender;Your Gender;radio;TRUE;FALSE;TRUE;male|female|non_binary|trans|other
+II;casting;Attraction & Self-Casting;2;casting.attraction_style;What's your attraction style or sexuality vibe?;radio;FALSE;FALSE;TRUE;queer|men|women|spectrum|bi_pan|demi_sapio|asexual|figuring_out|steamy_any|no_label|none|other
+II;casting;Attraction & Self-Casting;3;casting.cine_level;Where would you place yourself on the Movie Love-o-Meter?;checkbox;FALSE;TRUE;TRUE;cinephile|lover|time_poor|streaming_vortex|popcorn|sleepy|recovering|scroller|other
+II;casting;Attraction & Self-Casting;4;casting.life_role;In the movie of your life... what role do you play?;radio;FALSE;TRUE;TRUE;rescuer|disruptor|outsider|overachiever|observer|ride_or_die|comic|wanderer|mirror|audience|other
+II;casting;Attraction & Self-Casting;5;casting.escapism_style;Your Emotional Escapism Style?;checkbox;TRUE;TRUE;TRUE;heartbreak|hangover|floodgate|analyzer|cozy|creative|romance|distraction|meaning|romanticizer|beauty|control|decoder|offline|ambience|other
+II;casting;Attraction & Self-Casting;6;casting.top_3_movies;Drop your all-time TOP 3 movies;textarea;FALSE;FALSE;FALSE;
+II;casting;Attraction & Self-Casting;7;casting.first_crush;Who was your first cinematic obsession or role model?;textarea;FALSE;FALSE;FALSE;
+III;taste;Cinematic Taste;1;taste.watch_habit;How do you watch most of the time?;checkbox;TRUE;TRUE;TRUE;solo|partner|friends|late_night|weekends|multitask|transit|bed|binge|scroll|other
+III;taste;Cinematic Taste;2;taste.fav_era;What's your favourite movie era?;checkbox;FALSE;TRUE;TRUE;silent|1930s|1940s|1950s|1960s|1970s|1980s|1990s|2000s|post2010|streaming|fluid
+III;taste;Cinematic Taste;3;taste.culture_background;Where did you grow up (or feel culturally shaped by)?;textarea;TRUE;FALSE;FALSE;
+III;taste;Cinematic Taste;4;taste.environment_growing_up;What kind of environment did you grow up in?;checkbox;TRUE;TRUE;TRUE;eclectic|traditional|internet|religious|artistic|disruptor|quiet|moving|other
+IV;core_memory;Cinematic Core Memories;1;core_memory.first_feeling;What's the first movie that ever made you feel something?;textarea;FALSE;FALSE;FALSE;
 IV;core_memory;Cinematic Core Memories;2;core_memory.life_changing;What movie changed your life or meant everything at some point?;textarea;FALSE;FALSE;FALSE;
-IV;core_memory;Cinematic Core Memories;3;core_memory.comfort_watch;Your Ultimate Comfort Watch (Movie or TV show);textarea;FALSE;FALSE;FALSE;
-IV;core_memory;Cinematic Core Memories;4;core_memory.power_movie;What movie do you rewatch when you want to feel powerful?;textarea;FALSE;FALSE;FALSE;
-IV;core_memory;Cinematic Core Memories;5;core_memory.impress_movie;What movie do you drop to impress a date / crush / dinner guest?;textarea;FALSE;FALSE;FALSE;
-V;world;Worldbuilding & Desire;1;world.movie_universe;If you could live inside any movie universe… which one(s) would you pick?;radio;TRUE;TRUE;TRUE;Magical worlds | Sci‑Fi realms
-V;world;Worldbuilding & Desire;2;world.villain;Which villain do you secretly relate to? And why?;textarea;FALSE;FALSE;FALSE;
-V;world;Worldbuilding & Desire;3;world.forever_crush;Who’s your forever on-screen crush?;textarea;FALSE;FALSE;FALSE;
-V;world;Worldbuilding & Desire;4;world.crave_in_movie;What do you crave most in a movie?;radio;FALSE;TRUE;TRUE;Emotional depth | Cool & stylish
-V;world;Worldbuilding & Desire;5;world.life_tagline;If your life were a movie, what would the tagline be?;radio;FALSE;FALSE;TRUE;Love, loss, reinvention. | Style over safety.
-VI;screen_ed;Screen Education;1;screen_ed.guilty_pleasures;What are your ultimate guilty pleasures?;textarea;TRUE;TRUE;FALSE;
-VI;screen_ed;Screen Education;2;screen_ed.tv_taste;TV Taste Check;radio;TRUE;TRUE;TRUE;Comedy | Dark drama
-VI;screen_ed;Screen Education;3;screen_ed.favorite_tv_show;What’s your all-time favourite TV show? (and why);textarea;FALSE;FALSE;FALSE;
-VI;screen_ed;Screen Education;4;screen_ed.cinematography;How important is cinematography?;radio;FALSE;FALSE;TRUE;Important | Not really
-VI;screen_ed;Screen Education;5;screen_ed.directing_styles;Do you notice directing styles?;radio;FALSE;FALSE;TRUE;Yes | Sometimes | No
-VI;screen_ed;Screen Education;6;screen_ed.favorite_directors;Favourite directors (pick up to 5 or write-in);Radio;FALSE;TRUE;FALSE;Gerwig | Tarantino
-VI;screen_ed;Screen Education;7;screen_ed.access_growing_up;How did you mostly access movies growing up?;radio;FALSE;TRUE;TRUE;Cinema/festivals | Streaming-only
-VII;genres;Genres & Turn-Offs;1;genres.loved;Genres you never get sick of (pick your favourites);checkbox;TRUE;TRUE;TRUE;Rom-Com | Horror
-VII;genres;Genres & Turn-Offs;2;genres.turn_offs;What do you NOT vibe with on screen?;checkbox;TRUE;TRUE;TRUE;Too gory | No romance
-VII;genres;Genres & Turn-Offs;3;genres.hated_but_loved;What’s a film everyone else loved… but you hated? (why);textarea;FALSE;FALSE;FALSE;
-VII;genres;Genres & Turn-Offs;4;genres.discovery;Content discovery habits;radio;FALSE;TRUE;TRUE;Top 10 | Film friend
-VII;genres;Genres & Turn-Offs;5;genres.twin_flame;Cinematic twin flame / alter ego (pick up to 5);Radio;FALSE;TRUE;TRUE;Variant A | Variant B
-VIII;global;Global Culture;1;global.foreign_films;How do you feel about foreign films & subtitles?;radio;FALSE;FALSE;TRUE;Live for subtitles | Prefer dubbing
-IX;fit;FateFlix Fit & Feedback;1;fit.pick_what_to_watch;In a minefield of content… how do you pick what to watch?;radio;TRUE;TRUE;TRUE;Mood/aesthetic | Reviews
-IX;fit;FateFlix Fit & Feedback;2;fit.found_survey;How did you find this survey?;radio;FALSE;FALSE;TRUE;Friend | Online
-IX;fit;FateFlix Fit & Feedback;3;fit.share_quiz;Would you share this quiz with friends?;radio;FALSE;FALSE;FALSE;Yes | No
-IX;fit;FateFlix Fit & Feedback;4;fit.beta_test;Would you like to beta test the FateFlix app once it's live?;radio;FALSE;FALSE;FALSE;Yes | No
-IX;fit;FateFlix Fit & Feedback;5;fit.email;We need your email to send your astro-cinematic gift;email;TRUE;FALSE;FALSE;
-IX;fit;FateFlix Fit & Feedback;6;fit.hall_of_fame;BONUS — Your Hall of Fame (Top 3 Films / Series / Docs);textarea;FALSE;FALSE;FALSE;
+IV;core_memory;Cinematic Core Memories;3;core_memory.comfort_watch;Your Ultimate Comfort Watch?;textarea;FALSE;FALSE;FALSE;
+IV;core_memory;Cinematic Core Memories;4;core_memory.power_watch;What movie do you rewatch when you want to feel powerful?;textarea;FALSE;FALSE;FALSE;
+IV;core_memory;Cinematic Core Memories;5;core_memory.date_impress;What movie do you drop to impress a date / crush / dinner guest?;textarea;FALSE;FALSE;FALSE;
+V;world;Cosmic Worldbuilding & Desire;1;world.movie_universe;If you could live inside any movie universe... which one(s) would you pick?;checkbox;TRUE;TRUE;TRUE;magical|scifi|aesthetic|romantic|dystopia|surreal|melancholia|nature|glamour|thrilling|old_world|gothic|other
+V;world;Cosmic Worldbuilding & Desire;2;world.villain_relate;Which villain do you secretly relate to? And... why?;textarea;FALSE;FALSE;FALSE;
+V;world;Cosmic Worldbuilding & Desire;3;world.forever_crush;Who's your forever on-screen crush?;textarea;FALSE;FALSE;FALSE;
+V;world;Cosmic Worldbuilding & Desire;4;world.crave_most;What do you crave most in a movie?;checkbox;FALSE;TRUE;TRUE;emotional|tension|chaos|clever|structure|poetic|political_social|depth|performance|chemistry|stylish|escapism|immersive|fun|trippy|dark|crime|adrenaline|not_basic|other
+VI;screen_ed;Screen Education;1;screen_ed.tv_taste;TV Taste Check;checkbox;TRUE;TRUE;TRUE;prestige|dark_drama|reality|comedy|talk_shows|animated|limited|retro|scifi_fantasy|documentaries|factual|cooking|sports|talent|lifestyle|movie_only|avoid_series|other
+VI;screen_ed;Screen Education;2;screen_ed.top_3_series_detailed;What are your top 3 Series of all time?;textarea;FALSE;FALSE;FALSE;
+VI;screen_ed;Screen Education;3;screen_ed.cinematography;How important is cinematography?;radio;FALSE;FALSE;TRUE;obsessed|nice|palette|skip|other
+VI;screen_ed;Screen Education;4;screen_ed.directors;Do you care about directing styles?;checkbox;FALSE;TRUE;FALSE;gerwig|peele|spielberg|tarantino|pta|daniels|nolan|fennell|lucas|jackson|howard|cameron|phillips|scott|boyle|miyazaki|bong_joon_ho|hughes|spike_lee|larry_clark|adrian_lyne|scorsese|de_palma|safdie|coen_bros|eastwood|fincher|meirelles|mann|mangold|mcqueen|ritchie|audiard|lynch|kubrick|jonze|inarritu|glazer|ostlund|villeneuve|argento|lanthimos|noe|von_trier|tarkovsky|haneke|seidl|park_chan_wook|oshima|weerasethakul|coppola_s|wes_anderson|korine|burton|schnabel|sorrentino|cuaron|waters|marshall|roeg|song|wells|rohrwacher|potter|julien|russell|almodovar|guadagnino|denis|beineix|greenaway|yimou|wong_kar_wai|jenkins|trier|nichols|van_sant|cassavetes|allen|baumbach|salles|zhao|linklater|baker|duvernay|triet|meyers|heckerling|daldry|arnold|loach|haigh|leigh|ramsay|sciamma|varda|wenders|ade|kechiche|ozpetek|welles|bergman|hitchcock|leone|ford|hawks|lumet|reed|antonioni|coppola_ff|bertolucci|lean|fellini|rossellini|truffaut|malle|pasolini|mizoguchi|ozu|pollack|none|other
+VI;screen_ed;Screen Education;5;screen_ed.access_growing_up;How did you mostly access movies growing up?;checkbox;FALSE;TRUE;TRUE;blockbuster|cinema|tv|streaming|pirate|mentor|religious|late|rare|other
+VII;genres;Genres & Turn-offs;1;genres.genres_love;Genres you never get sick of;checkbox;TRUE;TRUE;TRUE;romance|drama|comedy|action|thriller|horror|scifi_fantasy|indie|musical|sports|biopic|documentary|queer|historical|trash_reality|classics|westerns|genre_fluid|other
+VII;genres;Genres & Turn-offs;2;genres.turn_offs;What do you NOT vibe with on screen?;checkbox;TRUE;TRUE;TRUE;sad|romcom_cringe|scary|sexual|gore|snobbery|no_romance|scifi_fantasy|weird_sex|clowns|reality_tv|subtitles|marvel|creepy_dolls|other
+VII;genres;Genres & Turn-offs;3;genres.hated_film;What's a film everyone else loved... but you hated? Tell us why.;textarea;FALSE;FALSE;FALSE;
+VII;genres;Genres & Turn-offs;4;genres.hype_style;Hype Tracker or Timeless Watcher?;radio;FALSE;FALSE;TRUE;drops|resist|crush|pretend|wait|cult|rare|right_time|both
+VII;genres;Genres & Turn-offs;5;genres.character_match;Who’s your movie mirror?;text;FALSE;TRUE;FALSE;
+VIII;global;Global Culture;1;global.foreign_films;How do you feel about foreign films & shows?;radio;FALSE;FALSE;TRUE;love|sometimes|not_really|lush|demanding|dubbed|other
+IX;fit;FateFlix Fit & Feedback;1;fit.selection_method;In a minefield of content... how do you actually choose your next movie or show?;checkbox;TRUE;TRUE;TRUE;scroll|notes|people|google|reviews|top10|friend|vibes|comfort|fatigue|ai|unavailable|trailer_spiral|fateflix|other
+IX;fit;FateFlix Fit & Feedback;2;fit.discovery_apps;Which of these apps do you actually use for movie discovery?;checkbox;FALSE;TRUE;TRUE;letterboxd|imdb|rotten_tomatoes|taste_io|social|upflix|moviepal|justwatch|tv_time|reelgood|metacritic|none|other
+IX;fit;FateFlix Fit & Feedback;3;fit.discovery;How did you find out about this survey?;radio;FALSE;FALSE;TRUE;friend|founder|online|school|event|cosmic|other
+IX;fit;FateFlix Fit & Feedback;4;fit.email;We need your email to send your astro-cinematic gift.;email;TRUE;FALSE;FALSE;
+IX;fit;FateFlix Fit & Feedback;5;fit.beta_test;Would you like to beta test the Fateflix app once it's live?;radio;FALSE;FALSE;FALSE;yes|no
+IX;fit;FateFlix Fit & Feedback;6;fit.open_feedback;Anything we should know?;textarea;FALSE;FALSE;FALSE;

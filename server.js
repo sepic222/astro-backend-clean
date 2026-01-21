@@ -92,6 +92,11 @@ const basicAuth = (req, res, next) => {
   const user = process.env.ADMIN_USER || 'admin';
   const pass = process.env.ADMIN_PASS || 'cosmos';
 
+  // Security warning for production
+  if (process.env.NODE_ENV === 'production' && (user === 'admin' || pass === 'cosmos')) {
+    console.warn('⚠️ WARNING: Using default admin credentials in production! Please set ADMIN_USER and ADMIN_PASS environment variables.');
+  }
+
   const b64auth = (req.headers.authorization || '').split(' ')[1] || '';
   const [login, password] = Buffer.from(b64auth, 'base64').toString().split(':');
 
@@ -131,6 +136,83 @@ const FOUNDER_EMAILS = [
 const TEST_NAME_PATTERNS = [
   'test', 'demo', 'admin', 'asdf', 'xxx', 'aaa', 'bbb'
 ];
+
+/**
+ * Helper to parse answer values (handles Option B JSON strings and legacy data)
+ * @param {string|Object} answerText - The stored answer text or object
+ * @param {Array} responseOptions - Legacy response options from junction table
+ * @returns {string} - Formatted answer string
+ */
+function parseAnswer(answerText, responseOptions = []) {
+  if (responseOptions && responseOptions.length > 0) {
+    return responseOptions.map(ro => ro.option?.label || ro.option?.value).join('; ');
+  }
+
+  let answer = answerText || '';
+  if (answer === '[object Object]') return '(Data error)';
+
+  if (answer && typeof answer === 'string') {
+    try {
+      if (answer.startsWith('[') || answer.startsWith('{')) {
+        const parsed = JSON.parse(answer);
+        if (Array.isArray(parsed)) {
+          return parsed.map(item => {
+            if (typeof item === 'object' && item !== null) {
+              return item.label || item.value || item.text || JSON.stringify(item);
+            }
+            return String(item);
+          }).join('; ');
+        } else if (typeof parsed === 'object' && parsed !== null) {
+          if (parsed.selected !== undefined) {
+            // Checkbox with "Other": {selected: [...], otherText: '...'}
+            if (Array.isArray(parsed.selected)) {
+              let result = parsed.selected.map(item => {
+                if (typeof item === 'object' && item !== null) {
+                  return item.label || item.value || item.text || JSON.stringify(item);
+                }
+                return String(item);
+              }).join('; ');
+              if (parsed.otherText) result += '; ' + parsed.otherText;
+              return result;
+            }
+            // Radio with "Other": {selected: 'other', otherText: '...'}
+            if (typeof parsed.selected === 'string') {
+              return (parsed.selected === 'other' && parsed.otherText) ? parsed.otherText : parsed.selected;
+            }
+          }
+          return JSON.stringify(parsed);
+        }
+      }
+    } catch (e) {
+      // Not JSON, keep original string
+    }
+  } else if (typeof answer === 'object' && answer !== null) {
+    if (Array.isArray(answer)) {
+      return answer.map(item => {
+        if (typeof item === 'object' && item !== null) {
+          return item.label || item.value || item.text || JSON.stringify(item);
+        }
+        return String(item);
+      }).join('; ').replace(/; ;/g, ';');
+    } else if (answer.selected !== undefined) {
+      if (Array.isArray(answer.selected)) {
+        let result = answer.selected.map(item => {
+          if (typeof item === 'object' && item !== null) {
+            return item.label || item.value || item.text || JSON.stringify(item);
+          }
+          return String(item);
+        }).join('; ');
+        if (answer.otherText) result += '; ' + answer.otherText;
+        return result;
+      }
+      if (typeof answer.selected === 'string') {
+        return (answer.selected === 'other' && answer.otherText) ? answer.otherText : answer.selected;
+      }
+    }
+    return JSON.stringify(answer);
+  }
+  return String(answer);
+}
 
 /**
  * Determines if a submission is a test submission based on multiple heuristics
@@ -206,7 +288,7 @@ app.get('/admin/dashboard', async (req, res) => {
         _count: { select: { responses: true } },
         responses: {
           where: {
-            question: { key: { in: ['username', 'fit.found_survey'] } }
+            question: { key: { in: ['username', 'cosmic.username', 'fit.found_survey', 'fit.discovery'] } }
           },
           select: { answerText: true, question: { select: { key: true } } }
         }
@@ -220,8 +302,8 @@ app.get('/admin/dashboard', async (req, res) => {
       let username = '';
       let discoverySource = '';
       for (const resp of s.responses || []) {
-        if (resp.question?.key === 'username') username = resp.answerText || '';
-        if (resp.question?.key === 'fit.found_survey') discoverySource = resp.answerText || '';
+        if (resp.question?.key === 'username' || resp.question?.key === 'cosmic.username') username = resp.answerText || '';
+        if (resp.question?.key === 'fit.found_survey' || resp.question?.key === 'fit.discovery') discoverySource = resp.answerText || '';
       }
       const testResult = isTestSubmission(s, username, discoverySource, s._count?.responses || 0, 50);
       if (testResult.isTest) totalTestCount++;
@@ -236,7 +318,7 @@ app.get('/admin/dashboard', async (req, res) => {
         _count: { select: { responses: true } },
         chart: { select: { id: true, risingSign: true, sunSign: true, moonSign: true } },
         responses: {
-          where: { question: { key: { in: ['username', 'discovery', 'fit.found_survey'] } } },
+          where: { question: { key: { in: ['username', 'cosmic.username', 'discovery', 'fit.found_survey', 'fit.discovery'] } } },
           include: { question: { select: { key: true } } }
         }
       }
@@ -255,8 +337,8 @@ app.get('/admin/dashboard', async (req, res) => {
       let username = '';
       let discoverySource = '';
       for (const resp of s.responses || []) {
-        if (resp.question?.key === 'username') username = resp.answerText || '';
-        if (resp.question?.key === 'fit.found_survey' || resp.question?.key === 'discovery') {
+        if (resp.question?.key === 'username' || resp.question?.key === 'cosmic.username') username = resp.answerText || '';
+        if (resp.question?.key === 'fit.found_survey' || resp.question?.key === 'fit.discovery' || resp.question?.key === 'discovery') {
           discoverySource = resp.answerText || '';
         }
       }
@@ -357,58 +439,10 @@ app.get('/admin/data', async (req, res) => {
         const key = resp.question?.key;
         if (!key) continue;
 
-        let answer = resp.answerText || '';
+        answerMap[key] = parseAnswer(resp.answerText, resp.responseOptions);
 
-        // Handle responseOptions (checkbox answers stored via junction table)
-        if (resp.responseOptions && resp.responseOptions.length > 0) {
-          answer = resp.responseOptions.map(ro => ro.option.label || ro.option.value).join('; ');
-        }
-        // Handle JSON objects/arrays stored in answerText (checkbox multi-select)
-        else if (answer && typeof answer === 'string') {
-          try {
-            const parsed = JSON.parse(answer);
-            if (Array.isArray(parsed)) {
-              answer = parsed.join('; ');
-            } else if (typeof parsed === 'object' && parsed !== null) {
-              // Handle {selected: [...], otherText: '...'} format
-              if (parsed.selected && Array.isArray(parsed.selected)) {
-                answer = parsed.selected.join('; ');
-                if (parsed.otherText) answer += '; ' + parsed.otherText;
-              } else {
-                answer = JSON.stringify(parsed);
-              }
-            }
-          } catch (e) {
-            // Not JSON, keep original string
-          }
-        } else if (typeof answer === 'object' && answer !== null) {
-          // Handle case where answer is already an object (not stringified)
-          if (Array.isArray(answer)) {
-            // Handle arrays that may contain objects
-            answer = answer.map(item => {
-              if (typeof item === 'object' && item !== null) {
-                return item.label || item.value || item.text || JSON.stringify(item);
-              }
-              return String(item);
-            }).join('; ');
-          } else if (answer.selected && Array.isArray(answer.selected)) {
-            const originalObj = answer;
-            answer = originalObj.selected.map(item => {
-              if (typeof item === 'object' && item !== null) {
-                return item.label || item.value || item.text || JSON.stringify(item);
-              }
-              return String(item);
-            }).join('; ');
-            if (originalObj.otherText) answer += '; ' + originalObj.otherText;
-          } else {
-            answer = JSON.stringify(answer);
-          }
-        }
-
-        answerMap[key] = answer;
-
-        if (key === 'username') username = answer;
-        if (key === 'fit.found_survey' || key === 'discovery') discoverySource = answer;
+        if (key === 'username' || key === 'cosmic.username') username = answerMap[key];
+        if (key === 'fit.found_survey' || key === 'fit.discovery' || key === 'discovery') discoverySource = answerMap[key];
       }
 
       const testResult = isTestSubmission(sub, username, discoverySource, sub.responses.length, 50);
@@ -539,61 +573,7 @@ app.get('/admin/export', async (req, res) => {
 
     const rows = [];
 
-    // Helper to parse JSON answer values
-    const parseAnswer = (answerText, responseOptions) => {
-      if (responseOptions && responseOptions.length > 0) {
-        return responseOptions.map(ro => ro.option.label || ro.option.value).join('; ');
-      }
-
-      let answer = answerText || '';
-      if (answer && typeof answer === 'string') {
-        try {
-          const parsed = JSON.parse(answer);
-          if (Array.isArray(parsed)) {
-            return parsed.map(item => {
-              if (typeof item === 'object' && item !== null) {
-                return item.label || item.value || item.text || JSON.stringify(item);
-              }
-              return String(item);
-            }).join('; ');
-          } else if (typeof parsed === 'object' && parsed !== null) {
-            if (parsed.selected && Array.isArray(parsed.selected)) {
-              let result = parsed.selected.map(item => {
-                if (typeof item === 'object' && item !== null) {
-                  return item.label || item.value || item.text || JSON.stringify(item);
-                }
-                return String(item);
-              }).join('; ');
-              if (parsed.otherText) result += '; ' + parsed.otherText;
-              return result;
-            }
-            return JSON.stringify(parsed);
-          }
-        } catch (e) {
-          // Not JSON, keep original string
-        }
-      } else if (typeof answer === 'object' && answer !== null) {
-        if (Array.isArray(answer)) {
-          return answer.map(item => {
-            if (typeof item === 'object' && item !== null) {
-              return item.label || item.value || item.text || JSON.stringify(item);
-            }
-            return String(item);
-          }).join('; ');
-        } else if (answer.selected && Array.isArray(answer.selected)) {
-          let result = answer.selected.map(item => {
-            if (typeof item === 'object' && item !== null) {
-              return item.label || item.value || item.text || JSON.stringify(item);
-            }
-            return String(item);
-          }).join('; ');
-          if (answer.otherText) result += '; ' + answer.otherText;
-          return result;
-        }
-        return JSON.stringify(answer);
-      }
-      return answer;
-    };
+    // parseAnswer helper is now defined at top level for all admin routes
 
     for (const sub of submissions) {
       // Look up reading
@@ -609,8 +589,8 @@ app.get('/admin/export', async (req, res) => {
         if (!key) continue;
         answerMap[key] = parseAnswer(resp.answerText, resp.responseOptions);
 
-        if (key === 'username') username = answerMap[key];
-        if (key === 'fit.found_survey' || key === 'discovery') discoverySource = answerMap[key];
+        if (key === 'username' || key === 'cosmic.username') username = answerMap[key];
+        if (key === 'fit.found_survey' || key === 'fit.discovery' || key === 'discovery') discoverySource = answerMap[key];
       }
 
       // Determine if test submission
@@ -669,63 +649,7 @@ app.get('/admin/latest-report', async (req, res) => {
       return res.status(404).send('No submissions found.');
     }
 
-    // Helper to parse JSON answer values (reused from export logic)
-    const parseAnswer = (answerText, responseOptions) => {
-      if (responseOptions && responseOptions.length > 0) {
-        return responseOptions.map(ro => ro.option.label || ro.option.value).join('; ');
-      }
-
-      let answer = answerText || '';
-      if (answer && typeof answer === 'string') {
-        try {
-          const parsed = JSON.parse(answer);
-          if (Array.isArray(parsed)) {
-            return parsed.map(item => {
-              if (typeof item === 'object' && item !== null) {
-                return item.label || item.value || item.text || JSON.stringify(item);
-              }
-              return String(item);
-            }).join('; ');
-          } else if (typeof parsed === 'object' && parsed !== null) {
-            if (parsed.selected && Array.isArray(parsed.selected)) {
-              let result = parsed.selected.map(item => {
-                if (typeof item === 'object' && item !== null) {
-                  return item.label || item.value || item.text || JSON.stringify(item);
-                }
-                return String(item);
-              }).join('; ');
-              if (parsed.otherText) result += '; ' + parsed.otherText;
-              return result;
-            }
-            // Fallback for objects: stringify to avoid [object Object]
-            return JSON.stringify(parsed);
-          }
-        } catch (e) {
-          // Not JSON, keep original string
-        }
-      } else if (typeof answer === 'object' && answer !== null) {
-        // Handle case where answer is already an object (not stringified)
-        if (Array.isArray(answer)) {
-          return answer.map(item => {
-            if (typeof item === 'object' && item !== null) {
-              return item.label || item.value || item.text || JSON.stringify(item);
-            }
-            return String(item);
-          }).join('; ');
-        } else if (answer.selected && Array.isArray(answer.selected)) {
-          let result = answer.selected.map(item => {
-            if (typeof item === 'object' && item !== null) {
-              return item.label || item.value || item.text || JSON.stringify(item);
-            }
-            return String(item);
-          }).join('; ');
-          if (answer.otherText) result += '; ' + answer.otherText;
-          return result;
-        }
-        return JSON.stringify(answer);
-      }
-      return answer;
-    };
+    // parseAnswer helper is now defined at top level for all admin routes
 
     // Format responses for display
     const formattedResponses = latestSubmission.responses.map(resp => ({

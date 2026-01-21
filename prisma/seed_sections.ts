@@ -171,29 +171,41 @@ async function main() {
 
     // options: only for radio/checkbox
     if (qType === "radio" || qType === "checkbox") {
-      // Split option tokens. Because our CSV uses ; as a row delimiter,
-      // it's safe if options use commas or pipes. We’ll accept both.
+      // Split option tokens
       const raw = (r.options_keywords || "").trim();
       const tokens = raw
         ? raw.split(/[|,]/).map((s) => s.trim()).filter(Boolean)
         : [];
 
-      // Idempotent: clear old, then recreate
-      await prisma.surveyOption.deleteMany({ where: { questionId: q.id } });
+      // Fetch existing options to avoid FK constraint errors on delete
+      const existingOptions = await prisma.surveyOption.findMany({
+        where: { questionId: q.id },
+      });
 
       for (let i = 0; i < tokens.length; i++) {
         const val = toSnakeCase(tokens[i]);
-        const label = toTitleCase(tokens[i]);
-        await prisma.surveyOption.create({
-          data: {
-            questionId: q.id,
-            value: val,
-            label,
-            sortOrder: i + 1,
-          },
-        });
-        optCount++;
+        const label = toTitleCase(tokens[i]); // Or keep original casing? Using existing helper for now.
+
+        const match = existingOptions.find((o) => o.value === val);
+        if (match) {
+          // Update existing
+          await prisma.surveyOption.update({
+            where: { id: match.id },
+            data: { label, sortOrder: i + 1 },
+          });
+        } else {
+          // Create new
+          await prisma.surveyOption.create({
+            data: {
+              questionId: q.id,
+              value: val,
+              label,
+              sortOrder: i + 1,
+            },
+          });
+        }
       }
+      // Note: We do NOT delete obsolete options here to preserve old data integrity.
     }
   }
 

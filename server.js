@@ -586,6 +586,9 @@ app.get('/admin/export', async (req, res) => {
       orderedQuestions.push(q);
     }
 
+    // Add columns that might exist only in fullData but not in DB yet (dynamic catch-all)
+    // We'll scan a few recent submissions to find extra keys if needed, but for now relies on DB + List
+
     const submissions = await prisma.surveySubmission.findMany({
       orderBy: { createdAt: 'desc' },
       include: {
@@ -602,7 +605,7 @@ app.get('/admin/export', async (req, res) => {
     });
 
     // Build headers: fixed columns + one per question
-    const fixedHeaders = ['Submission ID', 'Date', 'User Email', 'Type', 'Responses Count', 'Reading ID', 'Ascendant', 'Sun', 'Moon'];
+    const fixedHeaders = ['Submission ID', 'Date', 'User Email', 'Type', 'Responses Count', 'Reading ID', 'Ascendant', 'Sun', 'Moon', 'City', 'Reading Content'];
     const questionHeaders = orderedQuestions.map(q => q.key);
     const headers = [...fixedHeaders, ...questionHeaders];
 
@@ -615,21 +618,28 @@ app.get('/admin/export', async (req, res) => {
       const reading = await prisma.reading.findUnique({ where: { submissionId: sub.id } });
 
       // Build answer map for this submission
+      // Build answer map for this submission
       const answerMap = {};
-      let username = '';
-      let discoverySource = '';
+      const fullData = (sub.fullData && typeof sub.fullData === 'object') ? sub.fullData : {};
 
+      // 1. Fallback to individual responses
       for (const resp of sub.responses) {
         const key = resp.question?.key;
         if (!key) continue;
         answerMap[key] = parseAnswer(resp.answerText, resp.responseOptions);
-
-        if (key === 'username' || key === 'cosmic.username') username = answerMap[key];
-        if (key === 'fit.found_survey' || key === 'fit.discovery' || key === 'discovery') discoverySource = answerMap[key];
       }
+      // 2. Override with JSONB data
+      orderedQuestions.forEach(col => {
+        if (fullData[col.key] !== undefined) {
+          answerMap[col.key] = parseAnswer(fullData[col.key]);
+        }
+      });
+
+      const username = answerMap['cosmic.username'] || answerMap['username'] || fullData.username || '';
+      const discoverySource = answerMap['fit.discovery'] || answerMap['discovery'] || fullData.discovery || '';
 
       // Determine if test submission
-      const testResult = isTestSubmission(sub, username, discoverySource, sub.responses.length, 50);
+      const testResult = isTestSubmission(sub, username, discoverySource, sub.responses.length + Object.keys(fullData).length, 50);
 
       // Fixed columns
       const row = [
@@ -641,7 +651,9 @@ app.get('/admin/export', async (req, res) => {
         reading ? reading.id : '',
         sub.chart ? (sub.chart.risingSign || sub.chart.ascendant || '') : '',
         sub.chart ? (sub.chart.sunSign || '') : '',
-        sub.chart ? (sub.chart.moonSign || '') : ''
+        sub.chart ? (sub.chart.moonSign || '') : '',
+        sub.chart ? (sub.chart.city || fullData.city || '') : '', // Birth City
+        reading ? reading.content : '' // Full Reading Content
       ];
 
       // Add one column per question

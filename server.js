@@ -384,10 +384,22 @@ app.get('/admin/data', async (req, res) => {
         } else if (typeof answer === 'object' && answer !== null) {
           // Handle case where answer is already an object (not stringified)
           if (Array.isArray(answer)) {
-            answer = answer.join('; ');
+            // Handle arrays that may contain objects
+            answer = answer.map(item => {
+              if (typeof item === 'object' && item !== null) {
+                return item.label || item.value || item.text || JSON.stringify(item);
+              }
+              return String(item);
+            }).join('; ');
           } else if (answer.selected && Array.isArray(answer.selected)) {
-            answer = answer.selected.join('; ');
-            if (answer.otherText) answer += '; ' + answer.otherText;
+            const originalObj = answer;
+            answer = originalObj.selected.map(item => {
+              if (typeof item === 'object' && item !== null) {
+                return item.label || item.value || item.text || JSON.stringify(item);
+              }
+              return String(item);
+            }).join('; ');
+            if (originalObj.otherText) answer += '; ' + originalObj.otherText;
           } else {
             answer = JSON.stringify(answer);
           }
@@ -425,17 +437,17 @@ app.get('/admin/data', async (req, res) => {
 
     // Define question order matching the frontend survey (surveyData.js)
     const SURVEY_QUESTION_ORDER = [
-      'username', 'date', 'time', 'time_accuracy', 'city', 'latitude', 'longitude',
-      'gender', 'attraction_style', 'cine_level', 'life_role', 'escapism_style',
-      'top_3_movies', 'first_crush',
-      'watch_habit', 'fav_era', 'culture_background', 'environment_growing_up',
-      'first_feeling', 'life_changing', 'comfort_watch', 'power_watch', 'date_impress',
-      'movie_universe', 'villain_relate', 'forever_crush', 'crave_most',
-      'tv_taste', 'top_3_series_detailed', 'cinematography', 'directors', 'access_growing_up',
-      'genres_love', 'turn_offs', 'hated_film', 'hype_style',
-      'character_match',
-      'foreign_films',
-      'selection_method', 'discovery_apps', 'discovery', 'email', 'beta_test', 'open_feedback'
+      'cosmic.username', 'cosmic.date', 'cosmic.time', 'cosmic.time_accuracy', 'cosmic.city', 'cosmic.latitude', 'cosmic.longitude',
+      'casting.gender', 'casting.attraction_style', 'casting.cine_level', 'casting.life_role', 'casting.escapism_style',
+      'casting.top_3_movies', 'casting.first_crush',
+      'taste.watch_habit', 'taste.fav_era', 'taste.culture_background', 'taste.environment_growing_up',
+      'core_memory.first_feeling', 'core_memory.life_changing', 'core_memory.comfort_watch', 'core_memory.power_watch', 'core_memory.date_impress',
+      'world.movie_universe', 'world.villain_relate', 'world.forever_crush', 'world.crave_most',
+      'screen_ed.tv_taste', 'screen_ed.top_3_series_detailed', 'screen_ed.cinematography', 'screen_ed.directors', 'screen_ed.access_growing_up',
+      'genres.genres_love', 'genres.turn_offs', 'genres.hated_film', 'genres.hype_style',
+      'genres.character_match',
+      'global.foreign_films',
+      'fit.selection_method', 'fit.discovery_apps', 'fit.discovery', 'fit.email', 'fit.beta_test', 'fit.open_feedback'
     ];
 
     // Order questions according to survey order
@@ -473,17 +485,17 @@ app.get('/admin/export', async (req, res) => {
   try {
     // Define question order matching the frontend survey (surveyData.js)
     const SURVEY_QUESTION_ORDER = [
-      'username', 'date', 'time', 'time_accuracy', 'city', 'latitude', 'longitude',
-      'gender', 'attraction_style', 'cine_level', 'life_role', 'escapism_style',
-      'top_3_movies', 'first_crush',
-      'watch_habit', 'fav_era', 'culture_background', 'environment_growing_up',
-      'first_feeling', 'life_changing', 'comfort_watch', 'power_watch', 'date_impress',
-      'movie_universe', 'villain_relate', 'forever_crush', 'crave_most',
-      'tv_taste', 'top_3_series_detailed', 'cinematography', 'directors', 'access_growing_up',
-      'genres_love', 'turn_offs', 'hated_film', 'hype_style',
-      'character_match',
-      'foreign_films',
-      'selection_method', 'discovery_apps', 'discovery', 'email', 'beta_test', 'open_feedback'
+      'cosmic.username', 'cosmic.date', 'cosmic.time', 'cosmic.time_accuracy', 'cosmic.city', 'cosmic.latitude', 'cosmic.longitude',
+      'casting.gender', 'casting.attraction_style', 'casting.cine_level', 'casting.life_role', 'casting.escapism_style',
+      'casting.top_3_movies', 'casting.first_crush',
+      'taste.watch_habit', 'taste.fav_era', 'taste.culture_background', 'taste.environment_growing_up',
+      'core_memory.first_feeling', 'core_memory.life_changing', 'core_memory.comfort_watch', 'core_memory.power_watch', 'core_memory.date_impress',
+      'world.movie_universe', 'world.villain_relate', 'world.forever_crush', 'world.crave_most',
+      'screen_ed.tv_taste', 'screen_ed.top_3_series_detailed', 'screen_ed.cinematography', 'screen_ed.directors', 'screen_ed.access_growing_up',
+      'genres.genres_love', 'genres.turn_offs', 'genres.hated_film', 'genres.hype_style',
+      'genres.character_match',
+      'global.foreign_films',
+      'fit.selection_method', 'fit.discovery_apps', 'fit.discovery', 'fit.email', 'fit.beta_test', 'fit.open_feedback'
     ];
 
     // Get all unique question keys from database
@@ -538,17 +550,47 @@ app.get('/admin/export', async (req, res) => {
         try {
           const parsed = JSON.parse(answer);
           if (Array.isArray(parsed)) {
-            return parsed.join('; ');
+            return parsed.map(item => {
+              if (typeof item === 'object' && item !== null) {
+                return item.label || item.value || item.text || JSON.stringify(item);
+              }
+              return String(item);
+            }).join('; ');
           } else if (typeof parsed === 'object' && parsed !== null) {
             if (parsed.selected && Array.isArray(parsed.selected)) {
-              let result = parsed.selected.join('; ');
+              let result = parsed.selected.map(item => {
+                if (typeof item === 'object' && item !== null) {
+                  return item.label || item.value || item.text || JSON.stringify(item);
+                }
+                return String(item);
+              }).join('; ');
               if (parsed.otherText) result += '; ' + parsed.otherText;
               return result;
             }
+            return JSON.stringify(parsed);
           }
         } catch (e) {
           // Not JSON, keep original string
         }
+      } else if (typeof answer === 'object' && answer !== null) {
+        if (Array.isArray(answer)) {
+          return answer.map(item => {
+            if (typeof item === 'object' && item !== null) {
+              return item.label || item.value || item.text || JSON.stringify(item);
+            }
+            return String(item);
+          }).join('; ');
+        } else if (answer.selected && Array.isArray(answer.selected)) {
+          let result = answer.selected.map(item => {
+            if (typeof item === 'object' && item !== null) {
+              return item.label || item.value || item.text || JSON.stringify(item);
+            }
+            return String(item);
+          }).join('; ');
+          if (answer.otherText) result += '; ' + answer.otherText;
+          return result;
+        }
+        return JSON.stringify(answer);
       }
       return answer;
     };
@@ -603,6 +645,112 @@ app.get('/admin/export', async (req, res) => {
   } catch (error) {
     console.error('Export Error:', error);
     res.status(500).send('Export Failed');
+  }
+});
+
+app.get('/admin/latest-report', async (req, res) => {
+  try {
+    const latestSubmission = await prisma.surveySubmission.findFirst({
+      orderBy: { createdAt: 'desc' },
+      include: {
+        chart: true,
+        responses: {
+          include: {
+            question: { select: { key: true, text: true, section: { select: { title: true } } } },
+            responseOptions: {
+              include: { option: { select: { label: true, value: true } } }
+            }
+          }
+        }
+      }
+    });
+
+    if (!latestSubmission) {
+      return res.status(404).send('No submissions found.');
+    }
+
+    // Helper to parse JSON answer values (reused from export logic)
+    const parseAnswer = (answerText, responseOptions) => {
+      if (responseOptions && responseOptions.length > 0) {
+        return responseOptions.map(ro => ro.option.label || ro.option.value).join('; ');
+      }
+
+      let answer = answerText || '';
+      if (answer && typeof answer === 'string') {
+        try {
+          const parsed = JSON.parse(answer);
+          if (Array.isArray(parsed)) {
+            return parsed.map(item => {
+              if (typeof item === 'object' && item !== null) {
+                return item.label || item.value || item.text || JSON.stringify(item);
+              }
+              return String(item);
+            }).join('; ');
+          } else if (typeof parsed === 'object' && parsed !== null) {
+            if (parsed.selected && Array.isArray(parsed.selected)) {
+              let result = parsed.selected.map(item => {
+                if (typeof item === 'object' && item !== null) {
+                  return item.label || item.value || item.text || JSON.stringify(item);
+                }
+                return String(item);
+              }).join('; ');
+              if (parsed.otherText) result += '; ' + parsed.otherText;
+              return result;
+            }
+            // Fallback for objects: stringify to avoid [object Object]
+            return JSON.stringify(parsed);
+          }
+        } catch (e) {
+          // Not JSON, keep original string
+        }
+      } else if (typeof answer === 'object' && answer !== null) {
+        // Handle case where answer is already an object (not stringified)
+        if (Array.isArray(answer)) {
+          return answer.map(item => {
+            if (typeof item === 'object' && item !== null) {
+              return item.label || item.value || item.text || JSON.stringify(item);
+            }
+            return String(item);
+          }).join('; ');
+        } else if (answer.selected && Array.isArray(answer.selected)) {
+          let result = answer.selected.map(item => {
+            if (typeof item === 'object' && item !== null) {
+              return item.label || item.value || item.text || JSON.stringify(item);
+            }
+            return String(item);
+          }).join('; ');
+          if (answer.otherText) result += '; ' + answer.otherText;
+          return result;
+        }
+        return JSON.stringify(answer);
+      }
+      return answer;
+    };
+
+    // Format responses for display
+    const formattedResponses = latestSubmission.responses.map(resp => ({
+      key: resp.question?.key,
+      question: resp.question?.text || resp.question?.key,
+      section: resp.question?.section?.title || 'Other',
+      answer: parseAnswer(resp.answerText, resp.responseOptions)
+    }));
+
+    // Group by section
+    const groupedResponses = formattedResponses.reduce((acc, resp) => {
+      if (!acc[resp.section]) acc[resp.section] = [];
+      acc[resp.section].push(resp);
+      return acc;
+    }, {});
+
+    res.render('admin_latest_report', {
+      submission: latestSubmission,
+      groupedResponses,
+      chart: latestSubmission.chart
+    });
+
+  } catch (error) {
+    console.error('Latest Report Error:', error);
+    res.status(500).send('Failed to generate report: ' + error.message);
   }
 });
 app.get('/ping', (_req, res) => res.json({ ok: true, t: Date.now() }));
@@ -2513,12 +2661,14 @@ app.post('/api/dev/chart-to-svg', async (req, res) => {
           // Convert flat fullResponses object to format normalizeSurveyPayload expects
           // Frontend sends flat object like { username: "...", email: "...", gender: "..." }
           // We need to convert to sectioned format or directly normalize
+          console.log(`📝 [DEBUG] PROCESSING fullResponses FOR SUBMISSION ${submissionId}`);
           const fullResponses = req.body.fullResponses;
+          console.log(`🔑 [DEBUG] ALL KEYS RECEIVED:`, JSON.stringify(Object.keys(fullResponses)));
+          console.log(`👤 [DEBUG] USERNAME VALUE:`, fullResponses.username);
 
-          // Map frontend answer keys to question keys
-          // This mapping connects frontend question IDs to database question keys
           const keyMapping = {
-            // Section I: Cosmic (skip - already in chart)
+            // Section I: Cosmic
+            'username': 'cosmic.name',
             // Section II: Casting
             'gender': 'casting.gender',
             'attraction_style': 'casting.attraction_style',
@@ -2579,7 +2729,7 @@ app.post('/api/dev/chart-to-svg', async (req, res) => {
 
           for (const [frontendKey, value] of Object.entries(fullResponses)) {
             // Skip birth data and metadata (already in chart)
-            if (['date', 'time', 'latitude', 'longitude', 'city', 'country', 'username', 'time_accuracy', 'top3_films', 'top3_series', 'top3_docs'].includes(frontendKey)) {
+            if (['date', 'time', 'latitude', 'longitude', 'city', 'country', 'time_accuracy', 'top3_films', 'top3_series', 'top3_docs'].includes(frontendKey)) {
               continue;
             }
 
@@ -2590,9 +2740,23 @@ app.post('/api/dev/chart-to-svg', async (req, res) => {
                 where: { key: frontendKey }
               });
               if (foundQuestion) {
-                // Direct match
+                // Direct match - store as JSON strings (Option B)
                 if (Array.isArray(value)) {
-                  answers.push({ questionKey: frontendKey, optionValues: value });
+                  answers.push({ questionKey: frontendKey, answerText: JSON.stringify(value) });
+                } else if (typeof value === 'object' && value !== null && value.selected !== undefined) {
+                  // Object with selected property - store as JSON
+                  if (Array.isArray(value.selected)) {
+                    const data = value.otherText
+                      ? { selected: value.selected, otherText: value.otherText }
+                      : value.selected;
+                    answers.push({ questionKey: frontendKey, answerText: JSON.stringify(data) });
+                  } else if (typeof value.selected === 'string') {
+                    if (value.selected === 'other' && value.otherText) {
+                      answers.push({ questionKey: frontendKey, answerText: JSON.stringify({ selected: value.selected, otherText: value.otherText }) });
+                    } else {
+                      answers.push({ questionKey: frontendKey, answerText: value.selected });
+                    }
+                  }
                 } else if (value != null && value !== '') {
                   answers.push({ questionKey: frontendKey, answerText: String(value) });
                 }
@@ -2602,9 +2766,23 @@ app.post('/api/dev/chart-to-svg', async (req, res) => {
               continue;
             }
 
-            // Map to database question key
+            // Map to database question key - store as JSON strings (Option B)
             if (Array.isArray(value)) {
-              answers.push({ questionKey, optionValues: value });
+              answers.push({ questionKey, answerText: JSON.stringify(value) });
+            } else if (typeof value === 'object' && value !== null && value.selected !== undefined) {
+              // Object with selected property - store as JSON
+              if (Array.isArray(value.selected)) {
+                const data = value.otherText
+                  ? { selected: value.selected, otherText: value.otherText }
+                  : value.selected;
+                answers.push({ questionKey, answerText: JSON.stringify(data) });
+              } else if (typeof value.selected === 'string') {
+                if (value.selected === 'other' && value.otherText) {
+                  answers.push({ questionKey, answerText: JSON.stringify({ selected: value.selected, otherText: value.otherText }) });
+                } else {
+                  answers.push({ questionKey, answerText: value.selected });
+                }
+              }
             } else if (value != null && value !== '') {
               answers.push({ questionKey, answerText: String(value) });
             }
@@ -2659,7 +2837,7 @@ app.post('/api/dev/chart-to-svg', async (req, res) => {
               }
             }
 
-            console.log(`✅ Saved ${savedCount} survey answers (${optionCount} options) for submission ${submissionId}`);
+            console.log(`✅ Saved ${savedCount} survey answers (${optionCount} options) for submission ${submissionId}. Success!`);
           } else {
             console.log(`ℹ️ No survey answers to save for submission ${submissionId}`);
           }
@@ -4673,51 +4851,55 @@ app.post("/api/survey/save-answer", async (req, res) => {
 
     // Map frontend key to database question key (same mapping as in /api/dev/chart-to-svg)
     const keyMapping = {
+      // Section I: Cosmic
+      'username': 'cosmic.username',
+      'date': 'cosmic.date',
+      'time': 'cosmic.time',
       // Section II: Casting
       'gender': 'casting.gender',
       'attraction_style': 'casting.attraction_style',
-      'cine_level': 'casting.love_o_meter',
-      'life_role': 'casting.movie_role',
+      'cine_level': 'casting.cine_level',
+      'life_role': 'casting.life_role',
       'escapism_style': 'casting.escapism_style',
-      'first_crush': 'casting.first_obsession',
+      'top_3_movies': 'casting.top_3_movies',
+      'first_crush': 'casting.first_crush',
       // Section III: Taste
-      'watch_habit': 'taste.how_you_watch',
-      'fav_era': 'taste.favorite_era',
-      'culture_background': 'taste.cultural_background',
-      'environment_growing_up': 'taste.childhood_environment',
+      'watch_habit': 'taste.watch_habit',
+      'fav_era': 'taste.fav_era',
+      'culture_background': 'taste.culture_background',
+      'environment_growing_up': 'taste.environment_growing_up',
       // Section IV: Core Memory
-      'first_feeling': 'core_memory.first_emotional',
+      'first_feeling': 'core_memory.first_feeling',
       'life_changing': 'core_memory.life_changing',
       'comfort_watch': 'core_memory.comfort_watch',
-      'power_watch': 'core_memory.power_movie',
-      'date_impress': 'core_memory.impress_movie',
+      'power_watch': 'core_memory.power_watch',
+      'date_impress': 'core_memory.date_impress',
       // Section V: World
       'movie_universe': 'world.movie_universe',
-      'villain_relate': 'world.villain',
+      'villain_relate': 'world.villain_relate',
       'forever_crush': 'world.forever_crush',
-      'crave_most': 'world.crave_in_movie',
-      'life_tagline': 'world.life_tagline',
+      'crave_most': 'world.crave_most',
       // Section VI: Screen Ed
       'tv_taste': 'screen_ed.tv_taste',
-      'fav_tv': 'screen_ed.favorite_tv_show',
+      'top_3_series_detailed': 'screen_ed.top_3_series_detailed',
       'cinematography': 'screen_ed.cinematography',
-      'directors': 'screen_ed.favorite_directors',
+      'directors': 'screen_ed.directors',
       'access_growing_up': 'screen_ed.access_growing_up',
       // Section VII: Genres
-      'genres_love': 'genres.loved',
+      'genres_love': 'genres.genres_love',
       'turn_offs': 'genres.turn_offs',
-      'hated_film': 'genres.hated_but_loved',
-      // Section Swipe
-      'character_match': 'genres.twin_flame',
+      'hated_film': 'genres.hated_film',
+      'hype_style': 'genres.hype_style',
+      'character_match': 'genres.character_match',
       // Section VIII: Global
       'foreign_films': 'global.foreign_films',
       // Section IX: Fit
-      'selection_method': 'fit.pick_what_to_watch',
-      'discovery': 'fit.found_survey',
+      'selection_method': 'fit.selection_method',
+      'discovery_apps': 'fit.discovery_apps',
+      'discovery': 'fit.discovery',
       'email': 'fit.email',
       'beta_test': 'fit.beta_test',
-      // Special case: frontend can send 'hall_of_fame' directly (combined top3 fields)
-      'hall_of_fame': 'fit.hall_of_fame',
+      'open_feedback': 'fit.open_feedback'
     };
 
     // Skip birth data keys (already in chart, but 'cosmic.name' should be saved)
@@ -4753,11 +4935,36 @@ app.post("/api/survey/save-answer", async (req, res) => {
     });
 
     // Determine if answer is array (checkbox) or single value
-    const isArray = Array.isArray(answerValue);
-    const answerText = isArray ? null : (answerValue != null && answerValue !== '' ? String(answerValue) : null);
-    const optionValues = isArray ? answerValue.filter(v => v != null && v !== '') : [];
+    // Handle {selected: [...], otherText: '...'} objects from checkbox+Other questions
+    let isArray = Array.isArray(answerValue);
+    let answerText = null;
 
-    // Create new response
+    // Option B: Store as JSON strings in answerText
+    if (isArray) {
+      // Simple array: ['option1', 'option2'] - store as JSON
+      answerText = JSON.stringify(answerValue.filter(v => v != null && v !== ''));
+    } else if (typeof answerValue === 'object' && answerValue !== null && answerValue.selected !== undefined) {
+      // Object with selected: {selected: [...], otherText: '...'}
+      if (Array.isArray(answerValue.selected)) {
+        // Checkbox with "Other" - store full object if otherText, otherwise just array
+        const data = answerValue.otherText
+          ? { selected: answerValue.selected, otherText: answerValue.otherText }
+          : answerValue.selected;
+        answerText = JSON.stringify(data);
+      } else if (typeof answerValue.selected === 'string') {
+        // Radio with "Other"
+        if (answerValue.selected === 'other' && answerValue.otherText) {
+          answerText = JSON.stringify({ selected: answerValue.selected, otherText: answerValue.otherText });
+        } else {
+          answerText = answerValue.selected;
+        }
+      }
+    } else if (answerValue != null && answerValue !== '') {
+      // Simple string/number value
+      answerText = String(answerValue);
+    }
+
+    // Create new response with JSON in answerText
     const response = await prisma.surveyResponse.create({
       data: {
         questionId: question.id,
@@ -4768,27 +4975,11 @@ app.post("/api/survey/save-answer", async (req, res) => {
       select: { id: true },
     });
 
-    // Link options if provided
-    let optionCount = 0;
-    if (optionValues.length > 0) {
-      const allowed = new Set(question.options.map(o => o.value));
-      const chosen = optionValues.filter(v => allowed.has(v));
-      for (const val of chosen) {
-        const opt = question.options.find(o => o.value === val);
-        if (opt) {
-          await prisma.surveyResponseOption.create({
-            data: { responseId: response.id, optionId: opt.id },
-          });
-          optionCount++;
-        }
-      }
-    }
-
+    // Option B: Skip option linking - all data is in answerText now
     return res.json({
       ok: true,
       responseId: response.id,
       questionKey: dbQuestionKey,
-      optionCount: optionCount,
     });
   } catch (e) {
     console.error("💥 save-answer error:", e);

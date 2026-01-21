@@ -316,7 +316,7 @@ app.get('/admin/dashboard', async (req, res) => {
       orderBy: { createdAt: 'desc' },
       include: {
         _count: { select: { responses: true } },
-        chart: { select: { id: true, risingSign: true, sunSign: true, moonSign: true, birthCity: true, birthDate: true, birthTime: true } },
+        chart: { select: { id: true, risingSign: true, sunSign: true, moonSign: true, city: true, birthDateTimeUtc: true } },
         responses: {
           where: { question: { key: { in: ['username', 'cosmic.username', 'discovery', 'fit.found_survey', 'fit.discovery'] } } },
           include: { question: { select: { key: true } } }
@@ -353,9 +353,8 @@ app.get('/admin/dashboard', async (req, res) => {
         risingSign: s.chart?.risingSign || null,
         sunSign: s.chart?.sunSign || null,
         moonSign: s.chart?.moonSign || null,
-        birthCity: s.chart?.birthCity || null,
-        birthDate: s.chart?.birthDate || null,
-        birthTime: s.chart?.birthTime || null,
+        birthCity: s.chart?.city || null,
+        birthDateTimeUtc: s.chart?.birthDateTimeUtc || null,
       };
     });
 
@@ -418,7 +417,7 @@ app.get('/admin/data', async (req, res) => {
       orderBy: { createdAt: 'desc' },
       include: {
         chart: {
-          select: { risingSign: true, sunSign: true, moonSign: true, birthCity: true, birthDate: true, birthTime: true }
+          select: { risingSign: true, sunSign: true, moonSign: true, city: true, birthDateTimeUtc: true }
         },
         responses: {
           include: {
@@ -459,9 +458,8 @@ app.get('/admin/data', async (req, res) => {
         risingSign: sub.chart?.risingSign || '',
         sunSign: sub.chart?.sunSign || '',
         moonSign: sub.chart?.moonSign || '',
-        birthCity: sub.chart?.birthCity || '',
-        birthDate: sub.chart?.birthDate || '',
-        birthTime: sub.chart?.birthTime || '',
+        birthCity: sub.chart?.city || '',
+        birthDateTimeUtc: sub.chart?.birthDateTimeUtc || '',
         responseCount: sub.responses.length,
         answers: answerMap
       };

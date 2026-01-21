@@ -605,7 +605,25 @@ app.get('/admin/export', async (req, res) => {
     });
 
     // Build headers: fixed columns + one per question
-    const fixedHeaders = ['Submission ID', 'Date', 'User Email', 'Type', 'Responses Count', 'Reading ID', 'Ascendant', 'Sun', 'Moon', 'City', 'Reading Content'];
+    const fixedHeaders = [
+      'Submission ID', 'Date', 'User Email', 'Type', 'Responses Count', 'Reading ID', 'City', 'Reading Content',
+      // Chart Angles
+      'Rising Sign', 'Ascendant °', 'MC Sign', 'MC °',
+      // Personal Planets
+      'Sun Sign', 'Sun House',
+      'Moon Sign', 'Moon House',
+      'Mercury Sign', 'Mercury House',
+      'Venus Sign', 'Venus House',
+      'Mars Sign', 'Mars House',
+      // Social/Outer Planets
+      'Jupiter Sign', 'Jupiter House',
+      'Saturn Sign', 'Saturn House',
+      'Uranus Sign', 'Uranus House',
+      'Neptune Sign', 'Neptune House',
+      'Pluto Sign', 'Pluto House',
+      // Other Points
+      'North Node House', 'Chiron House', 'Chart Ruler Planet', 'Chart Ruler House'
+    ];
     const questionHeaders = orderedQuestions.map(q => q.key);
     const headers = [...fixedHeaders, ...questionHeaders];
 
@@ -642,6 +660,7 @@ app.get('/admin/export', async (req, res) => {
       const testResult = isTestSubmission(sub, username, discoverySource, sub.responses.length + Object.keys(fullData).length, 50);
 
       // Fixed columns
+      const c = sub.chart || {};
       const row = [
         sub.id,
         sub.createdAt.toISOString(),
@@ -649,11 +668,29 @@ app.get('/admin/export', async (req, res) => {
         testResult.isTest ? 'Test' : 'Real',
         sub.responses.length,
         reading ? reading.id : '',
-        sub.chart ? (sub.chart.risingSign || sub.chart.ascendant || '') : '',
-        sub.chart ? (sub.chart.sunSign || '') : '',
-        sub.chart ? (sub.chart.moonSign || '') : '',
-        sub.chart ? (sub.chart.city || fullData.city || '') : '', // Birth City
-        reading ? reading.content : '' // Full Reading Content
+        c.city || fullData.city || '', // Birth City
+        reading ? reading.content : '', // Full Reading Content
+
+        // Chart Angles
+        c.risingSign || '', c.ascendant?.toFixed(2) || '',
+        c.mcSign || '', c.mc?.toFixed(2) || '',
+
+        // Personal Planets
+        c.sunSign || '', c.sunHouse || '',
+        c.moonSign || '', c.moonHouse || '',
+        c.mercurySign || '', c.mercuryHouse || '',
+        c.venusSign || '', c.venusHouse || '',
+        c.marsSign || '', c.marsHouse || '',
+
+        // Social/Outer Planets
+        c.jupiterSign || '', c.jupiterHouse || '',
+        c.saturnSign || '', c.saturnHouse || '',
+        c.uranusSign || '', c.uranusHouse || '',
+        c.neptuneSign || '', c.neptuneHouse || '',
+        c.plutoSign || '', c.plutoHouse || '',
+
+        // Other Points
+        c.northNodeHouse || '', c.chironHouse || '', c.chartRulerPlanet || '', c.chartRulerHouse || ''
       ];
 
       // Add one column per question

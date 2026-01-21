@@ -234,6 +234,7 @@ model SurveySubmission {
   id        String           @id @default(cuid())
   userEmail String?
   chartId   String?
+  fullData  Json?
   createdAt DateTime         @default(now())
   chart     Chart?           @relation(fields: [chartId], references: [id])
   responses SurveyResponse[]

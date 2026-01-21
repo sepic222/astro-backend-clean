@@ -148,53 +148,22 @@ function parseAnswer(answerText, responseOptions = []) {
     return responseOptions.map(ro => ro.option?.label || ro.option?.value).join('; ');
   }
 
-  let answer = answerText || '';
+  let answer = answerText;
+  if (answer === null || answer === undefined) return '';
   if (answer === '[object Object]') return '(Data error)';
 
-  if (answer && typeof answer === 'string') {
-    try {
-      if (answer.startsWith('[') || answer.startsWith('{')) {
-        const parsed = JSON.parse(answer);
-        if (Array.isArray(parsed)) {
-          return parsed.map(item => {
-            if (typeof item === 'object' && item !== null) {
-              return item.label || item.value || item.text || JSON.stringify(item);
-            }
-            return String(item);
-          }).join('; ');
-        } else if (typeof parsed === 'object' && parsed !== null) {
-          if (parsed.selected !== undefined) {
-            // Checkbox with "Other": {selected: [...], otherText: '...'}
-            if (Array.isArray(parsed.selected)) {
-              let result = parsed.selected.map(item => {
-                if (typeof item === 'object' && item !== null) {
-                  return item.label || item.value || item.text || JSON.stringify(item);
-                }
-                return String(item);
-              }).join('; ');
-              if (parsed.otherText) result += '; ' + parsed.otherText;
-              return result;
-            }
-            // Radio with "Other": {selected: 'other', otherText: '...'}
-            if (typeof parsed.selected === 'string') {
-              return (parsed.selected === 'other' && parsed.otherText) ? parsed.otherText : parsed.selected;
-            }
-          }
-          return JSON.stringify(parsed);
-        }
-      }
-    } catch (e) {
-      // Not JSON, keep original string
-    }
-  } else if (typeof answer === 'object' && answer !== null) {
+  // If answer is already an object/array (from JSONB)
+  if (typeof answer === 'object') {
     if (Array.isArray(answer)) {
       return answer.map(item => {
         if (typeof item === 'object' && item !== null) {
           return item.label || item.value || item.text || JSON.stringify(item);
         }
         return String(item);
-      }).join('; ').replace(/; ;/g, ';');
-    } else if (answer.selected !== undefined) {
+      }).join('; ');
+    }
+
+    if (answer.selected !== undefined) {
       if (Array.isArray(answer.selected)) {
         let result = answer.selected.map(item => {
           if (typeof item === 'object' && item !== null) {
@@ -211,8 +180,22 @@ function parseAnswer(answerText, responseOptions = []) {
     }
     return JSON.stringify(answer);
   }
+
+  // If answer is a string, try parsing it as JSON (for compatibility with Option B strings)
+  if (typeof answer === 'string') {
+    try {
+      if (answer.startsWith('[') || answer.startsWith('{')) {
+        const parsed = JSON.parse(answer);
+        return parseAnswer(parsed); // Recursive call to handle the parsed object
+      }
+    } catch (e) {
+      // Not JSON, fall through to String()
+    }
+  }
+
   return String(answer);
 }
+
 
 /**
  * Determines if a submission is a test submission based on multiple heuristics
@@ -285,6 +268,7 @@ app.get('/admin/dashboard', async (req, res) => {
       select: {
         id: true,
         userEmail: true,
+        fullData: true,
         _count: { select: { responses: true } },
         responses: {
           where: {
@@ -299,13 +283,17 @@ app.get('/admin/dashboard', async (req, res) => {
     let totalTestCount = 0;
     let totalRealCount = 0;
     for (const s of allSubmissionsForCount) {
-      let username = '';
-      let discoverySource = '';
+      const fullData = (s.fullData && typeof s.fullData === 'object') ? s.fullData : {};
+      let username = fullData.username || '';
+      let discoverySource = fullData.discovery || '';
+
       for (const resp of s.responses || []) {
-        if (resp.question?.key === 'username' || resp.question?.key === 'cosmic.username') username = resp.answerText || '';
-        if (resp.question?.key === 'fit.found_survey' || resp.question?.key === 'fit.discovery') discoverySource = resp.answerText || '';
+        if (!username && (resp.question?.key === 'username' || resp.question?.key === 'cosmic.username')) username = resp.answerText || '';
+        if (!discoverySource && (resp.question?.key === 'fit.found_survey' || resp.question?.key === 'fit.discovery')) discoverySource = resp.answerText || '';
       }
-      const testResult = isTestSubmission(s, username, discoverySource, s._count?.responses || 0, 50);
+
+      const responseCount = (s._count?.responses || 0) + Object.keys(fullData).length;
+      const testResult = isTestSubmission(s, username, discoverySource, responseCount, 50);
       if (testResult.isTest) totalTestCount++;
       else totalRealCount++;
     }
@@ -324,6 +312,9 @@ app.get('/admin/dashboard', async (req, res) => {
       }
     });
 
+    // Fetch submissions with fullData as well which is not included in the findMany responses filter
+    // We already have submissions from the query above.
+
     // Fetch readings for displayed submissions
     const submissionIds = submissions.map(s => s.id);
     const readings = await prisma.reading.findMany({
@@ -334,15 +325,20 @@ app.get('/admin/dashboard', async (req, res) => {
 
     // Process submissions with test detection
     let processedSubmissions = submissions.map(s => {
-      let username = '';
-      let discoverySource = '';
+      const fullData = (s.fullData && typeof s.fullData === 'object') ? s.fullData : {};
+      let username = fullData.username || '';
+      let discoverySource = fullData.discovery || '';
+
       for (const resp of s.responses || []) {
-        if (resp.question?.key === 'username' || resp.question?.key === 'cosmic.username') username = resp.answerText || '';
-        if (resp.question?.key === 'fit.found_survey' || resp.question?.key === 'fit.discovery' || resp.question?.key === 'discovery') {
+        if (!username && (resp.question?.key === 'username' || resp.question?.key === 'cosmic.username')) username = resp.answerText || '';
+        if (!discoverySource && (resp.question?.key === 'fit.found_survey' || resp.question?.key === 'fit.discovery' || resp.question?.key === 'discovery')) {
           discoverySource = resp.answerText || '';
         }
       }
-      const testResult = isTestSubmission(s, username, discoverySource, s._count?.responses || 0, 50);
+
+      const responseCount = (s._count?.responses || 0) + Object.keys(fullData).length;
+      const testResult = isTestSubmission(s, username, discoverySource, responseCount, 50);
+
       return {
         ...s,
         readingId: readingMap.get(s.id) || null,
@@ -353,7 +349,7 @@ app.get('/admin/dashboard', async (req, res) => {
         risingSign: s.chart?.risingSign || null,
         sunSign: s.chart?.sunSign || null,
         moonSign: s.chart?.moonSign || null,
-        birthCity: s.chart?.city || null,
+        birthCity: s.chart?.city || fullData.city || null,
         birthDateTimeUtc: s.chart?.birthDateTimeUtc || null,
       };
     });
@@ -406,13 +402,27 @@ app.get('/admin/data', async (req, res) => {
   try {
     const filterType = req.query.type || 'all';
 
-    // Get all unique question keys for columns
-    const questions = await prisma.surveyQuestion.findMany({
-      orderBy: { sortOrder: 'asc' },
-      select: { id: true, key: true, text: true }
+    // Get dynamic columns from surveyData.js
+    const { surveySections } = require('./src/config/surveyData');
+    const dynamicColumns = [];
+    surveySections.forEach(section => {
+      if (section.questions && Array.isArray(section.questions)) {
+        section.questions.forEach(q => {
+          if (['text', 'radio', 'checkbox', 'textarea', 'email', 'date', 'time', 'number'].includes(q.type)) {
+            // Check if it's already in the list to avoid duplicates
+            if (!dynamicColumns.find(col => col.key === q.id)) {
+              dynamicColumns.push({
+                key: q.id,
+                text: q.text,
+                sectionId: section.id
+              });
+            }
+          }
+        });
+      }
     });
 
-    // Fetch all submissions with all responses
+    // Fetch all submissions with all responses (including the new fullData field)
     const submissions = await prisma.surveySubmission.findMany({
       orderBy: { createdAt: 'desc' },
       include: {
@@ -434,44 +444,58 @@ app.get('/admin/data', async (req, res) => {
     const rows = submissions.map(sub => {
       // Create answer map for this submission
       const answerMap = {};
-      let username = '';
-      let discoverySource = '';
 
+      // 1. Try to populate from the new JSONB field first (Option B)
+      const fullData = (sub.fullData && typeof sub.fullData === 'object') ? sub.fullData : {};
+
+      // Handle birth data fields if they're in JSONB
+      // (Mapping logic from FateFlixSurvey.jsx payload: date, time, latitude, longitude, city, country, username, userEmail)
+
+      // 2. Fallback to individual responses for older data
       for (const resp of sub.responses) {
         const key = resp.question?.key;
         if (!key) continue;
 
-        answerMap[key] = parseAnswer(resp.answerText, resp.responseOptions);
-
-        if (key === 'username' || key === 'cosmic.username') username = answerMap[key];
-        if (key === 'fit.found_survey' || key === 'fit.discovery' || key === 'discovery') discoverySource = answerMap[key];
+        // Only use individual response if not already in JSONB (prefer JSONB)
+        // Note: we need to map the flat key from JSONB to the section-prefixed key in answerMap for the EJS view
+        const displayKey = key; // Use the canonical key as the display key
+        if (!answerMap[displayKey]) {
+          answerMap[displayKey] = parseAnswer(resp.answerText, resp.responseOptions);
+        }
       }
 
-      const testResult = isTestSubmission(sub, username, discoverySource, sub.responses.length, 50);
+      // 3. Add data from JSONB (overwriting or complementing)
+      // We need to map frontend keys in JSONB to their canonical or display keys
+      // For now, let's just make sure those dynamic column keys are populated
+      dynamicColumns.forEach(cat => {
+        if (fullData[cat.key] !== undefined) {
+          // Parse the JSONB value for display
+          answerMap[cat.key] = parseAnswer(fullData[cat.key]);
+        }
+      });
+
+      // Special handling for username and discoverySource for test detection
+      const username = answerMap['cosmic.username'] || answerMap['username'] || '';
+      const discoverySource = answerMap['fit.discovery'] || answerMap['discovery'] || '';
+
+      const testResult = isTestSubmission(sub, username, discoverySource, sub.responses.length + Object.keys(fullData).length, 50);
 
       return {
         id: sub.id,
         createdAt: sub.createdAt,
-        userEmail: sub.userEmail || '',
+        userEmail: sub.userEmail || fullData.email || '',
         isTest: testResult.isTest,
         testReason: testResult.reason,
         risingSign: sub.chart?.risingSign || '',
         sunSign: sub.chart?.sunSign || '',
         moonSign: sub.chart?.moonSign || '',
-        birthCity: sub.chart?.city || '',
+        birthCity: sub.chart?.city || fullData.city || '',
         birthDateTimeUtc: sub.chart?.birthDateTimeUtc || '',
-        responseCount: sub.responses.length,
-        answers: answerMap
+        responseCount: sub.responses.length + Object.keys(fullData).length,
+        answers: answerMap,
+        fullData
       };
     });
-
-    // Apply filter
-    let filteredRows = rows;
-    if (filterType === 'test') {
-      filteredRows = rows.filter(r => r.isTest);
-    } else if (filterType === 'real') {
-      filteredRows = rows.filter(r => !r.isTest);
-    }
 
     // Define question order matching the frontend survey (surveyData.js)
     const SURVEY_QUESTION_ORDER = [
@@ -488,29 +512,36 @@ app.get('/admin/data', async (req, res) => {
       'fit.selection_method', 'fit.discovery_apps', 'fit.discovery', 'fit.email', 'fit.beta_test', 'fit.open_feedback'
     ];
 
-    // Order questions according to survey order
-    const questionMap = new Map(questions.map(q => [q.key, q]));
+    // Order dynamic columns according to predefined survey order
     const orderedQuestions = [];
     for (const key of SURVEY_QUESTION_ORDER) {
-      if (questionMap.has(key)) {
-        orderedQuestions.push(questionMap.get(key));
+      const col = dynamicColumns.find(c => c.key === key);
+      if (col) {
+        orderedQuestions.push(col);
       }
     }
-    // Add any remaining questions not in our predefined list
-    for (const q of questions) {
-      if (!SURVEY_QUESTION_ORDER.includes(q.key)) {
-        orderedQuestions.push(q);
+    // Add any remaining dynamic columns not in our predefined list
+    dynamicColumns.forEach(col => {
+      if (!SURVEY_QUESTION_ORDER.includes(col.key)) {
+        orderedQuestions.push(col);
       }
+    });
+
+    // Apply filter
+    let filteredRows = rows;
+    if (filterType === 'test') {
+      filteredRows = rows.filter(r => r.isTest);
+    } else if (filterType === 'real') {
+      filteredRows = rows.filter(r => !r.isTest);
     }
 
     res.render('admin_data', {
       rows: filteredRows,
-      questions: orderedQuestions,
-      allQuestions: orderedQuestions,
-      currentFilter: filterType,
+      questions: orderedQuestions, // This will be the dynamicColumns in the EJS
       testCount: rows.filter(r => r.isTest).length,
       realCount: rows.filter(r => !r.isTest).length,
-      totalCount: rows.length
+      allCount: rows.length,
+      filterType
     });
   } catch (error) {
     console.error('Data View Error:', error);
@@ -2529,7 +2560,9 @@ app.post('/api/dev/chart-to-svg', async (req, res) => {
             data: {
               chart: { connect: { id: chartId } },
               // Update email if provided and changed
-              ...(userEmail ? { userEmail } : {})
+              ...(userEmail ? { userEmail } : {}),
+              // Save full survey data to JSONB field
+              ...(req.body.fullResponses ? { fullData: req.body.fullResponses } : {})
             }
           });
           submissionId = existingSubmissionId;
@@ -2565,7 +2598,12 @@ app.post('/api/dev/chart-to-svg', async (req, res) => {
       // If no valid existing ID, create new
       if (!submissionId) {
         const submission = await prisma.surveySubmission.create({
-          data: { userEmail: userEmail || null, chart: { connect: { id: chartId } } },
+          data: {
+            userEmail: userEmail || null,
+            chart: { connect: { id: chartId } },
+            // Save full survey data to JSONB field
+            ...(req.body.fullResponses ? { fullData: req.body.fullResponses } : {})
+          },
           select: { id: true }
         });
         submissionId = submission.id;
@@ -4675,6 +4713,8 @@ app.post("/api/survey/submit", async (req, res) => {
       data: {
         userEmail: userEmail || null,
         ...(chartId ? { chart: { connect: { id: chartId } } } : {}),
+        // Save full survey data to JSONB field
+        fullData: req.body.survey || req.body // Save the highest level survey object available
       },
       select: { id: true },
     });
@@ -4771,12 +4811,23 @@ app.post("/api/survey/save-answer", async (req, res) => {
     // Verify submission exists
     const submission = await prisma.surveySubmission.findUnique({
       where: { id: submissionId },
-      select: { id: true },
+      select: { id: true, fullData: true },
     });
 
     if (!submission) {
       return res.status(404).json({ ok: false, error: "Submission not found" });
     }
+
+    // Merge into fullData JSONB field for real-time persistence
+    const currentData = (submission.fullData && typeof submission.fullData === 'object')
+      ? submission.fullData
+      : {};
+    const updatedData = { ...currentData, [frontendKey]: answerValue };
+
+    await prisma.surveySubmission.update({
+      where: { id: submissionId },
+      data: { fullData: updatedData }
+    });
 
     // Map frontend key to database question key (same mapping as in /api/dev/chart-to-svg)
     const keyMapping = {

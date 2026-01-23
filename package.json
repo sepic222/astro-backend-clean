@@ -6,7 +6,9 @@
   },
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
+    "sync-schema": "node scripts/sync-survey-schema.js",
+    "dev": "npm run sync-schema && astro dev",
+    "start": "npm run sync-schema && node server.js",
     "migrate:deploy": "npx prisma generate && npx prisma migrate deploy",
     "seed": "tsx prisma/seed_sections.ts",
     "postinstall": "npm rebuild swisseph --build-from-source"

@@ -402,13 +402,13 @@ app.get('/admin/data', async (req, res) => {
   try {
     const filterType = req.query.type || 'all';
 
-    // Get dynamic columns from surveyData.js
-    const { surveySections } = require('./src/config/surveyData');
+    // Get dynamic columns from the auto-synced backend schema
+    const { surveySchema } = require('./src/config/surveySchema');
     const dynamicColumns = [];
-    surveySections.forEach(section => {
+    surveySchema.forEach(section => {
       if (section.questions && Array.isArray(section.questions)) {
         section.questions.forEach(q => {
-          if (['text', 'radio', 'checkbox', 'textarea', 'email', 'date', 'time', 'number'].includes(q.type)) {
+          if (['text', 'radio', 'checkbox', 'textarea', 'email', 'date', 'time', 'number', 'hero_start'].includes(q.type)) {
             // Check if it's already in the list to avoid duplicates
             if (!dynamicColumns.find(col => col.key === q.id)) {
               dynamicColumns.push({
@@ -552,39 +552,24 @@ app.get('/admin/data', async (req, res) => {
 
 app.get('/admin/export', async (req, res) => {
   try {
-    // Define question order matching the frontend survey (surveyData.js)
-    const SURVEY_QUESTION_ORDER = [
-      'cosmic.username', 'cosmic.date', 'cosmic.time', 'cosmic.time_accuracy', 'cosmic.city', 'cosmic.latitude', 'cosmic.longitude',
-      'casting.gender', 'casting.attraction_style', 'casting.cine_level', 'casting.life_role', 'casting.escapism_style',
-      'casting.top_3_movies', 'casting.first_crush',
-      'taste.watch_habit', 'taste.fav_era', 'taste.culture_background', 'taste.environment_growing_up',
-      'core_memory.first_feeling', 'core_memory.life_changing', 'core_memory.comfort_watch', 'core_memory.power_watch', 'core_memory.date_impress',
-      'world.movie_universe', 'world.villain_relate', 'world.forever_crush', 'world.crave_most',
-      'screen_ed.tv_taste', 'screen_ed.top_3_series_detailed', 'screen_ed.cinematography', 'screen_ed.directors', 'screen_ed.access_growing_up',
-      'genres.genres_love', 'genres.turn_offs', 'genres.hated_film', 'genres.hype_style',
-      'genres.character_match',
-      'global.foreign_films',
-      'fit.selection_method', 'fit.discovery_apps', 'fit.discovery', 'fit.email', 'fit.beta_test', 'fit.open_feedback'
-    ];
+    // Get dynamic columns from the auto-synced backend schema
+    const { surveySchema } = require('./src/config/surveySchema');
 
-    // Get all unique question keys from database
-    const dbQuestions = await prisma.surveyQuestion.findMany({
-      select: { id: true, key: true, text: true }
-    });
-    const dbQuestionMap = new Map(dbQuestions.map(q => [q.key, q]));
-
-    // Build ordered question list: survey order first, then any extras from DB
+    // Build ordered question list from the schema
     const orderedQuestions = [];
-    for (const key of SURVEY_QUESTION_ORDER) {
-      if (dbQuestionMap.has(key)) {
-        orderedQuestions.push(dbQuestionMap.get(key));
-        dbQuestionMap.delete(key);
+    surveySchema.forEach(section => {
+      if (section.questions && Array.isArray(section.questions)) {
+        section.questions.forEach(q => {
+          // Only include relevant question types
+          if (['text', 'radio', 'checkbox', 'textarea', 'email', 'date', 'time', 'number', 'hero_start'].includes(q.type)) {
+            orderedQuestions.push({
+              key: q.id,
+              text: q.text
+            });
+          }
+        });
       }
-    }
-    // Add any remaining questions not in our predefined list
-    for (const q of dbQuestionMap.values()) {
-      orderedQuestions.push(q);
-    }
+    });
 
     // Add columns that might exist only in fullData but not in DB yet (dynamic catch-all)
     // We'll scan a few recent submissions to find extra keys if needed, but for now relies on DB + List

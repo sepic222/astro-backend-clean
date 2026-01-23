@@ -28,11 +28,12 @@ This document is the **Source of Truth**. Ignore it at your own peril (and the u
 
 There are files that exist in **BOTH** repositories. You must keep them identical.
 
-### 📜 `src/config/surveyData.js`
-*   **Role:** Defines every question, option, and logic flow for the survey.
-*   **Rule:** If you edit this file in the backend, you **MUST** copy the changes to the frontend (and vice versa).
-*   **Path Backend:** `astro-backend-clean-main/src/config/surveyData.js`
-*   **Path Frontend:** `fateflix-frontend/src/config/surveyData.js`
+### 📜 `src/config/surveySchema.js` (Auto-Synced)
+*   **Role:** Defines the questions and logic for the survey.
+*   **Source of Truth:** `fateflix-frontend/src/config/surveyData.js`
+*   **Backend Mirror:** `astro-backend-clean-main/src/config/surveySchema.js`
+*   **Rule:** This file is **AUTO-GENERATED**. Do not edit it directly in the backend. To update it, edit `surveyData.js` in the frontend and run `npm run sync-schema` in the backend.
+*   **Command:** `npm run sync-schema` (Triggers the `scripts/sync-survey-schema.js` logic).
 
 ### 🎨 Static Assets
 *   **Role:** Images, planet PNGs, fonts in `public/assets`.
@@ -98,12 +99,24 @@ Do not assume an endpoint exists unless it is on this list. We have removed many
 *   **ORM:** Prisma
 *   **Schema:** `astro-backend-clean-main/prisma/schema.prisma`
 
-### 🔑 Key Tables
-1.  **`SurveySubmission`**: The central hub for a user's session. Links `userEmail`, `chartId`, and `responses`.
-2.  **`SurveyResponse`**: Stores individual answers. Linked to `SurveySubmission`.
-3.  **`SurveyResponseOption`**: Junction table for selected options (for multi-select or specific option tracking).
-4.  **`Reading`**: Stores the generated result summary and is linked to `submissionId`.
-5.  **`Chart`**: Stores the raw astrological data (planets, houses, aspects).
+### 🔑 Key Tables (Core Flow)
+1.  **`SurveySubmission`**: The central hub for a user's session.
+    *   **Crucial Field:** `fullData` (JSONB) - Stores the complete raw event/answer object. **Primary Source of Truth** for user answers to ensure 100% persistence.
+    *   Links to `userEmail`, `chartId`, `responses`.
+2.  **`Chart`**: Stores the calculated astrological data (planets, houses, aspects, raw JSON).
+3.  **`Reading`**: Stores the generated result summary text and is linked to `submissionId`.
+4.  **`EmailOutbox`**: Tracks transactional emails sent via Loops.so (status, error logs).
+
+### 📝 Survey Structure & Responses
+*   **Structure:** `SurveySection` → `SurveyQuestion` → `SurveyOption` (Defines the survey schema in DB).
+*   **Responses:**
+    *   `SurveyResponse`: Individual answer link.
+    *   `SurveyResponseOption`: Junction for multi-select checkboxes.
+    *   *Note: While these tables exist for granular querying, always check `SurveySubmission.fullData` for the raw complete state.*
+
+### 🔮 Interpretation Reference Data
+*   Tables storing static text content for the report generation:
+    *   `AscSignInterpretation`, `PlanetSignInterpretation`, `PlanetHouseInterpretation`, `ChartRulerSignInterpretation`, etc.
 
 ### 🛠️ Common Commands
 *   `npx prisma generate`: Syncs the Prisma Client with the schema (run after schema changes).
@@ -118,4 +131,4 @@ Do not assume an endpoint exists unless it is on this list. We have removed many
 
 ---
 
-*Verified & Updated: Jan 10, 2026*
+*Verified & Updated: Jan 23, 2026 (Updated survey synchronization rules)*

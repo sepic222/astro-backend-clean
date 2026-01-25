@@ -540,8 +540,8 @@ app.get('/admin/data', async (req, res) => {
       questions: orderedQuestions, // This will be the dynamicColumns in the EJS
       testCount: rows.filter(r => r.isTest).length,
       realCount: rows.filter(r => !r.isTest).length,
-      allCount: rows.length,
-      filterType
+      totalCount: rows.length,
+      currentFilter: filterType
     });
   } catch (error) {
     console.error('Data View Error:', error);

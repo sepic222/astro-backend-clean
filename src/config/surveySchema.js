@@ -1665,13 +1665,221 @@ module.exports.surveySchema = [
     ]
   },
   {
+    "id": "section-vii",
+    "title": "Genres & Turn-offs",
+    "questions": [
+      {
+        "id": "genres_love",
+        "type": "checkbox",
+        "text": "Genres you never get sick of 🍿:",
+        "options": [
+          {
+            "value": "romance",
+            "label": "💘 Romance & Rom-Coms"
+          },
+          {
+            "value": "drama",
+            "label": "🎭 Drama/Emotional Stories"
+          },
+          {
+            "value": "comedy",
+            "label": "😂 Comedy (light or dark)"
+          },
+          {
+            "value": "action",
+            "label": "💥 Action/ Adventure"
+          },
+          {
+            "value": "thriller",
+            "label": "🔪 Thrillers & Suspense"
+          },
+          {
+            "value": "horror",
+            "label": "🩸 Horror (from elevated to slasher)"
+          },
+          {
+            "value": "scifi_fantasy",
+            "label": "👽 Sci-Fi, Fantasy & Myth"
+          },
+          {
+            "value": "anime",
+            "label": "🗾 Anime & hyper-stylized"
+          },
+          {
+            "value": "indie",
+            "label": "🚬 Indie, Arthouse & Cult"
+          },
+          {
+            "value": "musical",
+            "label": "💃 Music, Dance & Performance"
+          },
+          {
+            "value": "sports",
+            "label": "🥊 Sports & Underdog Stories"
+          },
+          {
+            "value": "biopic",
+            "label": "📜 Biopics & True Stories"
+          },
+          {
+            "value": "documentary",
+            "label": "📹 Documentary & Real Life Stories"
+          },
+          {
+            "value": "queer",
+            "label": "🏳️‍🌈 Queer Cinema & LGBTQ+ Stories"
+          },
+          {
+            "value": "historical",
+            "label": "🏰 Historical & Period"
+          },
+          {
+            "value": "trash_reality",
+            "label": "🗑️ Trash TV/ Reality Gold"
+          },
+          {
+            "value": "classics",
+            "label": "🎞️ Classics & Black&White"
+          },
+          {
+            "value": "westerns",
+            "label": "🤠 Westerns & Frontier Epics"
+          },
+          {
+            "value": "genre_fluid",
+            "label": "🌊 I’m genre-fluid"
+          },
+          {
+            "value": "other",
+            "label": "✨ Other"
+          }
+        ]
+      },
+      {
+        "id": "turn_offs",
+        "type": "checkbox",
+        "text": "What do you NOT vibe with on screen?🚩 ",
+        "options": [
+          {
+            "value": "sad",
+            "label": "No sad endings, please. Life is hard enough."
+          },
+          {
+            "value": "romcom_cringe",
+            "label": "Rom-com sceptic. I'm a realist."
+          },
+          {
+            "value": "scary",
+            "label": "I don't do scary."
+          },
+          {
+            "value": "sexual",
+            "label": "Too steamy. Here for plot not pelvis."
+          },
+          {
+            "value": "gore",
+            "label": "Excessive gore or violence. I’m out."
+          },
+          {
+            "value": "snobbery",
+            "label": "Prestige snobbery. Award-bait that takes life too seriously."
+          },
+          {
+            "value": "no_romance",
+            "label": "No romance, at all. I need at least one make-out scene."
+          },
+          {
+            "value": "scifi_fantasy",
+            "label": "Sci-fi / fantasy. Not my universe."
+          },
+          {
+            "value": "weird_sex",
+            "label": "Erotic + weird. Not trying to relive a fever dream from a Berlin sex club."
+          },
+          {
+            "value": "clowns",
+            "label": "Clowns, absolutely not. Not even in an arthouse film."
+          },
+          {
+            "value": "reality_tv",
+            "label": "Love Island, Housewives, Kardashians, hard pass. I want film, not filler."
+          },
+          {
+            "value": "subtitles",
+            "label": "Subtitles. If it’s not in my language, I’m unlikely to watch it."
+          },
+          {
+            "value": "marvel",
+            "label": "I don't do Marvel. Not catching that cultural virus."
+          },
+          {
+            "value": "creepy_dolls",
+            "label": "Creepy kids or haunted toys. Demons, dolls, no thanks."
+          },
+          {
+            "value": "other",
+            "label": "Other"
+          }
+        ]
+      },
+      {
+        "id": "hated_film",
+        "type": "textarea",
+        "text": "What's a film everyone else loved... but you hated? Tell us why."
+      },
+      {
+        "id": "hype_style",
+        "type": "radio",
+        "text": "Hype Tracker or Timeless Watcher?",
+        "options": [
+          {
+            "value": "drops",
+            "label": "I watch everything the moment it drops."
+          },
+          {
+            "value": "resist",
+            "label": "I resist it until it really blows up"
+          },
+          {
+            "value": "crush",
+            "label": "Only if my crush is in it"
+          },
+          {
+            "value": "pretend",
+            "label": "I pretend not to care, but I watch everything"
+          },
+          {
+            "value": "wait",
+            "label": "I wait 5 years and watch it when no one cares"
+          },
+          {
+            "value": "cult",
+            "label": "Cult Classics over hype, always"
+          },
+          {
+            "value": "rare",
+            "label": "I like rare finds no one's heard of"
+          },
+          {
+            "value": "right_time",
+            "label": "The right movie finds me when I need it, not when it's trending"
+          },
+          {
+            "value": "both",
+            "label": "Honestly? Both. If it hits, it hits."
+          }
+        ]
+      }
+    ]
+  },
+  {
     "id": "section-swipe",
     "title": "Who’s your on-screen alter ego?",
     "questions": [
       {
         "id": "alter-ego",
         "type": "text",
-        "text": " The character you identify with or secretly aspire to.⭐"
+        "text": "The character you identify with or secretly aspire to.⭐"
       }
     ]
   },
@@ -1806,11 +2014,6 @@ module.exports.surveySchema = [
         ]
       },
       {
-        "id": "share_qr",
-        "type": "qr_share",
-        "text": "Would you share this quiz with your friends?"
-      },
-      {
         "id": "discovery",
         "type": "radio",
         "text": "How did you find out about this survey?",
@@ -1842,21 +2045,6 @@ module.exports.surveySchema = [
           {
             "value": "other",
             "label": "Other"
-          }
-        ]
-      },
-      {
-        "id": "beta_test",
-        "type": "radio",
-        "text": "Would you like to beta test the Fateflix app once it's live?",
-        "options": [
-          {
-            "value": "yes",
-            "label": "Yes, I need this"
-          },
-          {
-            "value": "no",
-            "label": "No, I gatekeep"
           }
         ]
       },

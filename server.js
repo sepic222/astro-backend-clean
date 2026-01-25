@@ -773,6 +773,7 @@ function listAllRoutes(app) {
   return out;
 }
 
+
 // --- OpenAI (optional) ---
 let openai = null;
 if (process.env.OPENAI_API_KEY) {
@@ -781,7 +782,6 @@ if (process.env.OPENAI_API_KEY) {
 } else {
   console.warn('⚠️ OpenAI API key missing — AI routes disabled.');
 }
-
 // --- email helper ---------------------------------------------
 const fetch = require('node-fetch');
 const LOOPS_API_KEY = process.env.LOOPS_API_KEY;

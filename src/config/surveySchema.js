@@ -23,6 +23,11 @@ module.exports.surveySchema = [
         "text": "What name should we call you in the credits?"
       },
       {
+        "id": "email",
+        "type": "email",
+        "text": "We need your email to send your astro-cinematic gift. 💫(Required)"
+      },
+      {
         "id": "date",
         "type": "date",
         "text": "Birth Date"
@@ -460,7 +465,7 @@ module.exports.surveySchema = [
       {
         "id": "culture_background",
         "type": "textarea",
-        "text": "🌍 Where did you grow up (or feel culturally shaped by)?\nCulture > Passport\nWhere did your movie, media, and serious worldview come from?"
+        "text": "🌍 Where did you grow up (or feel culturally shaped by)?\nCulture > Passport\nWhere did your movie, media, and series worldview come from?"
       },
       {
         "id": "environment_growing_up",
@@ -529,7 +534,7 @@ module.exports.surveySchema = [
       {
         "id": "power_watch",
         "type": "text",
-        "text": "What movie do you rewatch when you want to feel powerful?"
+        "text": "What movie do you (re-)watch when you want to feel powerful?"
       },
       {
         "id": "date_impress",
@@ -710,6 +715,14 @@ module.exports.surveySchema = [
         "text": "TV Taste Check: Pick the flavours that feed your soul.",
         "options": [
           {
+            "value": "movie_only",
+            "label": "I’m movie-only. TV isn’t really my thing"
+          },
+          {
+            "value": "avoid_series",
+            "label": "I avoid series, I get addicted 😅"
+          },
+          {
             "value": "prestige",
             "label": "Slow-burn prestige (long arcs, power, HBO-core)"
           },
@@ -770,14 +783,6 @@ module.exports.surveySchema = [
             "label": "Lifestyle & background TV"
           },
           {
-            "value": "movie_only",
-            "label": "I’m movie-only. TV isn’t really my thing"
-          },
-          {
-            "value": "avoid_series",
-            "label": "I avoid series, I get addicted 😅"
-          },
-          {
             "value": "other",
             "label": "Other"
           }
@@ -786,7 +791,7 @@ module.exports.surveySchema = [
       {
         "id": "top_3_series_detailed",
         "type": "textarea",
-        "text": "What are your top 3 Series of all time?🍿"
+        "text": "What are your three favorite 3 series or tv shows of all time?🍿"
       },
       {
         "id": "guilty_pleasure",
@@ -1005,8 +1010,13 @@ module.exports.surveySchema = [
   },
   {
     "id": "section-viii-deep-dive",
-    "title": "Optional Deep Dive",
+    "title": "🎬🌍Cine Deep Dive (optional)",
     "questions": [
+      {
+        "id": "skip_deep_dive",
+        "type": "section_skip",
+        "text": "Jump to next"
+      },
       {
         "id": "foreign_films",
         "type": "radio",
@@ -1656,12 +1666,12 @@ module.exports.surveySchema = [
   },
   {
     "id": "section-swipe",
-    "title": "",
+    "title": "Who’s your on-screen alter ego?",
     "questions": [
       {
         "id": "alter-ego",
         "type": "text",
-        "text": "Who’s your on-screen alter ego?⭐"
+        "text": " The character you identify with or secretly aspire to.⭐"
       }
     ]
   },
@@ -1834,11 +1844,6 @@ module.exports.surveySchema = [
             "label": "Other"
           }
         ]
-      },
-      {
-        "id": "email",
-        "type": "email",
-        "text": "We need your email to send your astro-cinematic gift. 💫(Required)"
       },
       {
         "id": "beta_test",

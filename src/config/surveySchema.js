@@ -1010,7 +1010,7 @@ module.exports.surveySchema = [
   },
   {
     "id": "section-viii-deep-dive",
-    "title": "🎬 🌍 Optional Deep Dive:\nScreen Taste & Craft Deep Dive",
+    "title": "🎬 🌍 Optional:\nDeep Dive\nScreen Taste & Craft Deep Dive",
     "questions": [
       {
         "id": "skip_deep_dive",

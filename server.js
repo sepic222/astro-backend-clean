@@ -2885,10 +2885,14 @@ app.post('/api/dev/chart-to-svg', async (req, res) => {
     const svgUrl = `${baseUrl}/reading/${submissionId}/chart.svg`;
     const htmlUrl = `${baseUrl}/reading/${submissionId}`;
 
-    // Send the "magic link" email (if we have an email)
-    if (userEmail && submissionId) {
+    // Send the "magic link" email (if requested)
+    const triggerEmail = req.body?.triggerEmail === true;
+
+    if (triggerEmail && userEmail && submissionId) {
       console.log('📧 Attempting to send reading email via dev route to:', userEmail);
       sendReadingEmail(userEmail, submissionId, username).catch(err => console.error('Dev route email trigger failed:', err));
+    } else if (userEmail && submissionId) {
+      console.log('📧 Skipping email send (triggerEmail not set):', userEmail);
     }
 
     return res.json({ ok: true, chartId, submissionId: submissionId, svgUrl, htmlUrl });
@@ -4754,10 +4758,15 @@ app.post("/api/survey/submit", async (req, res) => {
     });
 
     // Send the "magic link" email
-    if (userEmail) {
+    // Default to true for this endpoint as it's intended to be the final submission
+    const triggerEmail = req.body?.triggerEmail !== false;
+
+    if (userEmail && triggerEmail) {
       console.log('📧 Attempting to send reading email to:', userEmail);
       // We don't await this so it doesn't block the UI response
       sendReadingEmail(userEmail, submission.id, username).catch(err => console.error('Email trigger failed:', err));
+    } else if (userEmail) {
+      console.log('📧 Skipping email send for /api/survey/submit (triggerEmail is false):', userEmail);
     }
 
     let madeResponses = 0;

@@ -284,12 +284,12 @@ app.get('/admin/dashboard', async (req, res) => {
     let totalRealCount = 0;
     for (const s of allSubmissionsForCount) {
       const fullData = (s.fullData && typeof s.fullData === 'object') ? s.fullData : {};
-      let username = fullData.username || '';
-      let discoverySource = fullData.discovery || '';
+      let username = parseAnswer(fullData.username || '');
+      let discoverySource = parseAnswer(fullData.discovery || '');
 
       for (const resp of s.responses || []) {
-        if (!username && (resp.question?.key === 'username' || resp.question?.key === 'cosmic.username')) username = resp.answerText || '';
-        if (!discoverySource && (resp.question?.key === 'fit.found_survey' || resp.question?.key === 'fit.discovery')) discoverySource = resp.answerText || '';
+        if (!username && (resp.question?.key === 'username' || resp.question?.key === 'cosmic.username')) username = parseAnswer(resp.answerText || '');
+        if (!discoverySource && (resp.question?.key === 'fit.found_survey' || resp.question?.key === 'fit.discovery')) discoverySource = parseAnswer(resp.answerText || '');
       }
 
       const responseCount = (s._count?.responses || 0) + Object.keys(fullData).length;
@@ -326,13 +326,13 @@ app.get('/admin/dashboard', async (req, res) => {
     // Process submissions with test detection
     let processedSubmissions = submissions.map(s => {
       const fullData = (s.fullData && typeof s.fullData === 'object') ? s.fullData : {};
-      let username = fullData.username || '';
-      let discoverySource = fullData.discovery || '';
+      let username = parseAnswer(fullData.username || '');
+      let discoverySource = parseAnswer(fullData.discovery || '');
 
       for (const resp of s.responses || []) {
-        if (!username && (resp.question?.key === 'username' || resp.question?.key === 'cosmic.username')) username = resp.answerText || '';
+        if (!username && (resp.question?.key === 'username' || resp.question?.key === 'cosmic.username')) username = parseAnswer(resp.answerText || '');
         if (!discoverySource && (resp.question?.key === 'fit.found_survey' || resp.question?.key === 'fit.discovery' || resp.question?.key === 'discovery')) {
-          discoverySource = resp.answerText || '';
+          discoverySource = parseAnswer(resp.answerText || '');
         }
       }
 

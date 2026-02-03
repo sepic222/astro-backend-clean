@@ -4647,7 +4647,7 @@ app.get("/api/survey/state/:submissionId", async (req, res) => {
     }
 
     // Transform to simple map: questionKey -> answerValue
-    const answers = {};
+    let answers = {};
     for (const r of submission.responses) {
       if (r.responseOptions.length > 0) {
         const values = r.responseOptions.map(ro => ro.option.value);
@@ -4655,6 +4655,11 @@ app.get("/api/survey/state/:submissionId", async (req, res) => {
       } else {
         answers[r.question.key] = r.answerText;
       }
+    }
+
+    // Merge in JSONB data
+    if (submission.fullData && typeof submission.fullData === 'object') {
+      answers = { ...answers, ...submission.fullData };
     }
 
     // Also include userEmail if present
@@ -4747,15 +4752,38 @@ app.post("/api/survey/submit", async (req, res) => {
       return res.status(400).json({ ok: false, error: "answers[] is required" });
     }
 
-    const submission = await prisma.surveySubmission.create({
-      data: {
-        userEmail: userEmail || null,
-        ...(chartId ? { chart: { connect: { id: chartId } } } : {}),
-        // Save full survey data to JSONB field
-        fullData: req.body.survey || req.body // Save the highest level survey object available
-      },
-      select: { id: true },
-    });
+    const existingSubmissionId = req.body?.submissionId || req.body?.survey?.meta?.submissionId;
+    let submission;
+
+    if (existingSubmissionId) {
+      // Try to update existing
+      const existing = await prisma.surveySubmission.findUnique({ where: { id: existingSubmissionId } });
+      if (existing) {
+        submission = await prisma.surveySubmission.update({
+          where: { id: existingSubmissionId },
+          data: {
+            userEmail: userEmail || existing.userEmail,
+            ...(chartId ? { chart: { connect: { id: chartId } } } : {}),
+            fullData: req.body.survey || req.body
+          },
+          select: { id: true },
+        });
+        console.log('✅ Updated existing submission during /submit:', submission.id);
+      }
+    }
+
+    if (!submission) {
+      submission = await prisma.surveySubmission.create({
+        data: {
+          userEmail: userEmail || null,
+          ...(chartId ? { chart: { connect: { id: chartId } } } : {}),
+          // Save full survey data to JSONB field
+          fullData: req.body.survey || req.body // Save the highest level survey object available
+        },
+        select: { id: true },
+      });
+      console.log('✅ Created new submission during /submit:', submission.id);
+    }
 
     // Send the "magic link" email
     // Default to true for this endpoint as it's intended to be the final submission
@@ -4783,6 +4811,14 @@ app.post("/api/survey/submit", async (req, res) => {
         include: { options: true },
       });
       if (!q) { console.warn("No question found for key:", a.questionKey); continue; }
+
+      // Delete existing response for this question (upsert behavior)
+      await prisma.surveyResponse.deleteMany({
+        where: {
+          submissionId: submission.id,
+          questionId: q.id,
+        },
+      });
 
       const response = await prisma.surveyResponse.create({
         data: {

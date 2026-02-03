@@ -687,9 +687,9 @@ app.get('/admin/export', async (req, res) => {
     }
 
     const csvContent = toCsv(headers, rows);
-    res.header('Content-Type', 'text/csv');
+    res.header('Content-Type', 'text/csv; charset=utf-8');
     res.attachment(`fateflix_export_${new Date().toISOString().split('T')[0]}.csv`);
-    return res.send(csvContent);
+    return res.send('\uFEFF' + csvContent);
 
   } catch (error) {
     console.error('Export Error:', error);

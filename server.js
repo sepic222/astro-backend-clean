@@ -688,10 +688,10 @@ app.get('/admin/export', async (req, res) => {
     }
 
     const csvContent = toCsv(headers, rows);
-    const filename = `fateflix_export_${new Date().toISOString().split('T')[0]}.csv`;
+    const filename = 'fateflix_report.csv';
 
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.attachment(filename);
 
     // Add UTF-8 BOM (\uFEFF) to help Excel recognize encoding
     return res.send('\uFEFF' + csvContent);

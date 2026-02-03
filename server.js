@@ -109,14 +109,15 @@ const basicAuth = (req, res, next) => {
 };
 
 function toCsv(headers, rows) {
-  const headerRow = headers.join(',') + '\n';
+  const headerRow = headers.join(',') + '\r\n';
   const dataRows = rows.map(row =>
     row.map(cell => {
       if (cell === null || cell === undefined) return '';
-      const str = String(cell).replace(/"/g, '""');
+      // Escape quotes and remove newlines for Excel compatibility
+      const str = String(cell).replace(/"/g, '""').replace(/\r?\n|\r/g, ' ');
       return `"${str}"`;
     }).join(',')
-  ).join('\n');
+  ).join('\r\n');
   return headerRow + dataRows;
 }
 
@@ -687,8 +688,12 @@ app.get('/admin/export', async (req, res) => {
     }
 
     const csvContent = toCsv(headers, rows);
-    res.header('Content-Type', 'text/csv; charset=utf-8');
-    res.attachment(`fateflix_export_${new Date().toISOString().split('T')[0]}.csv`);
+    const filename = `fateflix_export_${new Date().toISOString().split('T')[0]}.csv`;
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+
+    // Add UTF-8 BOM (\uFEFF) to help Excel recognize encoding
     return res.send('\uFEFF' + csvContent);
 
   } catch (error) {

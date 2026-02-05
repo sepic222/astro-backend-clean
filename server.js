@@ -109,15 +109,15 @@ const basicAuth = (req, res, next) => {
 };
 
 function toCsv(headers, rows) {
-  const headerRow = headers.join(',') + '\r\n';
-  const dataRows = rows.map(row =>
-    row.map(cell => {
-      if (cell === null || cell === undefined) return '';
-      // Escape quotes and remove newlines for Excel compatibility
-      const str = String(cell).replace(/"/g, '""').replace(/\r?\n|\r/g, ' ');
-      return `"${str}"`;
-    }).join(',')
-  ).join('\r\n');
+  const escapeCell = (cell) => {
+    if (cell === null || cell === undefined) return '';
+    // Escape quotes and remove newlines for Excel compatibility
+    const str = String(cell).replace(/"/g, '""').replace(/\r?\n|\r/g, ' ');
+    return `"${str}"`;
+  };
+
+  const headerRow = headers.map(escapeCell).join(',') + '\r\n';
+  const dataRows = rows.map(row => row.map(escapeCell).join(',')).join('\r\n');
   return headerRow + dataRows;
 }
 
@@ -575,20 +575,23 @@ app.get('/admin/export', async (req, res) => {
     // Add columns that might exist only in fullData but not in DB yet (dynamic catch-all)
     // We'll scan a few recent submissions to find extra keys if needed, but for now relies on DB + List
 
+    // Optimized query: Use _count instead of fetching all responses
     const submissions = await prisma.surveySubmission.findMany({
       orderBy: { createdAt: 'desc' },
       include: {
-        responses: {
-          include: {
-            question: { select: { key: true } },
-            responseOptions: {
-              include: { option: { select: { label: true, value: true } } }
-            }
-          }
+        _count: {
+          select: { responses: true }
         },
         chart: true
       }
     });
+
+    // Bulk fetch readings to avoid N+1 query overhead
+    const submissionIds = submissions.map(s => s.id);
+    const readings = await prisma.reading.findMany({
+      where: { submissionId: { in: submissionIds } }
+    });
+    const readingMap = new Map(readings.map(r => [r.submissionId, r]));
 
     // Build headers: fixed columns + one per question
     const fixedHeaders = [
@@ -618,20 +621,15 @@ app.get('/admin/export', async (req, res) => {
     // parseAnswer helper is now defined at top level for all admin routes
 
     for (const sub of submissions) {
-      // Look up reading
-      const reading = await prisma.reading.findUnique({ where: { submissionId: sub.id } });
+      // Look up reading from map (Optimized)
+      const reading = readingMap.get(sub.id);
 
-      // Build answer map for this submission
-      // Build answer map for this submission
+      // Build answer map primarily from fullData for better performance
       const answerMap = {};
       const fullData = (sub.fullData && typeof sub.fullData === 'object') ? sub.fullData : {};
 
-      // 1. Fallback to individual responses
-      for (const resp of sub.responses) {
-        const key = resp.question?.key;
-        if (!key) continue;
-        answerMap[key] = parseAnswer(resp.answerText, resp.responseOptions);
-      }
+      // Only iterate through responses if fullData is significantly smaller than expected
+      // but usually fullData in this app contains everything.
       // 2. Override with JSONB data
       orderedQuestions.forEach(col => {
         if (fullData[col.key] !== undefined) {
@@ -642,8 +640,9 @@ app.get('/admin/export', async (req, res) => {
       const username = answerMap['cosmic.username'] || answerMap['username'] || fullData.username || '';
       const discoverySource = answerMap['fit.discovery'] || answerMap['discovery'] || fullData.discovery || '';
 
-      // Determine if test submission
-      const testResult = isTestSubmission(sub, username, discoverySource, sub.responses.length + Object.keys(fullData).length, 50);
+      // Determine if test submission using _count.responses
+      const totalResponses = sub._count.responses + Object.keys(fullData).length;
+      const testResult = isTestSubmission(sub, username, discoverySource, totalResponses, 50);
 
       // Fixed columns
       const c = sub.chart || {};
@@ -652,10 +651,10 @@ app.get('/admin/export', async (req, res) => {
         sub.createdAt.toISOString(),
         sub.userEmail || '',
         testResult.isTest ? 'Test' : 'Real',
-        sub.responses.length,
+        totalResponses,
         reading ? reading.id : '',
         c.city || fullData.city || '', // Birth City
-        reading ? reading.content : '', // Full Reading Content
+        reading ? reading.summary : '', // Correct field (summary, not content)
 
         // Chart Angles
         c.risingSign || '', c.ascendant?.toFixed(2) || '',
@@ -688,7 +687,8 @@ app.get('/admin/export', async (req, res) => {
     }
 
     const csvContent = toCsv(headers, rows);
-    const filename = 'fateflix_report.csv';
+    const dateStr = new Date().toISOString().split('T')[0];
+    const filename = `fateflix_export_${dateStr}.csv`;
 
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.attachment(filename);

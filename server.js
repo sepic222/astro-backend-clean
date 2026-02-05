@@ -575,18 +575,52 @@ app.get('/admin/export', async (req, res) => {
     // Add columns that might exist only in fullData but not in DB yet (dynamic catch-all)
     // We'll scan a few recent submissions to find extra keys if needed, but for now relies on DB + List
 
-    // Optimized query: Use _count instead of fetching all responses
-    const submissions = await prisma.surveySubmission.findMany({
-      orderBy: { createdAt: 'desc' },
+    // 1. Fetch all submissions
+    const allSubmissions = await prisma.surveySubmission.findMany({
       include: {
-        _count: {
-          select: { responses: true }
-        },
+        _count: { select: { responses: true } },
         chart: true
       }
     });
 
-    // Bulk fetch readings to avoid N+1 query overhead
+    // 2. Smart Deduplication: Group by email and pick the "best" submission per user
+    const userGroups = new Map();
+    const GOLDEN_IDS = []; // Reserve for manually identified best submissions
+
+    for (const sub of allSubmissions) {
+      const email = (sub.userEmail || '').toLowerCase().trim();
+      const responseCount = sub._count.responses + Object.keys(sub.fullData || {}).length;
+      const currentBest = userGroups.get(email);
+
+      // Selection logic:
+      // - Priority 1: Golden ID matches
+      // - Priority 2: High response count
+      // - Priority 3: Most recent
+      const isGolden = GOLDEN_IDS.includes(sub.id);
+      const betterThanCurrent = !currentBest ||
+        (isGolden && !GOLDEN_IDS.includes(currentBest.id)) ||
+        (responseCount > currentBest.responseCount) ||
+        (responseCount === currentBest.responseCount && sub.createdAt > currentBest.createdAt);
+
+      if (betterThanCurrent) {
+        userGroups.set(email, {
+          id: sub.id,
+          submission: sub,
+          responseCount
+        });
+      }
+    }
+
+    // 3. Final list: Sort winners alphabetically by email
+    const submissions = Array.from(userGroups.values())
+      .map(group => group.submission)
+      .sort((a, b) => {
+        const emailA = (a.userEmail || '').toLowerCase();
+        const emailB = (b.userEmail || '').toLowerCase();
+        return emailA.localeCompare(emailB);
+      });
+
+    // Bulk fetch readings to avoid N+1 query overhead during loop
     const submissionIds = submissions.map(s => s.id);
     const readings = await prisma.reading.findMany({
       where: { submissionId: { in: submissionIds } }

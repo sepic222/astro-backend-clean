@@ -1,0 +1,22 @@
+<!doctype html>
+<html>
+  <body style="font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; line-height:1.45; color:#111;">
+    <h2 style="margin-bottom:0.2rem;">Your FateFlix Astro Reading</h2>
+    <p style="margin-top:0;">Thanks for completing the survey! Here’s your snapshot.</p>
+
+    <h3>Chart Highlights</h3>
+    <ul>
+      <li>ASC: {{asc}}</li>
+      <li>MC: {{mc}}</li>
+      <li>Sun: {{sunSign}} (House {{sunHouse}})</li>
+      <li>Moon: {{moonSign}} (House {{moonHouse}})</li>
+    </ul>
+
+    <h3>Your Reading</h3>
+    <p>{{readingSummary}}</p>
+
+    <p style="margin-top:2rem; font-size:12px; color:#555;">
+      You’re receiving this because you completed the FateFlix survey.
+    </p>
+  </body>
+</html>

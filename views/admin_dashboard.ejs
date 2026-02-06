@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fateflix Admin Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .test-row {
+            background-color: #f3f4f6;
+            opacity: 0.7;
+        }
+
+        .real-row {
+            background-color: #ffffff;
+        }
+
+        .filter-active {
+            background-color: #4f46e5;
+            color: white;
+        }
+    </style>
+</head>
+
+<body class="bg-slate-50 text-slate-900">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        <!-- Header -->
+        <div class="flex justify-between items-center mb-8">
+            <div>
+                <h1 class="text-3xl font-bold text-slate-900 tracking-tight">Fateflix Dashboard</h1>
+                <p class="mt-2 text-sm text-slate-500">Overview of survey submissions with filtering.</p>
+            </div>
+            <div class="flex gap-3">
+                <button onclick="refreshStats()"
+                    class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                    <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    Refresh
+                </button>
+                <a href="/admin/export"
+                    class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                    <svg class="-ml-1 mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    Export CSV
+                </a>
+                <a href="/admin/latest-report"
+                    class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                    <svg class="-ml-1 mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Latest Report
+                </a>
+            </div>
+        </div>
+
+        <!-- Filter Tabs -->
+        <div class="mb-6">
+            <div class="border-b border-gray-200">
+                <nav class="-mb-px flex space-x-8" aria-label="Tabs">
+                    <a href="?type=all"
+                        class="<%= currentFilter === 'all' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' %> whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                        All Submissions
+                        <span
+                            class="inline-flex items-center ml-2 px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                            <%= stats.totalSubmissions %>
+                        </span>
+                    </a>
+                    <a href="?type=real"
+                        class="<%= currentFilter === 'real' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' %> whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                        Real Users
+                        <span
+                            class="inline-flex items-center ml-2 px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            <%= stats.realSubmissions %>
+                        </span>
+                    </a>
+                    <a href="?type=test"
+                        class="<%= currentFilter === 'test' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' %> whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                        Test Only
+                        <span
+                            class="inline-flex items-center ml-2 px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                            <%= stats.testSubmissions %>
+                        </span>
+                    </a>
+                </nav>
+            </div>
+        </div>
+
+        <!-- Stats Cards -->
+        <div class="grid grid-cols-1 gap-5 sm:grid-cols-4 mb-8">
+            <div class="bg-white overflow-hidden shadow rounded-lg">
+                <div class="px-4 py-5 sm:p-6">
+                    <dt class="text-sm font-medium text-gray-500 truncate">Total Submissions</dt>
+                    <dd id="stat-submissions" class="mt-1 text-3xl font-semibold text-gray-900">
+                        <%= stats.totalSubmissions %>
+                    </dd>
+                </div>
+            </div>
+            <div class="bg-white overflow-hidden shadow rounded-lg">
+                <div class="px-4 py-5 sm:p-6">
+                    <dt class="text-sm font-medium text-gray-500 truncate">Real Users</dt>
+                    <dd class="mt-1 text-3xl font-semibold text-green-600">
+                        <%= stats.realSubmissions %>
+                    </dd>
+                </div>
+            </div>
+            <div class="bg-white overflow-hidden shadow rounded-lg">
+                <div class="px-4 py-5 sm:p-6">
+                    <dt class="text-sm font-medium text-gray-500 truncate">Readings Generated</dt>
+                    <dd id="stat-readings" class="mt-1 text-3xl font-semibold text-gray-900">
+                        <%= stats.totalReadings %>
+                    </dd>
+                </div>
+            </div>
+            <div class="bg-white overflow-hidden shadow rounded-lg">
+                <div class="px-4 py-5 sm:p-6">
+                    <dt class="text-sm font-medium text-gray-500 truncate">Total Responses</dt>
+                    <dd id="stat-responses" class="mt-1 text-3xl font-semibold text-gray-900">
+                        <%= stats.totalResponses %>
+                    </dd>
+                </div>
+            </div>
+        </div>
+
+        <!-- Table -->
+        <div class="bg-white shadow overflow-hidden sm:rounded-lg">
+            <div class="px-4 py-5 sm:px-6 border-b border-gray-200 flex justify-between items-center">
+                <h3 class="text-lg leading-6 font-medium text-gray-900">
+                    <%= currentFilter==='all' ? 'All' : currentFilter==='test' ? 'Test' : 'Real User' %> Submissions
+                        <span class="text-sm font-normal text-gray-500">(<%= submissions.length %> shown)</span>
+                </h3>
+                <span id="last-updated" class="text-xs text-gray-400"></span>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th scope="col"
+                                class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Date</th>
+                            <th scope="col"
+                                class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                User</th>
+                            <th scope="col"
+                                class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Name</th>
+                            <th scope="col"
+                                class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Type</th>
+                            <th scope="col"
+                                class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                City</th>
+                            <th scope="col"
+                                class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Rising</th>
+                            <th scope="col"
+                                class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Sun</th>
+                            <th scope="col"
+                                class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Moon</th>
+                            <th scope="col"
+                                class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Reading</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        <% submissions.forEach(function(sub) { %>
+                            <tr class="<%= sub.isTest ? 'test-row' : 'real-row' %> hover:bg-gray-100 transition-colors">
+                                <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    <%= new Date(sub.createdAt).toLocaleString('en-GB', { day: '2-digit' ,
+                                        month: 'short' , hour: '2-digit' , minute: '2-digit' }) %>
+                                </td>
+                                <td class="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900 max-w-[200px] truncate"
+                                    title="<%= sub.userEmail || '' %>">
+                                    <%= sub.userEmail || '<span class="text-gray-400 italic">Anonymous</span>' %>
+                                </td>
+                                <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600 max-w-[120px] truncate"
+                                    title="<%= sub.username || '' %>">
+                                    <%= sub.username || '-' %>
+                                </td>
+                                <td class="px-4 py-4 whitespace-nowrap text-sm">
+                                    <% if (sub.isTest) { %>
+                                        <span
+                                            class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-200 text-gray-700"
+                                            title="<%= sub.testReason %>">
+                                            Test
+                                        </span>
+                                        <% } else { %>
+                                            <span
+                                                class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                                                Real
+                                            </span>
+                                            <% } %>
+                                </td>
+                                <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600">
+                                    <%= sub.birthCity || '-' %>
+                                </td>
+                                <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600">
+                                    <%= sub.risingSign || '-' %>
+                                </td>
+                                <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600">
+                                    <%= sub.sunSign || '-' %>
+                                </td>
+                                <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600">
+                                    <%= sub.moonSign || '-' %>
+                                </td>
+                                <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    <% if (sub.readingId) { %>
+                                        <span
+                                            class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                            ✓
+                                        </span>
+                                        <% } else { %>
+                                            <span class="text-gray-400">-</span>
+                                            <% } %>
+                                </td>
+                            </tr>
+                            <% }); %>
+                    </tbody>
+                </table>
+            </div>
+            <% if (submissions.length===0) { %>
+                <div class="text-center py-10 text-gray-500">
+                    No submissions found for this filter.
+                </div>
+                <% } %>
+        </div>
+
+        <!-- Data View Link -->
+        <div class="mt-6 text-center">
+            <a href="/admin/data" class="text-indigo-600 hover:text-indigo-800 text-sm font-medium">
+                View Full Spreadsheet →
+            </a>
+        </div>
+    </div>
+
+    <script>
+        async function refreshStats() {
+            try {
+                const response = await fetch('/admin/api/stats');
+                const data = await response.json();
+
+                document.getElementById('stat-submissions').textContent = data.totalSubmissions;
+                document.getElementById('stat-readings').textContent = data.totalReadings;
+                document.getElementById('stat-responses').textContent = data.totalResponses;
+                document.getElementById('last-updated').textContent = 'Updated: ' + new Date(data.lastUpdated).toLocaleTimeString();
+            } catch (error) {
+                console.error('Failed to refresh stats:', error);
+            }
+        }
+
+        // Update timestamp on load
+        document.getElementById('last-updated').textContent = 'Loaded: ' + new Date().toLocaleTimeString();
+    </script>
+</body>
+
+</html>

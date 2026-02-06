@@ -1,0 +1,8 @@
+# Cursor Workspace Rules
+
+- Always read CONTEXT.md before suggesting code.
+- Prefer the DB schema in prisma/schema.prisma as the source of truth.
+- For survey data, prefer prisma/questions.csv and prisma/seed.ts.
+- When modifying Prisma schema, use additive migrations first (no destructive changes).
+- When adding required columns to existing tables, add as optional -> backfill -> make required.
+- Never put secrets in frontend; all OpenAI calls stay in backend (server.js).

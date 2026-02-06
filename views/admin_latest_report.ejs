@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fateflix - Latest Submission Report</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .section-header { position: sticky; top: 0; background: white; z-index: 10; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900">
+    <div class="max-w-4xl mx-auto px-4 py-10">
+        <!-- Header -->
+        <div class="flex justify-between items-center mb-10">
+            <div>
+                <h1 class="text-3xl font-bold text-slate-900 tracking-tight">Latest Submission Report</h1>
+                <p class="mt-2 text-sm text-slate-500">Full detailed view of the most recent survey entry.</p>
+            </div>
+            <div class="flex gap-3">
+                <a href="/admin/dashboard" class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                    ← Dashboard
+                </a>
+                <a href="/admin/data" class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                    Spreadsheet View
+                </a>
+            </div>
+        </div>
+
+        <!-- Submission Meta info -->
+        <div class="bg-white shadow rounded-lg overflow-hidden mb-8">
+            <div class="px-6 py-5 border-b border-gray-200 bg-slate-50">
+                <h3 class="text-lg font-semibold text-slate-800">Submission Details</h3>
+            </div>
+            <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label class="block text-xs font-medium text-gray-500 uppercase">Submission ID</label>
+                    <div class="mt-1 text-sm text-gray-900 font-mono"><%= submission.id %></div>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-500 uppercase">Created At</label>
+                    <div class="mt-1 text-sm text-gray-900">
+                        <%= new Date(submission.createdAt).toLocaleString('en-GB', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' }) %>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-500 uppercase">User Email</label>
+                    <div class="mt-1 text-sm text-gray-900"><%= submission.userEmail || 'Anonymous' %></div>
+                </div>
+                <div class="flex gap-4">
+                    <div>
+                        <label class="block text-xs font-medium text-gray-500 uppercase">Sun</label>
+                        <div class="mt-1 text-sm text-gray-900"><%= chart?.sunSign || '-' %></div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-500 uppercase">Moon</label>
+                        <div class="mt-1 text-sm text-gray-900"><%= chart?.moonSign || '-' %></div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-500 uppercase">Rising</label>
+                        <div class="mt-1 text-sm text-gray-900"><%= chart?.risingSign || '-' %></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Responses grouped by section -->
+        <div class="space-y-12">
+            <% Object.keys(groupedResponses).forEach(section => { %>
+                <div>
+                    <div class="section-header py-4 border-b-2 border-indigo-100 flex items-center justify-between">
+                        <h2 class="text-xl font-bold text-indigo-900"><%= section %></h2>
+                        <span class="text-xs font-medium bg-indigo-50 text-indigo-700 px-2 py-1 rounded-full">
+                            <%= groupedResponses[section].length %> Answers
+                        </span>
+                    </div>
+                    
+                    <div class="divide-y divide-gray-100">
+                        <% groupedResponses[section].forEach(resp => { %>
+                            <div class="py-6 group">
+                                <div class="text-sm font-semibold text-gray-500 mb-2 group-hover:text-indigo-600 transition-colors">
+                                    <%= resp.question %>
+                                </div>
+                                <div class="text-lg text-slate-800 leading-relaxed whitespace-pre-wrap">
+                                    <%= resp.answer || '-' %>
+                                    <% if (resp.answer === '-') { %>
+                                        <span class="text-gray-300 italic text-sm">(No answer provided)</span>
+                                    <% } %>
+                                </div>
+                                <div class="mt-1 text-[10px] text-gray-300 font-mono tracking-tighter">
+                                    ID: <%= resp.key %>
+                                </div>
+                            </div>
+                        <% }); %>
+                    </div>
+                </div>
+            <% }); %>
+        </div>
+
+        <!-- Footer -->
+        <div class="mt-16 pt-8 border-t border-gray-200 text-center text-gray-400 text-xs">
+            &copy; <%= new Date().getFullYear() %> Fateflix Admin Tools • Generated on <%= new Date().toLocaleString() %>
+        </div>
+    </div>
+</body>
+</html>

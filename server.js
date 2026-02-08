@@ -1662,19 +1662,23 @@ function buildChartWheelHtml(chartDTO) {
         // 3. HOUSE CUSPS (High Contrast)
         const cCusp = "#ff4d4d"; // High-contrast Red
         HOUSE_DATA.forEach((h, i) => {
-          const deg = rotate(h.longitude);
+          const degLong = typeof h === 'object' ? h.longitude : h;
+          const deg = rotate(degLong);
           const p1 = polarToCartesian(center, center, innerRad, deg), p2 = polarToCartesian(center, center, 0, deg);
           const isAngle = (i === 0 || i === 3 || i === 6 || i === 9); // AC, IC, DC, MC
           
           // Draw Red Cusp Line
           svg += '<line x1="'+p1.x+'" y1="'+p1.y+'" x2="'+p2.x+'" y2="'+p2.y+'" stroke="'+cCusp+'" stroke-width="'+(isAngle?2.5:1)+'" opacity="'+(isAngle?1:0.6)+'"/>';
           
-          // Cusp Degree Label (At the outer edge of the inner ring)
+          // Cusp Degree Label
           const cuspLabelPos = polarToCartesian(center, center, innerRad + 15, deg);
-          svg += '<text x="'+cuspLabelPos.x+'" y="'+cuspLabelPos.y+'" fill="'+cCusp+'" font-size="10" font-weight="bold" text-anchor="middle" dominant-baseline="central" transform="rotate('+(deg+90)+','+cuspLabelPos.x+','+cuspLabelPos.y+')">'+formatDegree(h.longitude % 30)+'</text>';
+          svg += '<text x="'+cuspLabelPos.x+'" y="'+cuspLabelPos.y+'" fill="'+cCusp+'" font-size="10" font-weight="bold" text-anchor="middle" dominant-baseline="central" transform="rotate('+(deg+90)+','+cuspLabelPos.x+','+cuspLabelPos.y+')">'+formatDegree(degLong % 30)+'</text>';
 
           // House Numbers (Larger and centered)
-          const nextDeg = rotate(HOUSE_DATA[(i+1)%12].longitude);
+          const nextHouse = HOUSE_DATA[(i+1)%12];
+          const nextDegLong = typeof nextHouse === 'object' ? nextHouse.longitude : nextHouse;
+          const nextDeg = rotate(nextDegLong);
+          
           let midHouse = deg + (normalize(nextDeg - deg) / 2);
           const houseNumPos = polarToCartesian(center, center, contentRad - 80, midHouse);
           svg += '<text x="'+houseNumPos.x+'" y="'+houseNumPos.y+'" fill="white" font-size="22" font-weight="bold" text-anchor="middle" dominant-baseline="central" opacity="0.8">'+(i+1)+'</text>';

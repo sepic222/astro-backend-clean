@@ -1659,18 +1659,25 @@ function buildChartWheelHtml(chartDTO) {
           svg += '<line x1="'+p1.x+'" y1="'+p1.y+'" x2="'+p2.x+'" y2="'+p2.y+'" stroke="white" stroke-width="0.3" opacity="0.5"/>';
         }
 
-        // 3. HOUSE CUSPS
+        // 3. HOUSE CUSPS (High Contrast)
+        const cCusp = "#ff4d4d"; // High-contrast Red
         HOUSE_DATA.forEach((h, i) => {
           const deg = rotate(h.longitude);
           const p1 = polarToCartesian(center, center, innerRad, deg), p2 = polarToCartesian(center, center, 0, deg);
           const isAngle = (i === 0 || i === 3 || i === 6 || i === 9); // AC, IC, DC, MC
-          svg += '<line x1="'+p1.x+'" y1="'+p1.y+'" x2="'+p2.x+'" y2="'+p2.y+'" stroke="white" stroke-width="'+(isAngle?2:0.5)+'" opacity="'+(isAngle?0.8:0.3)+'"/>';
           
-          // House Numbers
+          // Draw Red Cusp Line
+          svg += '<line x1="'+p1.x+'" y1="'+p1.y+'" x2="'+p2.x+'" y2="'+p2.y+'" stroke="'+cCusp+'" stroke-width="'+(isAngle?2.5:1)+'" opacity="'+(isAngle?1:0.6)+'"/>';
+          
+          // Cusp Degree Label (At the outer edge of the inner ring)
+          const cuspLabelPos = polarToCartesian(center, center, innerRad + 15, deg);
+          svg += '<text x="'+cuspLabelPos.x+'" y="'+cuspLabelPos.y+'" fill="'+cCusp+'" font-size="10" font-weight="bold" text-anchor="middle" dominant-baseline="central" transform="rotate('+(deg+90)+','+cuspLabelPos.x+','+cuspLabelPos.y+')">'+formatDegree(h.longitude % 30)+'</text>';
+
+          // House Numbers (Larger and centered)
           const nextDeg = rotate(HOUSE_DATA[(i+1)%12].longitude);
           let midHouse = deg + (normalize(nextDeg - deg) / 2);
-          const hole = polarToCartesian(center, center, contentRad - 100, midHouse);
-          svg += '<text x="'+hole.x+'" y="'+hole.y+'" fill="rgba(255,255,255,0.4)" font-size="16" text-anchor="middle" dominant-baseline="central">'+(i+1)+'</text>';
+          const houseNumPos = polarToCartesian(center, center, contentRad - 80, midHouse);
+          svg += '<text x="'+houseNumPos.x+'" y="'+houseNumPos.y+'" fill="white" font-size="22" font-weight="bold" text-anchor="middle" dominant-baseline="central" opacity="0.8">'+(i+1)+'</text>';
         });
 
         // 4. ASPECTS

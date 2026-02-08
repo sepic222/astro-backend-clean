@@ -872,9 +872,19 @@ app.get('/admin/deep-dive/:submissionId', async (req, res) => {
       return acc;
     }, {});
 
+    // 5. Prepare Chart DTO for high-fidelity rendering
+    const rawChart = (submission.chart?.rawChart && typeof submission.chart.rawChart === 'object') ? submission.chart.rawChart : {};
+    const chartDTO = {
+      planets: rawChart.planets || {},
+      sunSign: submission.chart?.sunSign,
+      moonSign: submission.chart?.moonSign,
+      risingSign: submission.chart?.risingSign
+    };
+
     res.render('admin_deep_dive', {
       submission,
       chart: submission.chart,
+      chartDTO,
       groupedAnswers,
       buildChartWheelHtml
     });
@@ -1518,6 +1528,8 @@ const PLANET_SYMBOLS = {
 };
 
 function buildChartWheelHtml(chartDTO) {
+  const chartId = 'chart-' + Math.random().toString(36).substr(2, 9);
+
   // Convert chartDTO.planets to the format expected by the chart wheel
   const planets = chartDTO.planets || {};
   const planetData = Object.entries(planets).map(([name, data]) => ({
@@ -1537,14 +1549,11 @@ function buildChartWheelHtml(chartDTO) {
       const deg1 = data1.longitude || 0;
       const deg2 = data2.longitude || 0;
 
-      // Calculate angular distance
       let diff = Math.abs(deg1 - deg2);
       if (diff > 180) diff = 360 - diff;
 
-      // Check for major aspects (with 8-degree orb)
       const orb = 8;
       let aspectType = null;
-
       if (Math.abs(diff - 0) <= orb) aspectType = 'Conjunction';
       else if (Math.abs(diff - 60) <= orb) aspectType = 'Sextile';
       else if (Math.abs(diff - 90) <= orb) aspectType = 'Square';
@@ -1566,28 +1575,24 @@ function buildChartWheelHtml(chartDTO) {
 
   return `
     <style>
-      .chart-wheel-container {
+      .chart-wheel-wrapper {
         width: 100%;
         max-width: 100%;
         margin: 0 auto;
-        opacity: 1;
+        aspect-ratio: 1/1;
+        position: relative;
       }
-      .chart-wheel-logo-text {
-        font-size: 28px;
-        letter-spacing: 0.35em;
-        font-weight: 200;
-        opacity: 0.95;
-        fill: white;
-        text-anchor: middle;
-        dominant-baseline: middle;
+      .chart-wheel-container {
+        width: 100%;
+        height: 100%;
       }
     </style>
-    <div id="chart-wheel-root" class="chart-wheel-container"></div>
+    <div class="chart-wheel-wrapper">
+      <div id="${chartId}" class="chart-wheel-container"></div>
+    </div>
     <script>
     (function() {
-      // --- CORE GEOMETRY FUNCTIONS ---
       const degToRad = (deg) => (deg * Math.PI) / 180;
-      
       const polarToCartesian = (centerX, centerY, radius, angleInDegrees) => {
         const angleInRadians = degToRad(angleInDegrees - 90);
         return {
@@ -1596,19 +1601,8 @@ function buildChartWheelHtml(chartDTO) {
         };
       };
 
-      const htmlHead = '<link rel="preconnect" href="https://fonts.googleapis.com">' +
-        '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>' +
-        '<link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500&display=swap" rel="stylesheet">' +
-        '<style>' +
-          '.chart-wheel-logo-text {' +
-            "font-family: 'Inter', sans-serif;" +
-            'text-transform: uppercase;' +
-          '}' +
-        '</style>';
-
       const describeArc = (x, y, innerRadius, outerRadius, startAngle, endAngle) => {
         if (endAngle - startAngle >= 360) endAngle = startAngle + 359.99;
-        
         const start = polarToCartesian(x, y, outerRadius, endAngle);
         const end = polarToCartesian(x, y, outerRadius, startAngle);
         const startInner = polarToCartesian(x, y, innerRadius, endAngle);
@@ -1624,7 +1618,6 @@ function buildChartWheelHtml(chartDTO) {
         ].join(" ");
       };
 
-      // --- CONSTANTS AND DIMENSIONS ---
       const ZODIACS = [
         { name: 'Aries', symbol: '♈︎' }, { name: 'Pisces', symbol: '♓︎' },
         { name: 'Aquarius', symbol: '♒︎' }, { name: 'Capricorn', symbol: '♑︎' },
@@ -1634,112 +1627,85 @@ function buildChartWheelHtml(chartDTO) {
         { name: 'Gemini', symbol: '♊︎' }, { name: 'Taurus', symbol: '♉︎' },
       ];
 
-      const size = 1000; // Increased for better visibility (25% larger than original 800px)
+      const size = 1000;
       const center = size / 2;
-      const outerRadius = 400; // Scaled proportionally (320 * 1.25 = 400)
-      const ringThickness = 65; // Scaled proportionally (52 * 1.25 = 65)
+      const outerRadius = 400;
+      const ringThickness = 65;
       const innerRadius = outerRadius - ringThickness;
       const textRadius = outerRadius - (ringThickness / 2);
-      const contentRadius = innerRadius - 25; // Scaled proportionally 
-
-      const cRing = "#2563EB"; 
+      const contentRadius = innerRadius - 25;
+      const cRing = "#2563EB";
       const cLine = "rgba(255, 255, 255, 0.12)";
 
       function renderChartWheel(planetData, aspectData) {
-        const chartRoot = document.getElementById('chart-wheel-root');
+        const chartRoot = document.getElementById('${chartId}');
         if (!chartRoot) return;
         
         let svgContent = '';
 
-        // --- 1. ZODIAC RING ---
+        // 1. ZODIAC RING
         let zodiacRing = '';
         ZODIACS.forEach((sign, index) => {
           const startAngle = index * 30;
           const endAngle = (index + 1) * 30;
           const midAngle = startAngle + 15;
-          
           const pathData = describeArc(center, center, innerRadius, outerRadius, startAngle, endAngle);
           const textPos = polarToCartesian(center, center, textRadius, midAngle);
           const lineStart = polarToCartesian(center, center, innerRadius, startAngle);
           const lineEnd = polarToCartesian(center, center, outerRadius, startAngle);
 
           let rotation = midAngle;
-          if (midAngle > 90 && midAngle < 270) {
-            rotation += 180;
-          }
+          if (midAngle > 90 && midAngle < 270) rotation += 180;
 
           zodiacRing += '<path d="' + pathData + '" fill="' + cRing + '" stroke="none" />';
           zodiacRing += '<line x1="' + lineStart.x + '" y1="' + lineStart.y + '" x2="' + lineEnd.x + '" y2="' + lineEnd.y + '" stroke="rgba(255,255,255,0.15)" stroke-width="0.5" />';
-          zodiacRing += '<text x="' + textPos.x + '" y="' + textPos.y + '" fill="white" text-anchor="middle" dominant-baseline="central" transform="rotate(' + rotation + ', ' + textPos.x + ', ' + textPos.y + ')" style="font-family: \'Inter\', sans-serif; font-size: 11px; letter-spacing: 0.2em; font-weight: 500; text-transform: uppercase; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;">' + sign.name + '</text>';
+          zodiacRing += '<text x="' + textPos.x + '" y="' + textPos.y + '" fill="white" text-anchor="middle" dominant-baseline="central" transform="rotate(' + rotation + ', ' + textPos.x + ', ' + textPos.y + ')" style="font-family: sans-serif; font-size: 11px; letter-spacing: 0.2em; font-weight: 500; text-transform: uppercase;">' + sign.name + '</text>';
         });
         
         zodiacRing += '<circle cx="' + center + '" cy="' + center + '" r="' + outerRadius + '" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="0.5" />';
         zodiacRing += '<circle cx="' + center + '" cy="' + center + '" r="' + innerRadius + '" fill="none" stroke="white" stroke-width="1.2" opacity="0.9" />';
-        svgContent += '<g class="zodiac-ring">' + zodiacRing + '</g>';
+        svgContent += '<g>' + zodiacRing + '</g>';
 
-        // --- 2. ASPECTS ---
+        // 2. ASPECTS
         let aspectsSvg = '';
         aspectData.forEach((aspect) => {
           const p1 = planetData.find(p => p.name === aspect.p1);
           const p2 = planetData.find(p => p.name === aspect.p2);
-          if (!p1 || !p2) return;
-
-          const pos1 = polarToCartesian(center, center, contentRadius, p1.degree);
-          const pos2 = polarToCartesian(center, center, contentRadius, p2.degree);
-
-          aspectsSvg += '<line x1="' + pos1.x + '" y1="' + pos1.y + '" x2="' + pos2.x + '" y2="' + pos2.y + '" stroke="url(#chartWheelGradient)" stroke-width="0.6" opacity="0.9" />';
+          if (p1 && p2) {
+            const pos1 = polarToCartesian(center, center, contentRadius, p1.degree);
+            const pos2 = polarToCartesian(center, center, contentRadius, p2.degree);
+            aspectsSvg += '<line x1="' + pos1.x + '" y1="' + pos1.y + '" x2="' + pos2.x + '" y2="' + pos2.y + '" stroke="white" stroke-width="0.6" opacity="0.3" />';
+          }
         });
-        svgContent += '<g class="aspects">' + aspectsSvg + '</g>';
+        svgContent += '<g>' + aspectsSvg + '</g>';
 
-        // --- 3. PLANETS ---
+        // 3. PLANETS
         let planetsSvg = '';
         planetData.forEach((planet) => {
           const pos = polarToCartesian(center, center, contentRadius, planet.degree);
           const tickStart = polarToCartesian(center, center, innerRadius, planet.degree);
-          
-          planetsSvg += '<g class="planet-group" data-planet-name="' + planet.name + '">';
+          planetsSvg += '<g>';
           planetsSvg += '<line x1="' + pos.x + '" y1="' + pos.y + '" x2="' + tickStart.x + '" y2="' + tickStart.y + '" stroke="white" stroke-width="0.5" opacity="0.5" />';
           planetsSvg += '<circle cx="' + pos.x + '" cy="' + pos.y + '" r="12" fill="black" stroke="white" stroke-width="0.8" />';
           planetsSvg += '<text x="' + pos.x + '" y="' + pos.y + '" fill="white" font-size="14" dy="0.5" text-anchor="middle" dominant-baseline="central">' + planet.symbol + '</text>';
           planetsSvg += '</g>';
         });
-        svgContent += '<g class="planets">' + planetsSvg + '</g>';
+        svgContent += '<g>' + planetsSvg + '</g>';
 
-        // --- 4. INNER MECHANICS & AXIS ---
-        svgContent += '<g class="inner-mechanics">';
-        svgContent += '<circle cx="' + center + '" cy="' + center + '" r="' + contentRadius + '" fill="none" stroke="' + cLine + '" stroke-width="0.5" />';
-        svgContent += '<path d="' + describeArc(center, center, contentRadius, innerRadius, 0, 359.99) + '" fill="rgba(255,255,255,0.03)" stroke="none" />';
-        svgContent += '</g>';
-        svgContent += '<g class="axis">';
-        svgContent += '<text x="' + (center - outerRadius - 20) + '" y="' + center + '" text-anchor="end" dominant-baseline="middle" style="font-family: \'Inter\', sans-serif; font-size: 10px; font-weight: 400; letter-spacing: 0.2em; fill: rgba(255,255,255,0.5);">AC</text>';
-        svgContent += '<text x="' + (center + outerRadius + 20) + '" y="' + center + '" text-anchor="start" dominant-baseline="middle" style="font-family: \'Inter\', sans-serif; font-size: 10px; font-weight: 400; letter-spacing: 0.2em; fill: rgba(255,255,255,0.5);">DC</text>';
+        // 4. INNER MECHANICS
+        svgContent += '<g>';
+        svgContent += '<circle cx="' + center + '" cy="' + center + '" r="' + contentRadius + '" fill="rgba(255,255,255,0.02)" stroke="' + cLine + '" stroke-width="0.5" />';
         svgContent += '</g>';
 
-        // --- 5. LOGO ---
-        svgContent += '<g transform="translate(' + center + ', ' + center + ')">';
-        svgContent += '<text x="0" y="0" class="chart-wheel-logo-text" style="font-family: \'Inter\', sans-serif; font-weight: 200; font-size: 28px; letter-spacing: 0.35em; opacity: 0.95; fill: white; text-anchor: middle; dominant-baseline: middle;">FATEFLIX</text>';
-        svgContent += '</g>';
+        // 5. LOGO
+        svgContent += '<text x="' + center + '" y="' + center + '" fill="white" font-weight="200" font-size="28" letter-spacing="0.35em" text-anchor="middle" dominant-baseline="middle" style="font-family: sans-serif; text-transform: uppercase; opacity: 0.9;">FATEFLIX</text>';
 
-        // Final SVG structure
-        const finalSvg = htmlHead + '<svg viewBox="0 0 ' + size + ' ' + size + '" style="width:100%;height:auto;overflow:visible;">' +
-          '<defs><linearGradient id="chartWheelGradient" x1="0%" y1="0%" x2="100%" y2="100%">' +
-          '<stop offset="0%" stop-color="rgba(255,255,255,0.02)" />' +
-          '<stop offset="50%" stop-color="rgba(255,255,255,0.5)" />' +
-          '<stop offset="100%" stop-color="rgba(255,255,255,0.02)" />' +
-          '</linearGradient></defs>' + svgContent + '</svg>';
-
-        chartRoot.innerHTML = finalSvg;
+        chartRoot.innerHTML = '<svg viewBox="0 0 ' + size + ' ' + size + '" style="width:100%;height:100%;overflow:visible;">' + svgContent + '</svg>';
       }
 
-      // Inject dynamic data from server
       const PLANET_DATA = ${planetDataJson};
       const ASPECT_DATA = ${aspectDataJson};
-
-      if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', function() { renderChartWheel(PLANET_DATA, ASPECT_DATA); });
-      } else {
-        renderChartWheel(PLANET_DATA, ASPECT_DATA);
-      }
+      renderChartWheel(PLANET_DATA, ASPECT_DATA);
     })();
     </script>
   `;

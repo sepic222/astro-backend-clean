@@ -876,6 +876,8 @@ app.get('/admin/deep-dive/:submissionId', async (req, res) => {
     const rawChart = (submission.chart?.rawChart && typeof submission.chart.rawChart === 'object') ? submission.chart.rawChart : {};
     const chartDTO = {
       planets: rawChart.planets || {},
+      rawHouses: rawChart.houses || [],
+      ascendant: submission.chart?.ascendant || 0,
       sunSign: submission.chart?.sunSign,
       moonSign: submission.chart?.moonSign,
       risingSign: submission.chart?.risingSign
@@ -1530,7 +1532,6 @@ const PLANET_SYMBOLS = {
 function buildChartWheelHtml(chartDTO) {
   const chartId = 'chart-' + Math.random().toString(36).substr(2, 9);
 
-  // Convert chartDTO.planets to the format expected by the chart wheel
   const planets = chartDTO.planets || {};
   const planetData = Object.entries(planets).map(([name, data]) => ({
     name: name.charAt(0).toUpperCase() + name.slice(1),
@@ -1538,20 +1539,16 @@ function buildChartWheelHtml(chartDTO) {
     degree: data.longitude || 0
   }));
 
-  // Calculate aspects between planets
   const aspectData = [];
   const planetList = Object.entries(planets);
-
   for (let i = 0; i < planetList.length; i++) {
     for (let j = i + 1; j < planetList.length; j++) {
       const [name1, data1] = planetList[i];
       const [name2, data2] = planetList[j];
       const deg1 = data1.longitude || 0;
       const deg2 = data2.longitude || 0;
-
       let diff = Math.abs(deg1 - deg2);
       if (diff > 180) diff = 360 - diff;
-
       const orb = 8;
       let aspectType = null;
       if (Math.abs(diff - 0) <= orb) aspectType = 'Conjunction';
@@ -1572,6 +1569,8 @@ function buildChartWheelHtml(chartDTO) {
 
   const planetDataJson = JSON.stringify(planetData);
   const aspectDataJson = JSON.stringify(aspectData);
+  const houseDataJson = JSON.stringify(chartDTO.rawHouses || []);
+  const ascDegree = chartDTO.ascendant || 0;
 
   return `
     <style>
@@ -1581,6 +1580,8 @@ function buildChartWheelHtml(chartDTO) {
         margin: 0 auto;
         aspect-ratio: 1/1;
         position: relative;
+        background: radial-gradient(circle at center, #0a0a1a 0%, #000 100%);
+        border-radius: 50%;
       }
       .chart-wheel-container {
         width: 100%;
@@ -1592,120 +1593,111 @@ function buildChartWheelHtml(chartDTO) {
     </div>
     <script>
     (function() {
+      const ASC_DEGREE = ${ascDegree};
+      const PLANET_DATA = ${planetDataJson};
+      const ASPECT_DATA = ${aspectDataJson};
+      const HOUSE_DATA = ${houseDataJson};
+
+      // Helper: Normalize degree to [0, 360) and rotate so ASC is at 180 (left)
+      const normalize = (deg) => ((deg % 360) + 360) % 360;
+      const rotate = (deg) => normalize(deg - ASC_DEGREE + 180);
+
       const degToRad = (deg) => (deg * Math.PI) / 180;
       const polarToCartesian = (centerX, centerY, radius, angleInDegrees) => {
-        const angleInRadians = degToRad(angleInDegrees - 90);
+        const radians = degToRad(angleInDegrees - 90);
         return {
-          x: centerX + radius * Math.cos(angleInRadians),
-          y: centerY + radius * Math.sin(angleInRadians)
+          x: centerX + radius * Math.cos(radians),
+          y: centerY + radius * Math.sin(radians)
         };
       };
 
-      const describeArc = (x, y, innerRadius, outerRadius, startAngle, endAngle) => {
-        if (endAngle - startAngle >= 360) endAngle = startAngle + 359.99;
-        const start = polarToCartesian(x, y, outerRadius, endAngle);
-        const end = polarToCartesian(x, y, outerRadius, startAngle);
-        const startInner = polarToCartesian(x, y, innerRadius, endAngle);
-        const endInner = polarToCartesian(x, y, innerRadius, startAngle);
-        const largeArcFlag = endAngle - startAngle <= 180 ? "0" : "1";
+      const formatDegree = (deg) => {
+        const d = Math.floor(deg);
+        const m = Math.floor((deg - d) * 60);
+        return d + "°" + (m < 10 ? "0" + m : m) + "'";
+      };
 
-        return [
-          "M", start.x, start.y,
-          "A", outerRadius, outerRadius, 0, largeArcFlag, 0, end.x, end.y,
-          "L", endInner.x, endInner.y,
-          "A", innerRadius, innerRadius, 0, largeArcFlag, 1, startInner.x, startInner.y,
-          "Z"
-        ].join(" ");
+      const describeArc = (x, y, innerRadius, outerRadius, startAngle, endAngle) => {
+        const s = polarToCartesian(x, y, outerRadius, endAngle);
+        const e = polarToCartesian(x, y, outerRadius, startAngle);
+        const si = polarToCartesian(x, y, innerRadius, endAngle);
+        const ei = polarToCartesian(x, y, innerRadius, startAngle);
+        const largeArc = endAngle - startAngle <= 180 ? "0" : "1";
+        return ["M", s.x, s.y, "A", outerRadius, outerRadius, 0, largeArc, 0, e.x, e.y, "L", ei.x, ei.y, "A", innerRadius, innerRadius, 0, largeArc, 1, si.x, si.y, "Z"].join(" ");
       };
 
       const ZODIACS = [
-        { name: 'Aries', symbol: '♈︎' }, { name: 'Pisces', symbol: '♓︎' },
-        { name: 'Aquarius', symbol: '♒︎' }, { name: 'Capricorn', symbol: '♑︎' },
-        { name: 'Sagittarius', symbol: '♐︎' }, { name: 'Scorpio', symbol: '♏︎' },
-        { name: 'Libra', symbol: '♎︎' }, { name: 'Virgo', symbol: '♍︎' },
-        { name: 'Leo', symbol: '♌︎' }, { name: 'Cancer', symbol: '♋︎' },
-        { name: 'Gemini', symbol: '♊︎' }, { name: 'Taurus', symbol: '♉︎' },
+        { name: 'Aries', symbol: '♈︎' }, { name: 'Taurus', symbol: '♉︎' }, { name: 'Gemini', symbol: '♊︎' },
+        { name: 'Cancer', symbol: '♋︎' }, { name: 'Leo', symbol: '♌︎' }, { name: 'Virgo', symbol: '♍︎' },
+        { name: 'Libra', symbol: '♎︎' }, { name: 'Scorpio', symbol: '♏︎' }, { name: 'Sagittarius', symbol: '♐︎' },
+        { name: 'Capricorn', symbol: '♑︎' }, { name: 'Aquarius', symbol: '♒︎' }, { name: 'Pisces', symbol: '♓︎' }
       ];
 
-      const size = 1000;
-      const center = size / 2;
-      const outerRadius = 400;
-      const ringThickness = 65;
-      const innerRadius = outerRadius - ringThickness;
-      const textRadius = outerRadius - (ringThickness / 2);
-      const contentRadius = innerRadius - 25;
-      const cRing = "#2563EB";
-      const cLine = "rgba(255, 255, 255, 0.12)";
+      const size = 1000, center = 500;
+      const outerRad = 450, ringThick = 50, innerRad = outerRad - ringThick;
+      const tickRad = innerRad - 10, contentRad = innerRad - 40;
+      const cRing = "#2563EB", cLine = "rgba(255, 255, 255, 0.2)";
 
-      function renderChartWheel(planetData, aspectData) {
-        const chartRoot = document.getElementById('${chartId}');
-        if (!chartRoot) return;
-        
-        let svgContent = '';
+      function render() {
+        const root = document.getElementById('${chartId}');
+        if (!root) return;
+        let svg = '';
 
-        // 1. ZODIAC RING
-        let zodiacRing = '';
-        ZODIACS.forEach((sign, index) => {
-          const startAngle = index * 30;
-          const endAngle = (index + 1) * 30;
-          const midAngle = startAngle + 15;
-          const pathData = describeArc(center, center, innerRadius, outerRadius, startAngle, endAngle);
-          const textPos = polarToCartesian(center, center, textRadius, midAngle);
-          const lineStart = polarToCartesian(center, center, innerRadius, startAngle);
-          const lineEnd = polarToCartesian(center, center, outerRadius, startAngle);
-
-          let rotation = midAngle;
-          if (midAngle > 90 && midAngle < 270) rotation += 180;
-
-          zodiacRing += '<path d="' + pathData + '" fill="' + cRing + '" stroke="none" />';
-          zodiacRing += '<line x1="' + lineStart.x + '" y1="' + lineStart.y + '" x2="' + lineEnd.x + '" y2="' + lineEnd.y + '" stroke="rgba(255,255,255,0.15)" stroke-width="0.5" />';
-          zodiacRing += '<text x="' + textPos.x + '" y="' + textPos.y + '" fill="white" text-anchor="middle" dominant-baseline="central" transform="rotate(' + rotation + ', ' + textPos.x + ', ' + textPos.y + ')" style="font-family: sans-serif; font-size: 11px; letter-spacing: 0.2em; font-weight: 500; text-transform: uppercase;">' + sign.name + '</text>';
+        // 1. ZODIAC RING (Rotated)
+        ZODIACS.forEach((sign, i) => {
+          const start = rotate(i * 30), end = rotate((i + 1) * 30), mid = rotate(i * 30 + 15);
+          svg += '<path d="' + describeArc(center, center, innerRad, outerRad, start, end) + '" fill="' + cRing + '" stroke="white" stroke-width="0.5" opacity="0.8"/>';
+          const t = polarToCartesian(center, center, outerRad - 25, mid);
+          svg += '<text x="'+t.x+'" y="'+t.y+'" fill="white" font-size="14" text-anchor="middle" dominant-baseline="central" transform="rotate('+(mid+90)+','+t.x+','+t.y+')">' + sign.symbol + '</text>';
         });
-        
-        zodiacRing += '<circle cx="' + center + '" cy="' + center + '" r="' + outerRadius + '" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="0.5" />';
-        zodiacRing += '<circle cx="' + center + '" cy="' + center + '" r="' + innerRadius + '" fill="none" stroke="white" stroke-width="1.2" opacity="0.9" />';
-        svgContent += '<g>' + zodiacRing + '</g>';
 
-        // 2. ASPECTS
-        let aspectsSvg = '';
-        aspectData.forEach((aspect) => {
-          const p1 = planetData.find(p => p.name === aspect.p1);
-          const p2 = planetData.find(p => p.name === aspect.p2);
-          if (p1 && p2) {
-            const pos1 = polarToCartesian(center, center, contentRadius, p1.degree);
-            const pos2 = polarToCartesian(center, center, contentRadius, p2.degree);
-            aspectsSvg += '<line x1="' + pos1.x + '" y1="' + pos1.y + '" x2="' + pos2.x + '" y2="' + pos2.y + '" stroke="white" stroke-width="0.6" opacity="0.3" />';
+        // 2. TICK MARKS (360 degrees)
+        for(let i=0; i<360; i++) {
+          const deg = rotate(i);
+          const r1 = innerRad, r2 = (i % 5 === 0) ? innerRad - 15 : innerRad - 8;
+          const p1 = polarToCartesian(center, center, r1, deg), p2 = polarToCartesian(center, center, r2, deg);
+          svg += '<line x1="'+p1.x+'" y1="'+p1.y+'" x2="'+p2.x+'" y2="'+p2.y+'" stroke="white" stroke-width="0.3" opacity="0.5"/>';
+        }
+
+        // 3. HOUSE CUSPS
+        HOUSE_DATA.forEach((h, i) => {
+          const deg = rotate(h.longitude);
+          const p1 = polarToCartesian(center, center, innerRad, deg), p2 = polarToCartesian(center, center, 0, deg);
+          const isAngle = (i === 0 || i === 3 || i === 6 || i === 9); // AC, IC, DC, MC
+          svg += '<line x1="'+p1.x+'" y1="'+p1.y+'" x2="'+p2.x+'" y2="'+p2.y+'" stroke="white" stroke-width="'+(isAngle?2:0.5)+'" opacity="'+(isAngle?0.8:0.3)+'"/>';
+          
+          // House Numbers
+          const nextDeg = rotate(HOUSE_DATA[(i+1)%12].longitude);
+          let midHouse = deg + (normalize(nextDeg - deg) / 2);
+          const hole = polarToCartesian(center, center, contentRad - 100, midHouse);
+          svg += '<text x="'+hole.x+'" y="'+hole.y+'" fill="rgba(255,255,255,0.4)" font-size="16" text-anchor="middle" dominant-baseline="central">'+(i+1)+'</text>';
+        });
+
+        // 4. ASPECTS
+        ASPECT_DATA.forEach(a => {
+          const p1 = PLANET_DATA.find(p => p.name === a.p1), p2 = PLANET_DATA.find(p => p.name === a.p2);
+          if(p1 && p2) {
+            const pos1 = polarToCartesian(center, center, contentRad, rotate(p1.degree)), pos2 = polarToCartesian(center, center, contentRad, rotate(p2.degree));
+            svg += '<line x1="'+pos1.x+'" y1="'+pos1.y+'" x2="'+pos2.x+'" y2="'+pos2.y+'" stroke="white" stroke-width="0.8" opacity="0.2"/>';
           }
         });
-        svgContent += '<g>' + aspectsSvg + '</g>';
 
-        // 3. PLANETS
-        let planetsSvg = '';
-        planetData.forEach((planet) => {
-          const pos = polarToCartesian(center, center, contentRadius, planet.degree);
-          const tickStart = polarToCartesian(center, center, innerRadius, planet.degree);
-          planetsSvg += '<g>';
-          planetsSvg += '<line x1="' + pos.x + '" y1="' + pos.y + '" x2="' + tickStart.x + '" y2="' + tickStart.y + '" stroke="white" stroke-width="0.5" opacity="0.5" />';
-          planetsSvg += '<circle cx="' + pos.x + '" cy="' + pos.y + '" r="12" fill="black" stroke="white" stroke-width="0.8" />';
-          planetsSvg += '<text x="' + pos.x + '" y="' + pos.y + '" fill="white" font-size="14" dy="0.5" text-anchor="middle" dominant-baseline="central">' + planet.symbol + '</text>';
-          planetsSvg += '</g>';
+        // 5. PLANETS
+        PLANET_DATA.forEach(p => {
+          const deg = rotate(p.degree);
+          const pos = polarToCartesian(center, center, contentRad, deg);
+          svg += '<g>';
+          svg += '<circle cx="'+pos.x+'" cy="'+pos.y+'" r="15" fill="#000" stroke="white" stroke-width="1"/>';
+          svg += '<text x="'+pos.x+'" y="'+pos.y+'" fill="white" font-size="16" text-anchor="middle" dominant-baseline="central">'+p.symbol+'</text>';
+          // Degree Text
+          const tPos = polarToCartesian(center, center, contentRad + 35, deg);
+          svg += '<text x="'+tPos.x+'" y="'+tPos.y+'" fill="white" font-size="10" text-anchor="middle" dominant-baseline="central" transform="rotate('+(deg+90)+','+tPos.x+','+tPos.y+')">'+formatDegree(p.degree % 30)+'</text>';
+          svg += '</g>';
         });
-        svgContent += '<g>' + planetsSvg + '</g>';
 
-        // 4. INNER MECHANICS
-        svgContent += '<g>';
-        svgContent += '<circle cx="' + center + '" cy="' + center + '" r="' + contentRadius + '" fill="rgba(255,255,255,0.02)" stroke="' + cLine + '" stroke-width="0.5" />';
-        svgContent += '</g>';
-
-        // 5. LOGO
-        svgContent += '<text x="' + center + '" y="' + center + '" fill="white" font-weight="200" font-size="28" letter-spacing="0.35em" text-anchor="middle" dominant-baseline="middle" style="font-family: sans-serif; text-transform: uppercase; opacity: 0.9;">FATEFLIX</text>';
-
-        chartRoot.innerHTML = '<svg viewBox="0 0 ' + size + ' ' + size + '" style="width:100%;height:100%;overflow:visible;">' + svgContent + '</svg>';
+        root.innerHTML = '<svg viewBox="0 0 1000 1000" style="width:100%;height:100%">' + svg + '</svg>';
       }
-
-      const PLANET_DATA = ${planetDataJson};
-      const ASPECT_DATA = ${aspectDataJson};
-      renderChartWheel(PLANET_DATA, ASPECT_DATA);
+      render();
     })();
     </script>
   `;
@@ -1744,7 +1736,7 @@ app.get('/dev/no-time', (req, res) => {
   };
 
   // Redirect to the HTML view (page 2 is where the no-time logic lives)
-  res.redirect(`/reading/${submissionId}/html/2`);
+  res.redirect(`/ reading / ${submissionId} /html/2`);
 });
 
 app.get('/dev/chart-ruler', (req, res) => {
@@ -1796,7 +1788,7 @@ app.get('/dev/chart-ruler', (req, res) => {
   };
 
   // Redirect to the HTML view (page 2 is where the chart ruler logic lives)
-  res.redirect(`/reading/${submissionId}/html/2`);
+  res.redirect(`/ reading / ${submissionId} /html/2`);
 });
 
 // Dev route for Badge preview (uses EJS template)
@@ -1828,82 +1820,82 @@ app.get('/dev/chart-wheel', (req, res) => {
     }
   };
 
-  const html = `<!DOCTYPE html>
-  <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>FateFlix Chart Wheel Preview</title>
-    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@600&family=Inter:wght@200;400;500&display=swap" rel="stylesheet">
-    <style>
-      body { 
-        background-color: #000; 
-        margin: 0; 
-        padding: 60px 40px; 
-        display: flex; 
-        flex-direction: column;
-        align-items: center; 
-        min-height: 100vh; 
-        box-sizing: border-box;
-        font-family: 'Inter', sans-serif;
-        color: white;
+  const html = `< !DOCTYPE html >
+    <html lang="en">
+      <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>FateFlix Chart Wheel Preview</title>
+        <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@600&family=Inter:wght@200;400;500&display=swap" rel="stylesheet">
+          <style>
+            body {
+              background - color: #000;
+            margin: 0;
+            padding: 60px 40px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+            color: white;
       }
-      .chart-card-header {
-        text-align: center;
-        margin-bottom: 60px;
-        width: 100%;
+            .chart-card-header {
+              text - align: center;
+            margin-bottom: 60px;
+            width: 100%;
       }
-      .chart-card-header h1 {
-        font-family: 'Manrope', sans-serif;
-        font-size: 42px;
-        font-weight: 600;
-        letter-spacing: -0.02em;
-        margin: 0;
-        text-shadow: 0 0 30px rgba(142, 197, 252, 0.4);
+            .chart-card-header h1 {
+              font - family: 'Manrope', sans-serif;
+            font-size: 42px;
+            font-weight: 600;
+            letter-spacing: -0.02em;
+            margin: 0;
+            text-shadow: 0 0 30px rgba(142, 197, 252, 0.4);
       }
-      .chart-card-content {
-        position: relative;
-        width: 100%;
-        max-width: 800px;
-        aspect-ratio: 1 / 1;
-        display: flex;
-        justify-content: center;
-        align-items: center;
+            .chart-card-content {
+              position: relative;
+            width: 100%;
+            max-width: 800px;
+            aspect-ratio: 1 / 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
       }
-      .metadata-block {
-        position: absolute;
-        font-size: 16px;
-        line-height: 1.5;
-        font-weight: 400;
-        color: rgba(255, 255, 255, 0.9);
+            .metadata-block {
+              position: absolute;
+            font-size: 16px;
+            line-height: 1.5;
+            font-weight: 400;
+            color: rgba(255, 255, 255, 0.9);
       }
-      .top-left { top: -20px; left: 0; text-align: left; }
-      .bottom-right { bottom: 20px; right: 0; text-align: right; }
-      .label { font-weight: 200; color: rgba(255, 255, 255, 0.6); }
-    </style>
-  </head>
-  <body>
-    <div class="chart-card-header">
-      <h1>My Astro-Cinematic Chart</h1>
-    </div>
+            .top-left {top: -20px; left: 0; text-align: left; }
+            .bottom-right {bottom: 20px; right: 0; text-align: right; }
+            .label {font - weight: 200; color: rgba(255, 255, 255, 0.6); }
+          </style>
+      </head>
+      <body>
+        <div class="chart-card-header">
+          <h1>My Astro-Cinematic Chart</h1>
+        </div>
 
-    <div class="chart-card-content">
-      <div class="metadata-block top-left">
-        <div><span class="label">Date:</span> June 10, 1991</div>
-        <div><span class="label">Time:</span> 08:15 AM</div>
-        <div><span class="label">Place:</span> Munich, Germany</div>
-      </div>
+        <div class="chart-card-content">
+          <div class="metadata-block top-left">
+            <div><span class="label">Date:</span> June 10, 1991</div>
+            <div><span class="label">Time:</span> 08:15 AM</div>
+            <div><span class="label">Place:</span> Munich, Germany</div>
+          </div>
 
-      <div style="width: 100%; height: 100%;">
-        ${buildChartWheelHtml(mockChartDTO)}
-      </div>
+          <div style="width: 100%; height: 100%;">
+            ${buildChartWheelHtml(mockChartDTO)}
+          </div>
 
-      <div class="metadata-block bottom-right">
-        <div><span class="label">username:</span> mi-gerer</div>
-      </div>
-    </div>
-  </body>
-  </html>`;
+          <div class="metadata-block bottom-right">
+            <div><span class="label">username:</span> mi-gerer</div>
+          </div>
+        </div>
+      </body>
+    </html>`;
 
   res.set('Content-Type', 'text/html; charset=utf-8');
   res.send(html);
@@ -2171,10 +2163,10 @@ app.post('/api/birth-chart-swisseph', async (req, res) => {
     const timezones = find(lat, lng);
     const timeZone = timezones && timezones.length > 0 ? timezones[0] : 'UTC';
 
-    console.log(`🌍 Coordinates: ${lat}, ${lng} -> Timezone: ${timeZone}`);
+    console.log(`🌍 Coordinates: ${lat}, ${lng} -> Timezone: ${timeZone} `);
 
     // Convert input date/time (Local zone) → UTC
-    const birthDT = DateTime.fromISO(`${date}T${time}`, { zone: timeZone });
+    const birthDT = DateTime.fromISO(`${date}T${time} `, { zone: timeZone });
 
     if (!birthDT.isValid) {
       return res.status(400).json({ success: false, error: 'Invalid date or time.' });
@@ -2210,7 +2202,7 @@ app.post('/api/birth-chart-swisseph', async (req, res) => {
     const houseSigns = housesDeg.map(signFromLongitude);
 
     const houseRulers = {};
-    for (let i = 0; i < 12; i++) houseRulers[`house${i + 1}`] = houseSigns[i] || null;
+    for (let i = 0; i < 12; i++) houseRulers[`house${i + 1} `] = houseSigns[i] || null;
 
     function houseOf(longitude) {
       for (let i = 0; i < 12; i++) {
@@ -2253,8 +2245,8 @@ app.post('/api/birth-chart-swisseph', async (req, res) => {
           house
         };
       } catch (err) {
-        // If Chiron fails due to missing `seas_*.se1`, log and continue.
-        console.warn(`⚠️ Skipping ${name}:`, err.message);
+        // If Chiron fails due to missing `seas_ *.se1`, log and continue.
+        console.warn(`⚠️ Skipping ${name}: `, err.message);
       }
     }
 
@@ -2397,7 +2389,7 @@ app.get('/api/birth-chart-swisseph', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Invalid coordinates.' });
     }
 
-    const birthDT = DateTime.fromISO(`${date}T${time}`, { zone: 'Europe/Berlin' });
+    const birthDT = DateTime.fromISO(`${date}T${time} `, { zone: 'Europe/Berlin' });
     if (!birthDT.isValid) return res.status(400).json({ success: false, error: 'Invalid date or time.' });
     const birthUTC = birthDT.toUTC().toJSDate();
     const tzOffsetMinutes = birthDT.offset;
@@ -2430,7 +2422,7 @@ app.get('/api/birth-chart-swisseph', async (req, res) => {
     const houseSigns = housesDeg.map(signFromLongitude);
 
     const houseRulers = {};
-    for (let i = 0; i < 12; i++) houseRulers[`house${i + 1}`] = houseSigns[i] || null;
+    for (let i = 0; i < 12; i++) houseRulers[`house${i + 1} `] = houseSigns[i] || null;
 
     function houseOf(longitude) {
       for (let i = 0; i < 12; i++) {
@@ -2472,7 +2464,7 @@ app.get('/api/birth-chart-swisseph', async (req, res) => {
           house
         };
       } catch (err) {
-        console.warn(`⚠️ Skipping ${name}:`, err.message);
+        console.warn(`⚠️ Skipping ${name}: `, err.message);
       }
     }
 

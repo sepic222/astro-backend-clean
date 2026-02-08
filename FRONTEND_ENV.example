@@ -1,0 +1,11 @@
+# Frontend Environment Variables
+# Copy this file to .env.local for local development
+# For Vercel deployment, add these as environment variables in the Vercel dashboard
+
+# Backend API Base URL (Railway deployment)
+# Example: https://myreading.fateflix.app
+PUBLIC_API_BASE=https://your-railway-backend-url.up.railway.app
+
+# Google Maps API Key (for city search/geocoding)
+PUBLIC_GOOGLE_MAPS_KEY=your_google_maps_api_key_here
+

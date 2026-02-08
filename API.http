@@ -1,0 +1,56 @@
+### Health
+GET http://localhost:3001/health
+
+### Compute chart (POST)
+POST http://localhost:3001/api/birth-chart-swisseph
+Content-Type: application/json
+
+{
+  "date": "2000-02-14",
+  "time": "22:11",
+  "latitude": 51.2254,
+  "longitude": 6.7763,
+  "city": "Düsseldorf",
+  "country": "Germany",
+  "timeAccuracy": "Exact time",
+  "userEmail": "dev@example.com"
+}
+
+### Geocode
+GET http://localhost:3001/api/geocode?city=Berlin&country=Germany
+
+### Compact houses
+POST http://localhost:3001/api/chart-houses
+Content-Type: application/json
+
+{
+  "date": "2000-02-14",
+  "time": "22:11",
+  "latitude": 51.2254,
+  "longitude": 6.7763
+}
+
+### Survey submit
+POST http://localhost:3001/api/survey/submit
+Content-Type: application/json
+
+{
+  "userEmail": "dev@example.com",
+  "chartId": "REPLACE_ME_IF_YOU_HAVE_ONE",
+  "answers": [
+    { "questionKey": "fit.email", "answerText": "dev@example.com" },
+    { "questionKey": "casting.movie_role", "optionValues": ["lead"] }
+  ]
+}
+
+### Dev helper: Chart to SVG/HTML (one-shot)
+POST http://localhost:3001/api/dev/chart-to-svg
+Content-Type: application/json
+
+{
+  "date": "2000-02-14",
+  "time": "22:11",
+  "latitude": 51.2254,
+  "longitude": 6.7763,
+  "userEmail": "dev@example.com"
+}

@@ -785,6 +785,106 @@ app.get('/admin/latest-report', async (req, res) => {
     res.status(500).send('Failed to generate report: ' + error.message);
   }
 });
+
+/**
+ * ADMIN DEEP DIVE VIEW
+ * Shows Chart Wheel + Curated Survey Answers
+ */
+app.get('/admin/deep-dive/:submissionId', async (req, res) => {
+  try {
+    const { submissionId } = req.params;
+    const submission = await prisma.surveySubmission.findUnique({
+      where: { id: submissionId },
+      include: {
+        chart: true,
+        reading: true,
+        responses: {
+          include: {
+            question: { select: { key: true, text: true, section: { select: { title: true } } } },
+            responseOptions: {
+              include: { option: { select: { label: true, value: true } } }
+            }
+          }
+        }
+      }
+    });
+
+    if (!submission) {
+      return res.status(404).send('Submission not found.');
+    }
+
+    // Curated list of taste-focused fields
+    const curatedFieldKeys = [
+      'username', 'gender', 'attraction_style', 'life_role', 'alter-ego', 'culture_background',
+      'top_3_movies', 'top_3_series_detailed', 'top_3_documentaries', 'guilty_pleasure',
+      'first_fascination', 'first_feeling', 'life_changing',
+      'movie_universe', 'villain_relate', 'crave_most', 'forever_crush',
+      'foreign_films', 'cinematography', 'directors', 'access_growing_up',
+      'turn_offs', 'hated_film'
+    ];
+
+    const fullData = (submission.fullData && typeof submission.fullData === 'object') ? submission.fullData : {};
+    const answerMap = {};
+
+    // 1. Process responses from table (older/fallback)
+    submission.responses.forEach(resp => {
+      const key = resp.question?.key;
+      if (key) {
+        const simpleKey = key.split('.').pop();
+        answerMap[simpleKey] = {
+          question: resp.question.text,
+          answer: parseAnswer(resp.answerText, resp.responseOptions),
+          section: resp.question.section?.title || 'Other'
+        };
+      }
+    });
+
+    // 2. Load schema to get labels for fullData keys
+    const { surveySchema } = require('./src/config/surveySchema');
+    const schemaMap = {};
+    surveySchema.forEach(section => {
+      if (section.questions) {
+        section.questions.forEach(q => {
+          const simpleQId = q.id.split('.').pop();
+          schemaMap[simpleQId] = { text: q.text, section: section.title };
+        });
+      }
+    });
+
+    // 3. Build curated list
+    const curatedAnswers = [];
+    curatedFieldKeys.forEach(key => {
+      const val = fullData[key] !== undefined ? fullData[key] : (answerMap[key] ? answerMap[key].answer : null);
+      if (val !== null && val !== undefined && val !== '') {
+        const schemaInfo = schemaMap[key] || answerMap[key] || { text: key, section: 'Other' };
+        curatedAnswers.push({
+          key: key,
+          question: schemaInfo.text || schemaInfo.question || key,
+          section: schemaInfo.section || 'Other',
+          answer: parseAnswer(val)
+        });
+      }
+    });
+
+    // 4. Group by section
+    const groupedAnswers = curatedAnswers.reduce((acc, curr) => {
+      if (!acc[curr.section]) acc[curr.section] = [];
+      acc[curr.section].push(curr);
+      return acc;
+    }, {});
+
+    res.render('admin_deep_dive', {
+      submission,
+      chart: submission.chart,
+      groupedAnswers,
+      buildChartWheelHtml
+    });
+
+  } catch (error) {
+    console.error('Deep Dive View Error:', error);
+    res.status(500).send('Deep Dive Failed: ' + error.message);
+  }
+});
 app.get('/ping', (_req, res) => res.json({ ok: true, t: Date.now() }));
 // Single source of truth for PORT
 const PORT = process.env.PORT || 3001;

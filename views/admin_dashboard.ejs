@@ -173,6 +173,9 @@
                             <th scope="col"
                                 class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 Reading</th>
+                            <th scope="col"
+                                class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Actions</th>
                         </tr>
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200">
@@ -225,6 +228,12 @@
                                         <% } else { %>
                                             <span class="text-gray-400">-</span>
                                             <% } %>
+                                </td>
+                                <td class="px-4 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                    <a href="/admin/deep-dive/<%= sub.id %>"
+                                        class="text-indigo-600 hover:text-indigo-900 bg-indigo-50 px-3 py-1 rounded transition-colors">
+                                        Deep Dive →
+                                    </a>
                                 </td>
                             </tr>
                             <% }); %>

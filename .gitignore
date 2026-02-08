@@ -16,6 +16,8 @@ prisma/dev.backup-astro-keep.sqlite
 # Build caches / outputs (if any)
 dist
 .cache
+.astro/
+.agent/
 
 # Editors
 .vscode/
@@ -32,6 +34,22 @@ no-time-result*.json
 
 # Logs
 *.log
+debug_log.txt
+
+# Backups
+*.backup.*
+server.broken.backup.js
+
+# Data Exports
+*.csv
+*.tsv
+*.numbers
+
+# Documentation
+BASELINE_PRINT.html
+backend_assets.txt
+frontend_assets.txt
+*Developer Handoff Summary*
 
 # Workspace
 *.code-workspace

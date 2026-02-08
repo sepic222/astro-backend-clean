@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fateflix Deep Dive - <%= submission.username || 'Survey Entry' %></title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600;700&display=swap');
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: #0c021b; /* Deep cosmic purple/black */
+            color: #e2e8f0;
+        }
+        .cosmic-gradient {
+            background: radial-gradient(circle at center, #1b0a35 0%, #0c021b 100%);
+        }
+        .answer-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px border rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(10px);
+        }
+        .accordion-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
+        .accordion-active .accordion-content {
+            max-height: 2000px;
+        }
+        .accordion-active .chevron {
+            transform: rotate(180deg);
+        }
+        @media print {
+            .no-print { display: none; }
+            body { background: white; color: black; }
+            .cosmic-gradient { background: transparent; }
+            .split-view { display: block; }
+            .chart-side { width: 100%; height: auto; position: relative !important; }
+            .answers-side { width: 100%; background: white !important; color: black !important; }
+            .answer-card { border: 1px solid #ddd !important; background: white !important; margin-bottom: 20px; page-break-inside: avoid; }
+            .accordion-content { max-height: none !important; }
+            .text-gray-200 { color: #333 !important; }
+            .text-white { color: black !important; }
+            .text-indigo-500 { color: #4f46e5 !important; }
+        }
+    </style>
+</head>
+<body class="cosmic-gradient min-h-screen">
+    <div class="flex flex-col md:flex-row min-h-screen split-view">
+        
+        <!-- Left: Chart Wheel -->
+        <div class="w-full md:w-1/2 flex flex-col items-center justify-center p-8 bg-black/20 chart-side sticky top-0 h-screen overflow-hidden">
+            <div class="absolute top-8 left-8 no-print">
+                <a href="/admin/dashboard" class="text-indigo-400 hover:text-indigo-300 flex items-center gap-2 text-sm font-medium transition-all">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                    Dashboard
+                </a>
+            </div>
+            
+            <div class="text-center mb-8">
+                <h1 class="text-3xl font-light tracking-[0.2em] uppercase text-white"><%= submission.username || 'Cosmic Traveler' %></h1>
+                <p class="text-indigo-400 text-[10px] tracking-[0.4em] mt-3 uppercase font-bold opacity-80">Deep Dive Analysis</p>
+            </div>
+
+            <div class="w-full max-w-xl scale-90 md:scale-100">
+                <%- buildChartWheelHtml(chart || {}) %>
+            </div>
+
+            <div class="mt-8 flex gap-8 text-[10px] tracking-[0.2em] uppercase text-gray-400 font-medium">
+                <div class="flex flex-col items-center gap-1">
+                    <span class="text-white text-base font-light tracking-normal"><%= chart?.sunSign || '-' %></span>
+                    <span class="opacity-50">Sun</span>
+                </div>
+                <div class="flex flex-col items-center gap-1">
+                    <span class="text-white text-base font-light tracking-normal"><%= chart?.moonSign || '-' %></span>
+                    <span class="opacity-50">Moon</span>
+                </div>
+                <div class="flex flex-col items-center gap-1">
+                    <span class="text-white text-base font-light tracking-normal"><%= chart?.risingSign || '-' %></span>
+                    <span class="opacity-50">Rising</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right: Answers -->
+        <div class="w-full md:w-1/2 p-8 md:p-16 overflow-y-auto answers-side bg-black/40 border-l border-white/5">
+            <div class="flex justify-between items-start mb-12 no-print">
+                <div>
+                    <h2 class="text-2xl font-light text-white tracking-wide">Cinematic Soul</h2>
+                    <p class="text-gray-500 text-xs mt-1 uppercase tracking-widest font-bold opacity-60">Filtered Response Archive</p>
+                </div>
+                <button onclick="window.print()" class="bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 border border-indigo-500/30 px-5 py-2.5 rounded-lg text-xs font-bold uppercase tracking-widest transition-all flex items-center gap-3">
+                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                   PDF Export
+                </button>
+            </div>
+
+            <div class="space-y-4">
+                <% Object.keys(groupedAnswers).forEach((section, index) => { %>
+                    <div class="answer-card rounded-xl border border-white/10 overflow-hidden accordion-item">
+                        <button onclick="toggleAccordion(this)" class="w-full px-8 py-6 flex items-center justify-between hover:bg-white/5 transition-all text-left group">
+                            <span class="text-sm font-bold text-white tracking-[0.2em] uppercase opacity-90 group-hover:opacity-100 transition-opacity"><%= section %></span>
+                            <svg class="w-5 h-5 text-indigo-500 transform transition-transform duration-300 chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                        </button>
+                        <div class="accordion-content">
+                            <div class="px-8 pb-8 space-y-10 pt-2 border-t border-white/5">
+                                <% groupedAnswers[section].forEach(resp => { %>
+                                    <div class="group/ans">
+                                        <div class="text-[9px] text-indigo-400 uppercase tracking-[0.25em] mb-3 font-black opacity-60 group-hover/ans:opacity-100 transition-opacity">
+                                            <%= resp.question %>
+                                        </div>
+                                        <div class="text-lg text-gray-200 leading-relaxed font-light tracking-wide">
+                                            <%= resp.answer || '-' %>
+                                            <% if (!resp.answer) { %>
+                                                <span class="text-gray-600 italic text-sm">(Empty)</span>
+                                            <% } %>
+                                        </div>
+                                    </div>
+                                <% }); %>
+                            </div>
+                        </div>
+                    </div>
+                <% }); %>
+            </div>
+
+            <div class="mt-20 pt-8 border-t border-white/5 text-gray-700 text-[9px] tracking-[0.3em] uppercase text-center font-bold">
+                Fateflix Admin Deep Dive • <%= new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) %> • <%= submission.id %>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function toggleAccordion(button) {
+            const item = button.closest('.accordion-item');
+            const isActive = item.classList.contains('accordion-active');
+            
+            // For print preparation, we don't clear others, but here we can:
+            // document.querySelectorAll('.accordion-item').forEach(i => i.classList.remove('accordion-active'));
+            
+            if (!isActive) {
+                item.classList.add('accordion-active');
+            } else {
+                item.classList.remove('accordion-active');
+            }
+        }
+    </script>
+</body>
+</html>

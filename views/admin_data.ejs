@@ -138,8 +138,13 @@
                     <tbody class="bg-white divide-y divide-gray-200">
                         <% rows.forEach(function(row, idx) { %>
                             <tr class="<%= row.isTest ? 'test-row' : 'real-row' %> hover:bg-blue-50">
-                                <td class="sticky-col px-3 py-2 text-gray-400 bg-gray-50">
-                                    <%= idx + 1 %>
+                                <td class="sticky-col px-3 py-2 bg-gray-50 flex items-center gap-2">
+                                    <span class="text-gray-400">
+                                        <%= idx + 1 %>
+                                    </span>
+                                    <a href="/admin/deep-dive/<%= row.id %>"
+                                        class="text-indigo-600 hover:text-indigo-900 font-bold text-[10px] uppercase border border-indigo-200 px-1 rounded bg-indigo-50"
+                                        title="Open Deep Dive">Dive</a>
                                 </td>
                                 <td class="px-3 py-2 text-gray-600">
                                     <%= new Date(row.createdAt).toLocaleDateString('en-GB', { day: '2-digit' ,

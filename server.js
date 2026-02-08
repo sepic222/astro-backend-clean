@@ -878,6 +878,7 @@ app.get('/admin/deep-dive/:submissionId', async (req, res) => {
       planets: rawChart.planets || {},
       rawHouses: rawChart.houses || [],
       ascendant: submission.chart?.ascendant || 0,
+      mc: rawChart.angles?.mcDeg || 0,
       sunSign: submission.chart?.sunSign,
       moonSign: submission.chart?.moonSign,
       risingSign: submission.chart?.risingSign
@@ -1594,13 +1595,16 @@ function buildChartWheelHtml(chartDTO) {
     <script>
     (function() {
       const ASC_DEGREE = ${ascDegree};
+      const MC_DEGREE = ${chartDTO.mc || 0};
       const PLANET_DATA = ${planetDataJson};
       const ASPECT_DATA = ${aspectDataJson};
       const HOUSE_DATA = ${houseDataJson};
 
-      // Helper: Normalize degree to [0, 360) and rotate so ASC is at 180 (left)
+      // Helper: Normalize degree to [0, 360) 
       const normalize = (deg) => ((deg % 360) + 360) % 360;
-      const rotate = (deg) => normalize(deg - ASC_DEGREE + 180);
+      
+      // AC at 270 (Left), CCW direction (Astrology standard)
+      const rotate = (deg) => normalize(270 - (deg - ASC_DEGREE));
 
       const degToRad = (deg) => (deg * Math.PI) / 180;
       const polarToCartesian = (centerX, centerY, radius, angleInDegrees) => {
@@ -1618,12 +1622,25 @@ function buildChartWheelHtml(chartDTO) {
       };
 
       const describeArc = (x, y, innerRadius, outerRadius, startAngle, endAngle) => {
+        // Since we are moving CCW, startAngle might be > endAngle if we are not careful
+        // But describeArc is for SVG paths which are CW by default if using large-arc-flag correctly.
+        // Actually, if we use rotate(deg), the start/end angles are correct for a slice.
         const s = polarToCartesian(x, y, outerRadius, endAngle);
         const e = polarToCartesian(x, y, outerRadius, startAngle);
         const si = polarToCartesian(x, y, innerRadius, endAngle);
         const ei = polarToCartesian(x, y, innerRadius, startAngle);
-        const largeArc = endAngle - startAngle <= 180 ? "0" : "1";
-        return ["M", s.x, s.y, "A", outerRadius, outerRadius, 0, largeArc, 0, e.x, e.y, "L", ei.x, ei.y, "A", innerRadius, innerRadius, 0, largeArc, 1, si.x, si.y, "Z"].join(" ");
+        const diff = normalize(startAngle - endAngle);
+        const largeArc = diff <= 180 ? "0" : "1";
+        return ["M", s.x, s.y, "A", outerRadius, outerRadius, 0, largeArc, 0, e.x, e.y, "L", ei.x, ei.y, "A", innerRadius, innerRadius, 0, largeArc, 1, s.x, s.y, "Z"].join(" ");
+      };
+      
+      // Simple arc for sign background (always 30 deg)
+      const signArc = (x, y, ir, or, start, end) => {
+        const s = polarToCartesian(x, y, or, end);
+        const e = polarToCartesian(x, y, or, start);
+        const si = polarToCartesian(x, y, ir, end);
+        const ei = polarToCartesian(x, y, ir, start);
+        return ["M", s.x, s.y, "A", or, or, 0, 0, 0, e.x, e.y, "L", ei.x, ei.y, "A", ir, ir, 0, 0, 1, s.x, s.y, "Z"].join(" ");
       };
 
       const ZODIACS = [
@@ -1643,15 +1660,17 @@ function buildChartWheelHtml(chartDTO) {
         if (!root) return;
         let svg = '';
 
-        // 1. ZODIAC RING (Rotated)
+        // 1. ZODIAC RING (Rotated CCW)
         ZODIACS.forEach((sign, i) => {
-          const start = rotate(i * 30), end = rotate((i + 1) * 30), mid = rotate(i * 30 + 15);
-          svg += '<path d="' + describeArc(center, center, innerRad, outerRad, start, end) + '" fill="' + cRing + '" stroke="white" stroke-width="0.5" opacity="0.8"/>';
+          const degStart = i * 30;
+          const degEnd = (i + 1) * 30;
+          const start = rotate(degStart), end = rotate(degEnd), mid = rotate(degStart + 15);
+          svg += '<path d="' + signArc(center, center, innerRad, outerRad, start, end) + '" fill="' + cRing + '" stroke="white" stroke-width="0.5" opacity="0.8"/>';
           const t = polarToCartesian(center, center, outerRad - 25, mid);
-          svg += '<text x="'+t.x+'" y="'+t.y+'" fill="white" font-size="14" text-anchor="middle" dominant-baseline="central" transform="rotate('+(mid+90)+','+t.x+','+t.y+')">' + sign.symbol + '</text>';
+          svg += '<text x="'+t.x+'" y="'+t.y+'" fill="white" font-size="16" font-weight="bold" text-anchor="middle" dominant-baseline="central" transform="rotate('+(mid+90)+','+t.x+','+t.y+')">' + sign.symbol + '</text>';
         });
 
-        // 2. TICK MARKS (360 degrees)
+        // 2. TICK MARKS (360 degrees, CCW)
         for(let i=0; i<360; i++) {
           const deg = rotate(i);
           const r1 = innerRad, r2 = (i % 5 === 0) ? innerRad - 15 : innerRad - 8;
@@ -1659,7 +1678,7 @@ function buildChartWheelHtml(chartDTO) {
           svg += '<line x1="'+p1.x+'" y1="'+p1.y+'" x2="'+p2.x+'" y2="'+p2.y+'" stroke="white" stroke-width="0.3" opacity="0.5"/>';
         }
 
-        // 3. HOUSE CUSPS (High Contrast)
+        // 3. HOUSE CUSPS (High Contrast, CCW)
         const cCusp = "#ff4d4d"; // High-contrast Red
         HOUSE_DATA.forEach((h, i) => {
           const degLong = typeof h === 'object' ? h.longitude : h;
@@ -1667,19 +1686,22 @@ function buildChartWheelHtml(chartDTO) {
           const p1 = polarToCartesian(center, center, innerRad, deg), p2 = polarToCartesian(center, center, 0, deg);
           const isAngle = (i === 0 || i === 3 || i === 6 || i === 9); // AC, IC, DC, MC
           
-          // Draw Red Cusp Line
           svg += '<line x1="'+p1.x+'" y1="'+p1.y+'" x2="'+p2.x+'" y2="'+p2.y+'" stroke="'+cCusp+'" stroke-width="'+(isAngle?2.5:1)+'" opacity="'+(isAngle?1:0.6)+'"/>';
           
           // Cusp Degree Label
           const cuspLabelPos = polarToCartesian(center, center, innerRad + 15, deg);
           svg += '<text x="'+cuspLabelPos.x+'" y="'+cuspLabelPos.y+'" fill="'+cCusp+'" font-size="10" font-weight="bold" text-anchor="middle" dominant-baseline="central" transform="rotate('+(deg+90)+','+cuspLabelPos.x+','+cuspLabelPos.y+')">'+formatDegree(degLong % 30)+'</text>';
 
-          // House Numbers (Larger and centered)
+          // House Numbers (CCW placement)
           const nextHouse = HOUSE_DATA[(i+1)%12];
           const nextDegLong = typeof nextHouse === 'object' ? nextHouse.longitude : nextHouse;
           const nextDeg = rotate(nextDegLong);
           
-          let midHouse = deg + (normalize(nextDeg - deg) / 2);
+          // midHouse logic for CCW: normalize(deg - nextDeg) / 2? 
+          // normalize(nextDeg - deg) gives the arc distance in standard order.
+          // But our SVG coordinates move CW. So if L increases, rotate(L) decreases.
+          // Thus rotate(nextDeg) < rotate(deg) (mostly).
+          let midHouse = rotate(degLong + (normalize(nextDegLong - degLong) / 2));
           const houseNumPos = polarToCartesian(center, center, contentRad - 80, midHouse);
           svg += '<text x="'+houseNumPos.x+'" y="'+houseNumPos.y+'" fill="white" font-size="22" font-weight="bold" text-anchor="middle" dominant-baseline="central" opacity="0.8">'+(i+1)+'</text>';
         });
@@ -1705,6 +1727,13 @@ function buildChartWheelHtml(chartDTO) {
           svg += '<text x="'+tPos.x+'" y="'+tPos.y+'" fill="white" font-size="10" text-anchor="middle" dominant-baseline="central" transform="rotate('+(deg+90)+','+tPos.x+','+tPos.y+')">'+formatDegree(p.degree % 30)+'</text>';
           svg += '</g>';
         });
+
+        // 6. ANGLE LABELS (AC, MC) - Professional Feedback
+        const acPos = polarToCartesian(center, center, outerRad + 35, rotate(ASC_DEGREE));
+        svg += '<text x="'+acPos.x+'" y="'+acPos.y+'" fill="white" font-size="32" font-weight="bold" text-anchor="middle" dominant-baseline="central">AC</text>';
+        
+        const mcPos = polarToCartesian(center, center, outerRad + 35, rotate(MC_DEGREE));
+        svg += '<text x="'+mcPos.x+'" y="'+mcPos.y+'" fill="white" font-size="24" font-weight="bold" text-anchor="middle" dominant-baseline="central">MC</text>';
 
         root.innerHTML = '<svg viewBox="0 0 1000 1000" style="width:100%;height:100%">' + svg + '</svg>';
       }

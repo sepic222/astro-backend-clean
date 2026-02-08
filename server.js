@@ -797,7 +797,6 @@ app.get('/admin/deep-dive/:submissionId', async (req, res) => {
       where: { id: submissionId },
       include: {
         chart: true,
-        reading: true,
         responses: {
           include: {
             question: { select: { key: true, text: true, section: { select: { title: true } } } },

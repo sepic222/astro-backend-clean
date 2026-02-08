@@ -1622,25 +1622,21 @@ function buildChartWheelHtml(chartDTO) {
       };
 
       const describeArc = (x, y, innerRadius, outerRadius, startAngle, endAngle) => {
-        // Since we are moving CCW, startAngle might be > endAngle if we are not careful
-        // But describeArc is for SVG paths which are CW by default if using large-arc-flag correctly.
-        // Actually, if we use rotate(deg), the start/end angles are correct for a slice.
         const s = polarToCartesian(x, y, outerRadius, endAngle);
         const e = polarToCartesian(x, y, outerRadius, startAngle);
         const si = polarToCartesian(x, y, innerRadius, endAngle);
         const ei = polarToCartesian(x, y, innerRadius, startAngle);
         const diff = normalize(startAngle - endAngle);
         const largeArc = diff <= 180 ? "0" : "1";
-        return ["M", s.x, s.y, "A", outerRadius, outerRadius, 0, largeArc, 0, e.x, e.y, "L", ei.x, ei.y, "A", innerRadius, innerRadius, 0, largeArc, 1, s.x, s.y, "Z"].join(" ");
+        return ["M", e.x, e.y, "A", outerRadius, outerRadius, 0, largeArc, 0, s.x, s.y, "L", si.x, si.y, "A", innerRadius, innerRadius, 0, largeArc, 1, ei.x, ei.y, "Z"].join(" ");
       };
       
-      // Simple arc for sign background (always 30 deg)
       const signArc = (x, y, ir, or, start, end) => {
         const s = polarToCartesian(x, y, or, end);
         const e = polarToCartesian(x, y, or, start);
         const si = polarToCartesian(x, y, ir, end);
         const ei = polarToCartesian(x, y, ir, start);
-        return ["M", s.x, s.y, "A", or, or, 0, 0, 0, e.x, e.y, "L", ei.x, ei.y, "A", ir, ir, 0, 0, 1, s.x, s.y, "Z"].join(" ");
+        return ["M", e.x, e.y, "A", or, or, 0, 0, 0, s.x, s.y, "L", si.x, si.y, "A", ir, ir, 0, 0, 1, ei.x, ei.y, "Z"].join(" ");
       };
 
       const ZODIACS = [
@@ -1729,13 +1725,13 @@ function buildChartWheelHtml(chartDTO) {
         });
 
         // 6. ANGLE LABELS (AC, MC) - Professional Feedback
-        const acPos = polarToCartesian(center, center, outerRad + 35, rotate(ASC_DEGREE));
-        svg += '<text x="'+acPos.x+'" y="'+acPos.y+'" fill="white" font-size="32" font-weight="bold" text-anchor="middle" dominant-baseline="central">AC</text>';
+        const acPos = polarToCartesian(center, center, outerRad + 50, rotate(ASC_DEGREE));
+        svg += '<text x="'+acPos.x+'" y="'+acPos.y+'" fill="white" font-size="36" font-weight="bold" text-anchor="middle" dominant-baseline="central">AC</text>';
         
-        const mcPos = polarToCartesian(center, center, outerRad + 35, rotate(MC_DEGREE));
-        svg += '<text x="'+mcPos.x+'" y="'+mcPos.y+'" fill="white" font-size="24" font-weight="bold" text-anchor="middle" dominant-baseline="central">MC</text>';
+        const mcPos = polarToCartesian(center, center, outerRad + 50, rotate(MC_DEGREE));
+        svg += '<text x="'+mcPos.x+'" y="'+mcPos.y+'" fill="white" font-size="28" font-weight="bold" text-anchor="middle" dominant-baseline="central">MC</text>';
 
-        root.innerHTML = '<svg viewBox="0 0 1000 1000" style="width:100%;height:100%">' + svg + '</svg>';
+        root.innerHTML = '<svg viewBox="-100 -100 1200 1200" style="width:100%;height:100%;overflow:visible;">' + svg + '</svg>';
       }
       render();
     })();

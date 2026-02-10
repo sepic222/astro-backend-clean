@@ -1600,13 +1600,10 @@ function buildChartWheelHtml(chartDTO) {
       const ASPECT_DATA = ${aspectDataJson};
       const HOUSE_DATA = ${houseDataJson};
 
-      // Helper: Normalize degree to [0, 360) 
       const normalize = (deg) => ((deg % 360) + 360) % 360;
-      
-      // AC at 270 (Left), CCW direction (Astrology standard)
       const rotate = (deg) => normalize(270 - (deg - ASC_DEGREE));
-
       const degToRad = (deg) => (deg * Math.PI) / 180;
+      
       const polarToCartesian = (centerX, centerY, radius, angleInDegrees) => {
         const radians = degToRad(angleInDegrees - 90);
         return {
@@ -1621,16 +1618,6 @@ function buildChartWheelHtml(chartDTO) {
         return d + "°" + (m < 10 ? "0" + m : m) + "'";
       };
 
-      const describeArc = (x, y, innerRadius, outerRadius, startAngle, endAngle) => {
-        const s = polarToCartesian(x, y, outerRadius, endAngle);
-        const e = polarToCartesian(x, y, outerRadius, startAngle);
-        const si = polarToCartesian(x, y, innerRadius, endAngle);
-        const ei = polarToCartesian(x, y, innerRadius, startAngle);
-        const diff = normalize(startAngle - endAngle);
-        const largeArc = diff <= 180 ? "0" : "1";
-        return ["M", e.x, e.y, "A", outerRadius, outerRadius, 0, largeArc, 0, s.x, s.y, "L", si.x, si.y, "A", innerRadius, innerRadius, 0, largeArc, 1, ei.x, ei.y, "Z"].join(" ");
-      };
-      
       const signArc = (x, y, ir, or, start, end) => {
         const s = polarToCartesian(x, y, or, end);
         const e = polarToCartesian(x, y, or, start);
@@ -1646,92 +1633,92 @@ function buildChartWheelHtml(chartDTO) {
         { name: 'Capricorn', symbol: '♑︎' }, { name: 'Aquarius', symbol: '♒︎' }, { name: 'Pisces', symbol: '♓︎' }
       ];
 
+      // --- CONFIG & DIMENSIONS (Bigger Scaled) ---
       const size = 1000, center = 500;
-      const outerRad = 450, ringThick = 50, innerRad = outerRad - ringThick;
-      const tickRad = innerRad - 10, contentRad = innerRad - 40;
-      const cRing = "#2563EB", cLine = "rgba(255, 255, 255, 0.2)";
+      const outerRad = 490;
+      const ringThick = 65;
+      const innerRad = outerRad - ringThick;
+      const contentRad = innerRad - 45;
+      
+      const cRing = "#2563EB";
+      const cCusp = "#FFD700";
+      const cAngle = "#FF5533";
+      const cLine = "rgba(255, 255, 255, 0.15)";
 
       function render() {
         const root = document.getElementById('${chartId}');
         if (!root) return;
         let svg = '';
 
-        // 1. ZODIAC RING (Rotated CCW)
         ZODIACS.forEach((sign, i) => {
           const degStart = i * 30;
           const degEnd = (i + 1) * 30;
           const start = rotate(degStart), end = rotate(degEnd), mid = rotate(degStart + 15);
-          svg += '<path d="' + signArc(center, center, innerRad, outerRad, start, end) + '" fill="' + cRing + '" stroke="white" stroke-width="0.5" opacity="0.8"/>';
-          const t = polarToCartesian(center, center, outerRad - 25, mid);
-          svg += '<text x="'+t.x+'" y="'+t.y+'" fill="white" font-size="16" font-weight="bold" text-anchor="middle" dominant-baseline="central" transform="rotate('+(mid+90)+','+t.x+','+t.y+')">' + sign.symbol + '</text>';
+          svg += '<path d="' + signArc(center, center, innerRad, outerRad, start, end) + '" fill="' + cRing + '" stroke="rgba(255,255,255,0.2)" stroke-width="0.5"/>';
+          const t = polarToCartesian(center, center, outerRad - (ringThick/2), mid);
+          svg += '<text x="'+t.x+'" y="'+t.y+'" fill="white" font-size="28" font-weight="bold" text-anchor="middle" dominant-baseline="central" transform="rotate('+(mid+90)+','+t.x+','+t.y+')">' + sign.symbol + '</text>';
         });
 
-        // 2. TICK MARKS (360 degrees, CCW)
         for(let i=0; i<360; i++) {
           const deg = rotate(i);
-          const r1 = innerRad, r2 = (i % 5 === 0) ? innerRad - 15 : innerRad - 8;
+          const r1 = innerRad, r2 = (i % 5 === 0) ? innerRad - 18 : innerRad - 10;
           const p1 = polarToCartesian(center, center, r1, deg), p2 = polarToCartesian(center, center, r2, deg);
-          svg += '<line x1="'+p1.x+'" y1="'+p1.y+'" x2="'+p2.x+'" y2="'+p2.y+'" stroke="white" stroke-width="0.3" opacity="0.5"/>';
+          svg += '<line x1="'+p1.x+'" y1="'+p1.y+'" x2="'+p2.x+'" y2="'+p2.y+'" stroke="white" stroke-width="0.3" opacity="0.4"/>';
         }
 
-        // 3. HOUSE CUSPS (High Contrast, CCW)
-        const cCusp = "#ff4d4d"; // High-contrast Red
         HOUSE_DATA.forEach((h, i) => {
           const degLong = typeof h === 'object' ? h.longitude : h;
           const deg = rotate(degLong);
           const p1 = polarToCartesian(center, center, innerRad, deg), p2 = polarToCartesian(center, center, 0, deg);
-          const isAngle = (i === 0 || i === 3 || i === 6 || i === 9); // AC, IC, DC, MC
-          
-          svg += '<line x1="'+p1.x+'" y1="'+p1.y+'" x2="'+p2.x+'" y2="'+p2.y+'" stroke="'+cCusp+'" stroke-width="'+(isAngle?2.5:1)+'" opacity="'+(isAngle?1:0.6)+'"/>';
-          
-          // Cusp Degree Label
-          const cuspLabelPos = polarToCartesian(center, center, innerRad + 15, deg);
-          svg += '<text x="'+cuspLabelPos.x+'" y="'+cuspLabelPos.y+'" fill="'+cCusp+'" font-size="10" font-weight="bold" text-anchor="middle" dominant-baseline="central" transform="rotate('+(deg+90)+','+cuspLabelPos.x+','+cuspLabelPos.y+')">'+formatDegree(degLong % 30)+'</text>';
-
-          // House Numbers (CCW placement)
+          const isAngle = (i === 0 || i === 3 || i === 6 || i === 9);
+          svg += '<line x1="'+p1.x+'" y1="'+p1.y+'" x2="'+p2.x+'" y2="'+p2.y+'" stroke="'+(isAngle?cAngle:cCusp)+'" stroke-width="'+(isAngle?3:1)+'" opacity="'+(isAngle?1:0.5)+'"/>';
+          const cuspLabelPos = polarToCartesian(center, center, innerRad + 12, deg);
+          svg += '<text x="'+cuspLabelPos.x+'" y="'+cuspLabelPos.y+'" fill="rgba(255,255,255,0.9)" font-size="11" font-weight="600" text-anchor="middle" dominant-baseline="central" transform="rotate('+(deg+90)+','+cuspLabelPos.x+','+cuspLabelPos.y+')">'+formatDegree(degLong % 30)+'</text>';
           const nextHouse = HOUSE_DATA[(i+1)%12];
           const nextDegLong = typeof nextHouse === 'object' ? nextHouse.longitude : nextHouse;
-          const nextDeg = rotate(nextDegLong);
-          
-          // midHouse logic for CCW: normalize(deg - nextDeg) / 2? 
-          // normalize(nextDeg - deg) gives the arc distance in standard order.
-          // But our SVG coordinates move CW. So if L increases, rotate(L) decreases.
-          // Thus rotate(nextDeg) < rotate(deg) (mostly).
           let midHouse = rotate(degLong + (normalize(nextDegLong - degLong) / 2));
-          const houseNumPos = polarToCartesian(center, center, contentRad - 80, midHouse);
-          svg += '<text x="'+houseNumPos.x+'" y="'+houseNumPos.y+'" fill="white" font-size="22" font-weight="bold" text-anchor="middle" dominant-baseline="central" opacity="0.8">'+(i+1)+'</text>';
+          const houseNumPos = polarToCartesian(center, center, contentRad - 90, midHouse);
+          svg += '<text x="'+houseNumPos.x+'" y="'+houseNumPos.y+'" fill="white" font-size="28" font-weight="light" text-anchor="middle" dominant-baseline="central" opacity="0.6">'+(i+1)+'</text>';
         });
 
-        // 4. ASPECTS
         ASPECT_DATA.forEach(a => {
           const p1 = PLANET_DATA.find(p => p.name === a.p1), p2 = PLANET_DATA.find(p => p.name === a.p2);
           if(p1 && p2) {
             const pos1 = polarToCartesian(center, center, contentRad, rotate(p1.degree)), pos2 = polarToCartesian(center, center, contentRad, rotate(p2.degree));
-            svg += '<line x1="'+pos1.x+'" y1="'+pos1.y+'" x2="'+pos2.x+'" y2="'+pos2.y+'" stroke="white" stroke-width="0.8" opacity="0.2"/>';
+            svg += '<line x1="'+pos1.x+'" y1="'+pos1.y+'" x2="'+pos2.x+'" y2="'+pos2.y+'" stroke="white" stroke-width="0.8" opacity="0.15"/>';
           }
         });
 
-        // 5. PLANETS
+        const sortedPlanets = [...PLANET_DATA].sort((a,b) => a.degree - b.degree);
+        const radiusMap = new Map();
+        sortedPlanets.forEach((p, idx) => {
+          let overlapCount = 0;
+          for(let i=0; i<idx; i++) {
+            const other = sortedPlanets[i];
+            const diff = normalize(p.degree - other.degree);
+            if(diff < 10 || (360 - diff) < 10) overlapCount++;
+          }
+          radiusMap.set(p.name, contentRad - (overlapCount * 45));
+        });
+
         PLANET_DATA.forEach(p => {
           const deg = rotate(p.degree);
-          const pos = polarToCartesian(center, center, contentRad, deg);
-          svg += '<g>';
-          svg += '<circle cx="'+pos.x+'" cy="'+pos.y+'" r="15" fill="#000" stroke="white" stroke-width="1"/>';
-          svg += '<text x="'+pos.x+'" y="'+pos.y+'" fill="white" font-size="16" text-anchor="middle" dominant-baseline="central">'+p.symbol+'</text>';
-          // Degree Text
-          const tPos = polarToCartesian(center, center, contentRad + 35, deg);
-          svg += '<text x="'+tPos.x+'" y="'+tPos.y+'" fill="white" font-size="10" text-anchor="middle" dominant-baseline="central" transform="rotate('+(deg+90)+','+tPos.x+','+tPos.y+')">'+formatDegree(p.degree % 30)+'</text>';
+          const pRad = radiusMap.get(p.name) || contentRad;
+          const pos = polarToCartesian(center, center, pRad, deg);
+          svg += '<g class="planet-body" filter="url(#glow)">';
+          svg += '<circle cx="'+pos.x+'" cy="'+pos.y+'" r="22" fill="#000" stroke="white" stroke-width="1.5"/>';
+          svg += '<text x="'+pos.x+'" y="'+pos.y+'" fill="white" font-size="24" text-anchor="middle" dominant-baseline="central">'+p.symbol+'</text>';
+          const tPos = polarToCartesian(center, center, pRad + 45, deg);
+          svg += '<text x="'+tPos.x+'" y="'+tPos.y+'" fill="white" font-size="12" font-weight="500" text-anchor="middle" dominant-baseline="central" transform="rotate('+(deg+90)+','+tPos.x+','+tPos.y+')">'+formatDegree(p.degree % 30)+'</text>';
           svg += '</g>';
         });
 
-        // 6. ANGLE LABELS (AC, MC) - Professional Feedback
-        const acPos = polarToCartesian(center, center, outerRad + 50, rotate(ASC_DEGREE));
-        svg += '<text x="'+acPos.x+'" y="'+acPos.y+'" fill="white" font-size="36" font-weight="bold" text-anchor="middle" dominant-baseline="central">AC</text>';
-        
-        const mcPos = polarToCartesian(center, center, outerRad + 50, rotate(MC_DEGREE));
-        svg += '<text x="'+mcPos.x+'" y="'+mcPos.y+'" fill="white" font-size="28" font-weight="bold" text-anchor="middle" dominant-baseline="central">MC</text>';
+        const acPos = polarToCartesian(center, center, outerRad + 30, rotate(ASC_DEGREE));
+        svg += '<text x="'+acPos.x+'" y="'+acPos.y+'" fill="white" font-size="42" font-weight="bold" text-anchor="middle" dominant-baseline="central">AC</text>';
+        const mcPos = polarToCartesian(center, center, outerRad + 30, rotate(MC_DEGREE));
+        svg += '<text x="'+mcPos.x+'" y="'+mcPos.y+'" fill="white" font-size="32" font-weight="bold" text-anchor="middle" dominant-baseline="central">MC</text>';
 
-        root.innerHTML = '<svg viewBox="-100 -100 1200 1200" style="width:100%;height:100%;overflow:visible;">' + svg + '</svg>';
+        root.innerHTML = '<svg viewBox="-50 -50 1100 1100" style="width:100%;height:100%;overflow:visible;"><defs><filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="4" result="blur" /><feComposite in="SourceGraphic" in2="blur" operator="over" /></filter></defs>' + svg + '</svg>';
       }
       render();
     })();
@@ -1772,7 +1759,7 @@ app.get('/dev/no-time', (req, res) => {
   };
 
   // Redirect to the HTML view (page 2 is where the no-time logic lives)
-  res.redirect(`/ reading / ${submissionId} /html/2`);
+  res.redirect(`/reading/${submissionId}/html/2`);
 });
 
 app.get('/dev/chart-ruler', (req, res) => {
@@ -2202,7 +2189,7 @@ app.post('/api/birth-chart-swisseph', async (req, res) => {
     console.log(`🌍 Coordinates: ${lat}, ${lng} -> Timezone: ${timeZone} `);
 
     // Convert input date/time (Local zone) → UTC
-    const birthDT = DateTime.fromISO(`${date}T${time} `, { zone: timeZone });
+    const birthDT = DateTime.fromISO(`${date}T${time}`, { zone: timeZone });
 
     if (!birthDT.isValid) {
       return res.status(400).json({ success: false, error: 'Invalid date or time.' });
@@ -2425,7 +2412,7 @@ app.get('/api/birth-chart-swisseph', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Invalid coordinates.' });
     }
 
-    const birthDT = DateTime.fromISO(`${date}T${time} `, { zone: 'Europe/Berlin' });
+    const birthDT = DateTime.fromISO(`${date}T${time}`, { zone: 'Europe/Berlin' });
     if (!birthDT.isValid) return res.status(400).json({ success: false, error: 'Invalid date or time.' });
     const birthUTC = birthDT.toUTC().toJSDate();
     const tzOffsetMinutes = birthDT.offset;

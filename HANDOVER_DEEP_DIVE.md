@@ -1,42 +1,52 @@
-# 🎯 Handover: Deep Dive Dashboard & High-Fidelity Chart Integration
+# 🎯 Handover: Deep Dive Dashboard & High-Fidelity Chart Wheel
 
-## 📋 Context & Objective
-The user wants to add a "Deep Dive" view to the Admin Dashboard. This view will focus on a high-fidelity visual representation of the birth chart (the "Chart Wheel") and potentially transit data in the future.
+## 📋 Status: ALL PROFESSIONAL FEATURES IMPLEMENTED
+The "Deep Dive" view is now live and optimized for professional astrological use. It provides a split-screen experience: technical birth chart on the left, survey answers on the right.
 
-### Current Status
-- **Admin Dashboard**: Located at `/admin/dashboard` and `/admin/data`. It currently shows a list and a 2D table of responses. 
-- **CSV Export**: Optimized at `/admin/export` to handle large datasets via bulk-fetching.
-- **Chart Wheel**: An active but "hidden" logic exists at `GET /reading/:submissionId/chart.svg`. 
-    - *Note*: This endpoint currently returns **HTML** containing an SVG to allow for Apple-style metadata overlays and premium styling.
-    - *Logic*: The SVG is generated via `buildChartWheelHtml(chartDTO)` in `server.js`.
+### Core Features Live:
+- **Standard Western Orientation**: The wheel flows **Counter-Clockwise (CCW)**.
+- **Fixed Horizon**: The Ascendant (AC) is fixed at the **9 o'clock position**.
+- **Prominent Labels**: Large, high-visibility "AC" and "MC" labels outside the wheel.
+- **High-Contrast Cusps**: All 12 house lines are rendered in **vibrant red** (`#ff4d4d`) with degree labels at the tips.
+- **Large House Numbers**: 1-12 are clearly visible in the inner ring.
+- **Technical Precision**: 360 individual degree ticks and numerical degrees for all planets.
 
-## 🛠️ Technical Implementation Details for the Next Agent
+---
 
-### 1. Data Flow (Birth Chart)
-- All calculated astrological data resides in the `Chart` table, linked to `SurveySubmission` via `chartId`.
-- The `Chart.rawChart` field (JSONB) is the primary source of truth for planetary longitudes, house cusps, and aspects.
-- **Key Helper**: `buildChartWheelHtml(chartDTO)` transforms raw longitudes into a visual SVG.
+## 🛠️ Technical Architecture
 
-### 2. Integration Plan
-1.  **Add "Deep Dive" Button**: Update `views/admin_data.ejs` and `admin_dashboard.ejs` to include a "Deep Dive" link for each submission.
-    - URL structure: `/admin/deep-dive/:submissionId`
-2.  **Create Admin Route**: In `server.js`, implement `app.get('/admin/deep-dive/:submissionId')`.
-    - It must fetch the `SurveySubmission` + `Chart` + `Reading`.
-    - Use the existing `isTestSubmission` helper to clearly flag if the data is a test.
-3.  **Render High-Fidelity View**:
-    - Use a new EJS template `views/admin_deep_dive.ejs`.
-    - Embed the SVG wheel logic. You can call `buildChartWheelHtml` and pass the `chartDTO`.
-4.  **Transits (Phase 1.5)**:
-    - To show transits, you will need to call the Swiss Ephemeris (`swisseph`) using the *current* date/time.
-    - Compare current planetary longitudes against the birth longitudes found in the `Chart` record.
-    - Update `buildChartWheelHtml` to support an optional secondary array of "outer ring" planets.
+### 1. Data Source & Preparation
+- **Route**: `/admin/deep-dive/:submissionId` in [server.js](file:///Users/saraellenpicard/Documents/fateflix-code/astro-backend-clean-main/server.js).
+- **Data Object**: The `chartDTO` passed to the renderer now includes:
+  - `planets`: Longitudes + Symbols.
+  - `rawHouses`: An array of numbers (degrees) representing Placidus cusps.
+  - `ascendant`: The specific degree for rotation.
+  - `mc`: The Midheaven degree for the "MC" label.
 
-## 📁 Critical Files to Review
-- `astro-backend-clean-main/server.js`: Look for the `/admin` routes and the `buildChartWheelHtml` function (~line 1395).
-- `astro-backend-clean-main/prisma/schema.prisma`: Understand the `Chart` and `SurveySubmission` relationship.
-- `astro-backend-clean-main/BASELINE.md`: Read the "Data Deletion Policy" and "Admin Dashboard" sections for operational rules.
+### 2. SVG Renderer: `buildChartWheelHtml`
+The logic in `server.js` (~line 1570) generates a premium SVG embedded in a responsive wrapper.
 
-## 🛑 Rules for the Next Agent
-- **Do not break the CSV Export**: The recent performance optimizations (bulk fetching) are critical.
-- **Maintain Aesthetic**: The user expects "Rich Aesthetics" (Glassmorphism, Apple-style clean layouts).
-- **Primary Source**: Always prefer `SurveySubmission.fullData` for raw answer interpretations.
+**Crucial Math Helpers:**
+- **Rotation**: `rotate(deg) => normalize(270 - (deg - ASC_DEGREE))`
+  - *270* is the SVG angle for 9 o'clock. 
+  - Subtraction `- (deg - ASC_DEGREE)` creates the **CCW** flow.
+- **Smooth Arcs**: `signArc` and `describeArc` use specific sweep and large-arc flags to ensure circles are smooth and don't "zigzag."
+
+### 3. Visual Standard
+- **viewBox**: Expanded to `-100 -100 1200 1200` to prevent "AC" label clipping at the edges.
+- **Styles**: Glassmorphism and cosmic radial gradients are enforced in the `views/admin_deep_dive.ejs` template.
+
+---
+
+## 📁 Critical Files
+- **[server.js](file:///Users/saraellenpicard/Documents/fateflix-code/astro-backend-clean-main/server.js)**: Contains the route and the heavy-lifting `buildChartWheelHtml` function.
+- **[admin_deep_dive.ejs](file:///Users/saraellenpicard/Documents/fateflix-code/astro-backend-clean-main/views/admin_deep_dive.ejs)**: The layout and Tailwind styling for the view.
+- **[BASELINE.md](file:///Users/saraellenpicard/Documents/fateflix-code/astro-backend-clean-main/BASELINE.md)**: Standard operating procedures.
+
+## 🚀 Next Steps for the Next Agent
+1. **Transits**: Add an outer ring by calculating current planetary positions using `swisseph`.
+2. **Aspect List**: Add a sidebar table displaying the list of key aspects (Sun trine Moon, etc.).
+3. **Interactivity**: Use the `planetDataJson` already in the script to add hover/tooltips to the planet circles.
+
+---
+**Note to Agent**: The current orientation is "Standard Western." Do NOT switch it back to CW or change the AC position without explicit user/astrologer request.

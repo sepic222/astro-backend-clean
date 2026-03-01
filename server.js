@@ -409,7 +409,7 @@ app.get('/admin/data', async (req, res) => {
     surveySchema.forEach(section => {
       if (section.questions && Array.isArray(section.questions)) {
         section.questions.forEach(q => {
-          if (['text', 'radio', 'checkbox', 'textarea', 'email', 'date', 'time', 'number', 'hero_start'].includes(q.type)) {
+          if (['text', 'radio', 'checkbox', 'textarea', 'email', 'date', 'time', 'number'].includes(q.type)) {
             // Check if it's already in the list to avoid duplicates
             if (!dynamicColumns.find(col => col.key === q.id)) {
               dynamicColumns.push({
@@ -562,7 +562,7 @@ app.get('/admin/export', async (req, res) => {
       if (section.questions && Array.isArray(section.questions)) {
         section.questions.forEach(q => {
           // Only include relevant question types
-          if (['text', 'radio', 'checkbox', 'textarea', 'email', 'date', 'time', 'number', 'hero_start'].includes(q.type)) {
+          if (['text', 'radio', 'checkbox', 'textarea', 'email', 'date', 'time', 'number'].includes(q.type)) {
             orderedQuestions.push({
               key: q.id,
               text: q.text

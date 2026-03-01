@@ -524,7 +524,7 @@ module.exports.surveySchema = [
       {
         "id": "life_changing",
         "type": "textarea",
-        "text": "What movie changed your life or meant everything at some point?"
+        "text": "What film has left a lasting impact on you — or shaped who you are at a pivotal moment"
       },
       {
         "id": "comfort_watch",
@@ -533,8 +533,8 @@ module.exports.surveySchema = [
       },
       {
         "id": "power_watch",
-        "type": "text",
-        "text": "What movie do you (re-)watch when you want to feel powerful?"
+        "type": "textarea",
+        "text": "Is there a film that genuinely shifted something in you? Could be a turning point, a breakup companion, a film you return to when you need to feel like yourself again."
       },
       {
         "id": "date_impress",
@@ -609,7 +609,7 @@ module.exports.surveySchema = [
       {
         "id": "villain_relate",
         "type": "textarea",
-        "text": "Which villain do you secretly relate to? And... why?"
+        "text": "Who's your on-screen alter ego or the villain you secretly relate to? And... why?⭐"
       },
       {
         "id": "forever_crush",
@@ -796,7 +796,7 @@ module.exports.surveySchema = [
       {
         "id": "guilty_pleasure",
         "type": "textarea",
-        "text": "What are your ultimate guilty pleasures?"
+        "text": "What are your ultimate Film or TV guilty pleasures?"
       }
     ]
   },
@@ -1667,7 +1667,7 @@ module.exports.surveySchema = [
       {
         "id": "alter-ego",
         "type": "text",
-        "text": "The character you identify with or secretly aspire to.⭐"
+        "text": "Who's your on-screen alter ego?"
       }
     ]
   },

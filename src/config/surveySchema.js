@@ -343,7 +343,7 @@ module.exports.surveySchema = [
       {
         "id": "top_3_movies",
         "type": "textarea",
-        "text": "🍿 Drop your all-time TOP 3 movies"
+        "text": "🍿 Drop your all-time TOP 3 Movies, Series or Docs"
       },
       {
         "id": "first_fascination✨",

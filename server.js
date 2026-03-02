@@ -884,12 +884,37 @@ app.get('/admin/deep-dive/:submissionId', async (req, res) => {
       risingSign: submission.chart?.risingSign
     };
 
+
+    // 6. Fetch stored major aspects for this chart
+    let majorAspects = [];
+    if (submission.chart?.id) {
+      const storedAspects = await prisma.chartAspect.findMany({
+        where: { chartId: submission.chart.id },
+        orderBy: [{ a: 'asc' }, { b: 'asc' }]
+      });
+      majorAspects = storedAspects.map(a => ({
+        planet1: a.a,
+        planet2: a.b,
+        aspect: a.aspect,
+        orb: a.orb,
+        strength: a.strength
+      }));
+
+      // If nothing in DB (chart pre-dates this feature), compute on-the-fly from rawChart
+      if (majorAspects.length === 0 && rawChart.planets) {
+        const acDeg = submission.chart?.ascendant ?? null;
+        const mcDeg = rawChart.angles?.mcDeg ?? null;
+        majorAspects = computeAspects(rawChart.planets, acDeg, mcDeg);
+      }
+    }
+
     res.render('admin_deep_dive', {
       submission,
       chart: submission.chart,
       chartDTO,
       groupedAnswers,
-      buildChartWheelHtml
+      buildChartWheelHtml,
+      majorAspects
     });
 
   } catch (error) {
@@ -1113,6 +1138,83 @@ const SIGN_RULER = {
   Sagittarius: "Jupiter", Capricorn: "Saturn", Aquarius: "Saturn", Pisces: "Jupiter"
 };
 
+// --------------------------------------------------------------
+// MAJOR ASPECTS ENGINE
+// Computes Conjunction (0°) and Opposition (180°) between:
+//   Personal planets (Sun, Moon, Mercury, Venus, Mars)
+//   × Outer planets   (Jupiter, Saturn, Uranus, Neptune, Pluto)
+//   + All 10 planets  × Angles (AC / MC)
+// Orb: 8° for both aspect types
+// --------------------------------------------------------------
+const ASPECT_ORB = 8;
+
+const PERSONAL_PLANETS = ['sun', 'moon', 'mercury', 'venus', 'mars'];
+const OUTER_PLANETS = ['jupiter', 'saturn', 'uranus', 'neptune', 'pluto'];
+const ALL_TEN_PLANETS = [...PERSONAL_PLANETS, ...OUTER_PLANETS];
+
+const MAJOR_ASPECT_ANGLES = {
+  Conjunction: 0,
+  Opposition: 180
+};
+
+/**
+ * computeAspects(planets, ascendantDeg, mcDeg)
+ * @param {Object} planets       - map of planet name → { longitude (0-360) }
+ * @param {number|null} ascendantDeg - AC longitude, null if unknown time
+ * @param {number|null} mcDeg        - MC longitude, null if unknown time
+ * @returns {Array} detected aspects
+ */
+function computeAspects(planets, ascendantDeg = null, mcDeg = null) {
+  const aspects = [];
+
+  // Helper: angular difference (shortest arc, 0-180)
+  const angularDiff = (a, b) => {
+    const diff = Math.abs(((a - b) + 360) % 360);
+    return diff > 180 ? 360 - diff : diff;
+  };
+
+  // Helper: check a single pair at a given aspect angle
+  const check = (label1, lon1, label2, lon2) => {
+    for (const [aspectName, targetAngle] of Object.entries(MAJOR_ASPECT_ANGLES)) {
+      const diff = angularDiff(lon1, lon2);
+      const deviation = Math.abs(diff - targetAngle);
+      if (deviation <= ASPECT_ORB) {
+        aspects.push({
+          planet1: label1,
+          planet2: label2,
+          aspect: aspectName,
+          orb: Math.round(deviation * 100) / 100,   // 2 d.p.
+          isExact: deviation < 1
+        });
+      }
+    }
+  };
+
+  // --- 1. Personal × Outer (50 pairs) ---
+  for (const p of PERSONAL_PLANETS) {
+    const pData = planets[p];
+    if (!pData) continue;
+    for (const o of OUTER_PLANETS) {
+      const oData = planets[o];
+      if (!oData) continue;
+      check(p, pData.longitude, o, oData.longitude);
+    }
+  }
+
+  // --- 2. All 10 planets × AC and MC (40 pairs, only when time is known) ---
+  if (ascendantDeg !== null && mcDeg !== null) {
+    for (const p of ALL_TEN_PLANETS) {
+      const pData = planets[p];
+      if (!pData) continue;
+      check(p, pData.longitude, 'ascendant', ascendantDeg);
+      check(p, pData.longitude, 'mc', mcDeg);
+    }
+  }
+
+  return aspects;
+}
+
+
 function houseOfLongitude(lon, houseCusps) {
   const L = normalize360(lon);
   for (let i = 0; i < 12; i++) {
@@ -1273,6 +1375,34 @@ async function saveChartToDB(input, output) {
     };
 
     const rec = await prisma.chart.create({ data, select: { id: true } });
+
+    // Persist major aspects to ChartAspect table
+    const aspects = output?.aspects ?? [];
+    if (aspects.length > 0) {
+      // The Planet enum uses TitleCase (e.g. "Sun", "Moon").
+      // Angle labels ('ascendant', 'mc') are not in the Planet enum — skip them.
+      const PLANET_ENUM_MAP = {
+        sun: 'Sun', moon: 'Moon', mercury: 'Mercury', venus: 'Venus',
+        mars: 'Mars', jupiter: 'Jupiter', saturn: 'Saturn',
+        uranus: 'Uranus', neptune: 'Neptune', pluto: 'Pluto'
+      };
+      const aspectRows = aspects
+        .filter(a => PLANET_ENUM_MAP[a.planet1] && PLANET_ENUM_MAP[a.planet2])
+        .map(a => ({
+          chartId: rec.id,
+          a: PLANET_ENUM_MAP[a.planet1],
+          b: PLANET_ENUM_MAP[a.planet2],
+          aspect: a.aspect,           // 'Conjunction' | 'Opposition'
+          orb: a.orb,
+          strength: Math.round((1 - a.orb / 8) * 100)
+        }));
+
+      if (aspectRows.length > 0) {
+        await prisma.chartAspect.createMany({ data: aspectRows, skipDuplicates: true });
+        console.log(`🔭 Saved ${aspectRows.length} major aspects for chart ${rec.id}`);
+      }
+    }
+
     return rec.id;
   } catch (e) {
     console.error("🟥 DB save failed (non-fatal):", e);
@@ -2316,6 +2446,11 @@ app.post('/api/birth-chart-swisseph', async (req, res) => {
       chartRulerPlanet,
       chartRulerHouse
     };
+    payload.aspects = computeAspects(
+      planets,
+      isUnknownTime ? null : ascendant,
+      isUnknownTime ? null : mc
+    );
 
     if (isUnknownTime) {
       payload.angles = {
@@ -2535,8 +2670,12 @@ app.get('/api/birth-chart-swisseph', async (req, res) => {
       chartRulerPlanet,
       chartRulerHouse
     };
+    payload.aspects = computeAspects(
+      planets,
+      isUnknownTime ? null : ascendant,
+      isUnknownTime ? null : mc
+    );
 
-    // Mask if unknown time
     if (isUnknownTime) {
       payload.angles = {
         ascendantDeg: null,

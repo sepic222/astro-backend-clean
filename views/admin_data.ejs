@@ -127,6 +127,16 @@
                             <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">☀️ Sun</th>
                             <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">🌙 Moon</th>
                             <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">⬆️ Rising</th>
+                            <th class="px-3 py-2 text-left text-xs font-medium text-purple-500 uppercase"
+                                title="Personal planets aspecting Jupiter (☌=Conjunction ☍=Opposition)">♃ Jupiter</th>
+                            <th class="px-3 py-2 text-left text-xs font-medium text-purple-500 uppercase"
+                                title="Personal planets aspecting Saturn">♄ Saturn</th>
+                            <th class="px-3 py-2 text-left text-xs font-medium text-purple-500 uppercase"
+                                title="Personal planets aspecting Uranus">⛢ Uranus</th>
+                            <th class="px-3 py-2 text-left text-xs font-medium text-purple-500 uppercase"
+                                title="Personal planets aspecting Neptune">♆ Neptune</th>
+                            <th class="px-3 py-2 text-left text-xs font-medium text-purple-500 uppercase"
+                                title="Personal planets aspecting Pluto">♇ Pluto</th>
                             <% questions.forEach(function(q) { %>
                                 <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase"
                                     title="<%= q.text %>">
@@ -165,11 +175,18 @@
                                 <td class="px-3 py-2 text-gray-600">
                                     <%= row.risingSign || '-' %>
                                 </td>
-                                <% questions.forEach(function(q) { %>
-                                    <td class="px-3 py-2 text-gray-700" title="<%= row.answers[q.key] || '' %>">
-                                        <%= row.answers[q.key] || '-' %>
+                                <% const ASPECT_OUTER=['Jupiter','Saturn','Uranus','Neptune','Pluto'];
+                                    ASPECT_OUTER.forEach(function(o) { %>
+                                    <td class="px-3 py-2 text-purple-700 font-mono text-[10px]"
+                                        title="<%= row.aspectCols && row.aspectCols[o] ? row.aspectCols[o] : 'No aspect' %>">
+                                        <%= row.aspectCols && row.aspectCols[o] ? row.aspectCols[o] : '' %>
                                     </td>
                                     <% }); %>
+                                        <% questions.forEach(function(q) { %>
+                                            <td class="px-3 py-2 text-gray-700" title="<%= row.answers[q.key] || '' %>">
+                                                <%= row.answers[q.key] || '-' %>
+                                            </td>
+                                            <% }); %>
                             </tr>
                             <% }); %>
                     </tbody>

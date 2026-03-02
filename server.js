@@ -428,7 +428,11 @@ app.get('/admin/data', async (req, res) => {
       orderBy: { createdAt: 'desc' },
       include: {
         chart: {
-          select: { risingSign: true, sunSign: true, moonSign: true, city: true, birthDateTimeUtc: true }
+          select: {
+            id: true, risingSign: true, sunSign: true, moonSign: true,
+            city: true, birthDateTimeUtc: true,
+            aspects: { select: { a: true, b: true, aspect: true, orb: true } }
+          }
         },
         responses: {
           include: {
@@ -481,6 +485,20 @@ app.get('/admin/data', async (req, res) => {
 
       const testResult = isTestSubmission(sub, username, discoverySource, sub.responses.length + Object.keys(fullData).length, 50);
 
+      // Build compact aspect summary: one entry per outer planet / angle
+      const ASPECT_SYM = { Conjunction: '☌', Opposition: '☍' };
+      const OUTER_COLS = ['Jupiter', 'Saturn', 'Uranus', 'Neptune', 'Pluto'];
+      const aspectSummary = {};
+      (sub.chart?.aspects || []).forEach(a => {
+        const key = a.b; // outer planet or angle
+        const sym = ASPECT_SYM[a.aspect] || a.aspect;
+        if (!aspectSummary[key]) aspectSummary[key] = [];
+        aspectSummary[key].push(`${a.a}${sym}`);
+      });
+      // Compact string per outer planet column
+      const aspectCols = {};
+      OUTER_COLS.forEach(o => { aspectCols[o] = (aspectSummary[o] || []).join(', '); });
+
       return {
         id: sub.id,
         createdAt: sub.createdAt,
@@ -494,7 +512,8 @@ app.get('/admin/data', async (req, res) => {
         birthDateTimeUtc: sub.chart?.birthDateTimeUtc || '',
         responseCount: sub.responses.length + Object.keys(fullData).length,
         answers: answerMap,
-        fullData
+        fullData,
+        aspectCols
       };
     });
 
@@ -627,6 +646,28 @@ app.get('/admin/export', async (req, res) => {
     });
     const readingMap = new Map(readings.map(r => [r.submissionId, r]));
 
+    // Bulk-fetch aspects for all charts in one query
+    const chartIds = submissions.map(s => s.chart?.id).filter(Boolean);
+    const allAspects = chartIds.length > 0
+      ? await prisma.chartAspect.findMany({ where: { chartId: { in: chartIds } }, select: { chartId: true, a: true, b: true, aspect: true } })
+      : [];
+    const aspectsByChart = new Map();
+    allAspects.forEach(a => {
+      if (!aspectsByChart.has(a.chartId)) aspectsByChart.set(a.chartId, []);
+      aspectsByChart.get(a.chartId).push(a);
+    });
+    const ASPECT_SYM_EXP = { Conjunction: '☌', Opposition: '☍' };
+    const OUTER_COLS_EXP = ['Jupiter', 'Saturn', 'Uranus', 'Neptune', 'Pluto'];
+    function buildAspectCols(chartId) {
+      const rows = aspectsByChart.get(chartId) || [];
+      const grouped = {};
+      rows.forEach(a => {
+        if (!grouped[a.b]) grouped[a.b] = [];
+        grouped[a.b].push(`${a.a}${ASPECT_SYM_EXP[a.aspect] || a.aspect}`);
+      });
+      return OUTER_COLS_EXP.map(o => (grouped[o] || []).join(', '));
+    }
+
     // Build headers: fixed columns + one per question
     const fixedHeaders = [
       'Submission ID', 'Date', 'User Email', 'Type', 'Responses Count', 'Reading ID', 'City', 'Reading Content',
@@ -645,7 +686,9 @@ app.get('/admin/export', async (req, res) => {
       'Neptune Sign', 'Neptune House',
       'Pluto Sign', 'Pluto House',
       // Other Points
-      'North Node House', 'Chiron House', 'Chart Ruler Planet', 'Chart Ruler House'
+      'North Node House', 'Chiron House', 'Chart Ruler Planet', 'Chart Ruler House',
+      // Major Aspects (one column per outer planet)
+      'Aspects: Jupiter', 'Aspects: Saturn', 'Aspects: Uranus', 'Aspects: Neptune', 'Aspects: Pluto'
     ];
     const questionHeaders = orderedQuestions.map(q => q.key);
     const headers = [...fixedHeaders, ...questionHeaders];
@@ -709,7 +752,10 @@ app.get('/admin/export', async (req, res) => {
         c.plutoSign || '', c.plutoHouse || '',
 
         // Other Points
-        c.northNodeHouse || '', c.chironHouse || '', c.chartRulerPlanet || '', c.chartRulerHouse || ''
+        c.northNodeHouse || '', c.chironHouse || '', c.chartRulerPlanet || '', c.chartRulerHouse || '',
+
+        // Major Aspects (5 outer planet columns)
+        ...buildAspectCols(c.id)
       ];
 
       // Add one column per question

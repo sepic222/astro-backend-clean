@@ -398,6 +398,368 @@ app.get('/admin/api/stats', async (req, res) => {
   }
 });
 
+// --- ADMIN ANALYSIS API (aggregated insights for all real users) ---
+app.get('/admin/api/analysis', async (req, res) => {
+  try {
+    const SIGNS = ['Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo', 'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces'];
+    const PLANETS_LIST = ['Sun', 'Moon', 'Mercury', 'Venus', 'Mars', 'Jupiter', 'Saturn', 'Uranus', 'Neptune', 'Pluto'];
+    const ELEMENTS = { Fire: ['Aries', 'Leo', 'Sagittarius'], Earth: ['Taurus', 'Virgo', 'Capricorn'], Air: ['Gemini', 'Libra', 'Aquarius'], Water: ['Cancer', 'Scorpio', 'Pisces'] };
+    const ASPECT_SYM = { Conjunction: '☌', Opposition: '☍' };
+
+    // 1. Fetch all submissions with charts + aspects + fullData
+    const allSubmissions = await prisma.surveySubmission.findMany({
+      include: {
+        _count: { select: { responses: true } },
+        chart: { include: { aspects: true } }
+      }
+    });
+
+    // 2. Deduplicate by email (same logic as /admin/export)
+    const userGroups = new Map();
+    for (const sub of allSubmissions) {
+      const email = (sub.userEmail || '').toLowerCase().trim();
+      const responseCount = sub._count.responses + Object.keys(sub.fullData || {}).length;
+      const currentBest = userGroups.get(email);
+      const betterThanCurrent = !currentBest ||
+        (responseCount > currentBest.responseCount) ||
+        (responseCount === currentBest.responseCount && sub.createdAt > currentBest.createdAt);
+      if (betterThanCurrent) {
+        userGroups.set(email, { submission: sub, responseCount });
+      }
+    }
+    const dedupedSubmissions = Array.from(userGroups.values()).map(g => g.submission);
+
+    // 3. Filter to real users only
+    const realSubs = [];
+    let testCount = 0;
+    for (const sub of dedupedSubmissions) {
+      const fullData = (sub.fullData && typeof sub.fullData === 'object') ? sub.fullData : {};
+      const username = parseAnswer(fullData['cosmic.username'] || fullData.username || '');
+      const discoverySource = parseAnswer(fullData['fit.discovery'] || fullData.discovery || '');
+      const responseCount = sub._count.responses + Object.keys(fullData).length;
+      const testResult = isTestSubmission(sub, username, discoverySource, responseCount, 50);
+      if (testResult.isTest) { testCount++; continue; }
+      realSubs.push({ ...sub, fullData, _username: username });
+    }
+
+    // === OVERVIEW ===
+    const avgCompletion = realSubs.reduce((sum, s) => {
+      return sum + s._count.responses + Object.keys(s.fullData).length;
+    }, 0) / (realSubs.length || 1);
+
+    const submissionsByMonth = {};
+    for (const s of realSubs) {
+      const key = s.createdAt.toISOString().slice(0, 7);
+      submissionsByMonth[key] = (submissionsByMonth[key] || 0) + 1;
+    }
+
+    // === ZODIAC DISTRIBUTION ===
+    const zodiac = { sunSigns: {}, moonSigns: {}, risingSigns: {} };
+    for (const sign of SIGNS) {
+      zodiac.sunSigns[sign] = 0;
+      zodiac.moonSigns[sign] = 0;
+      zodiac.risingSigns[sign] = 0;
+    }
+    for (const sub of realSubs) {
+      const c = sub.chart;
+      if (c?.sunSign) zodiac.sunSigns[c.sunSign]++;
+      if (c?.moonSign) zodiac.moonSigns[c.moonSign]++;
+      if (c?.risingSign) zodiac.risingSigns[c.risingSign]++;
+    }
+
+    // === HOUSE PLACEMENTS ===
+    const houses = {};
+    for (const planet of PLANETS_LIST) {
+      houses[planet] = {};
+      for (let h = 1; h <= 12; h++) houses[planet][h] = 0;
+    }
+    for (const sub of realSubs) {
+      const c = sub.chart;
+      if (!c) continue;
+      for (const planet of PLANETS_LIST) {
+        const house = c[`${planet.toLowerCase()}House`];
+        if (house >= 1 && house <= 12) houses[planet][house]++;
+      }
+    }
+
+    // === ASPECTS ===
+    const aspectCounts = {};
+    let conjunctionTotal = 0, oppositionTotal = 0;
+    for (const sub of realSubs) {
+      for (const a of (sub.chart?.aspects || [])) {
+        const sym = ASPECT_SYM[a.aspect] || a.aspect;
+        const key = `${a.a} ${sym} ${a.b}`;
+        aspectCounts[key] = (aspectCounts[key] || 0) + 1;
+        if (a.aspect === 'Conjunction') conjunctionTotal++;
+        else oppositionTotal++;
+      }
+    }
+    const topAspects = Object.entries(aspectCounts)
+      .map(([pair, count]) => ({ pair, count, pct: +(count / realSubs.length * 100).toFixed(1) }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 20);
+
+    // === SURVEY INSIGHTS (multi-choice and radio tallies) ===
+    function tallyAnswers(key) {
+      const counts = {};
+      for (const sub of realSubs) {
+        const raw = sub.fullData[key];
+        if (!raw) continue;
+        const parsed = parseAnswer(raw);
+        const items = parsed.split(/;\s*/).map(s => s.trim()).filter(Boolean);
+        for (const item of items) {
+          counts[item] = (counts[item] || 0) + 1;
+        }
+      }
+      return Object.entries(counts)
+        .map(([label, count]) => ({ label, count }))
+        .sort((a, b) => b.count - a.count);
+    }
+
+    const surveyInsights = {
+      cineLevel: tallyAnswers('casting.cine_level'),
+      escapismStyle: tallyAnswers('casting.escapism_style'),
+      genresLove: tallyAnswers('genres.genres_love'),
+      turnOffs: tallyAnswers('genres.turn_offs'),
+      favEra: tallyAnswers('taste.fav_era'),
+      watchHabit: tallyAnswers('taste.watch_habit'),
+      foreignFilms: tallyAnswers('global.foreign_films'),
+      lifeRole: tallyAnswers('casting.life_role'),
+      attractionStyle: tallyAnswers('casting.attraction_style'),
+      craveMost: tallyAnswers('world.crave_most'),
+      hypeStyle: tallyAnswers('genres.hype_style'),
+      selectionMethod: tallyAnswers('fit.selection_method'),
+    };
+
+    // === FREE TEXT HIGHLIGHTS ===
+    function tallyFreeText(key) {
+      const counts = {};
+      for (const sub of realSubs) {
+        const raw = sub.fullData[key];
+        if (!raw) continue;
+        const parsed = parseAnswer(raw).trim();
+        if (!parsed || parsed.length < 2) continue;
+        const normKey = parsed.toLowerCase();
+        if (!counts[normKey]) counts[normKey] = { text: parsed, count: 0 };
+        counts[normKey].count++;
+      }
+      return Object.values(counts).sort((a, b) => b.count - a.count).slice(0, 15);
+    }
+
+    const freeText = {
+      top3Movies: tallyFreeText('casting.top_3_movies'),
+      comfortWatch: tallyFreeText('core_memory.comfort_watch'),
+      powerWatch: tallyFreeText('core_memory.power_watch'),
+      firstCrush: tallyFreeText('casting.first_crush'),
+      movieUniverse: tallyFreeText('world.movie_universe'),
+      villainRelate: tallyFreeText('world.villain_relate'),
+      foreverCrush: tallyFreeText('world.forever_crush'),
+    };
+
+    // === CROSS-CORRELATIONS ===
+    function getMultiAnswer(sub, key) {
+      const raw = sub.fullData[key];
+      if (!raw) return [];
+      return parseAnswer(raw).split(/;\s*/).map(s => s.trim()).filter(Boolean);
+    }
+
+    // Sign → Genre
+    const signToGenre = {};
+    const signToEscapism = {};
+    const signToMovies = {};
+
+    for (const sign of SIGNS) {
+      const usersWithSign = realSubs.filter(s => s.chart?.sunSign === sign);
+      if (usersWithSign.length < 2) continue;
+
+      const genreCounts = {};
+      for (const u of usersWithSign) {
+        for (const g of getMultiAnswer(u, 'genres.genres_love')) genreCounts[g] = (genreCounts[g] || 0) + 1;
+      }
+      signToGenre[sign] = Object.entries(genreCounts)
+        .map(([genre, count]) => ({ genre, count, pct: +(count / usersWithSign.length * 100).toFixed(1) }))
+        .sort((a, b) => b.pct - a.pct)
+        .slice(0, 5);
+
+      const escCounts = {};
+      for (const u of usersWithSign) {
+        for (const e of getMultiAnswer(u, 'casting.escapism_style')) escCounts[e] = (escCounts[e] || 0) + 1;
+      }
+      signToEscapism[sign] = Object.entries(escCounts)
+        .map(([style, count]) => ({ style, count, pct: +(count / usersWithSign.length * 100).toFixed(1) }))
+        .sort((a, b) => b.pct - a.pct)
+        .slice(0, 3);
+
+      const comfortCounts = {};
+      const powerCounts = {};
+      for (const u of usersWithSign) {
+        const comfort = parseAnswer(u.fullData['core_memory.comfort_watch'] || '').trim().toLowerCase();
+        const power = parseAnswer(u.fullData['core_memory.power_watch'] || '').trim().toLowerCase();
+        if (comfort && comfort.length > 2) comfortCounts[comfort] = (comfortCounts[comfort] || 0) + 1;
+        if (power && power.length > 2) powerCounts[power] = (powerCounts[power] || 0) + 1;
+      }
+      signToMovies[sign] = {
+        comfort: Object.entries(comfortCounts).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([text, count]) => ({ text, count })),
+        power: Object.entries(powerCounts).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([text, count]) => ({ text, count })),
+      };
+    }
+
+    // Aspect → Genre (top 10 most frequent aspects)
+    const aspectToGenre = {};
+    for (const { pair } of topAspects.slice(0, 10)) {
+      const usersWithAspect = realSubs.filter(s => {
+        return (s.chart?.aspects || []).some(a => {
+          const sym = ASPECT_SYM[a.aspect] || a.aspect;
+          return `${a.a} ${sym} ${a.b}` === pair;
+        });
+      });
+      if (usersWithAspect.length < 2) continue;
+      const genreCounts = {};
+      for (const u of usersWithAspect) {
+        for (const g of getMultiAnswer(u, 'genres.genres_love')) genreCounts[g] = (genreCounts[g] || 0) + 1;
+      }
+      aspectToGenre[pair] = Object.entries(genreCounts)
+        .map(([genre, count]) => ({ genre, count, pct: +(count / usersWithAspect.length * 100).toFixed(1) }))
+        .sort((a, b) => b.pct - a.pct)
+        .slice(0, 5);
+    }
+
+    // === ARCHETYPE CLUSTERS ===
+    function getDominantElement(chart) {
+      if (!chart) return null;
+      const counts = { Fire: 0, Earth: 0, Air: 0, Water: 0 };
+      const signs = [chart.sunSign, chart.moonSign, chart.risingSign, chart.mercurySign, chart.venusSign, chart.marsSign].filter(Boolean);
+      for (const sign of signs) {
+        for (const [element, elementSigns] of Object.entries(ELEMENTS)) {
+          if (elementSigns.includes(sign)) counts[element]++;
+        }
+      }
+      return Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
+    }
+
+    function hasStrongPlanet(chart, planet) {
+      if (!chart?.aspects) return false;
+      return chart.aspects.filter(a => a.a === planet || a.b === planet).length >= 2;
+    }
+
+    const archetypeRules = [
+      {
+        name: 'Intense Seekers', emoji: '🔥',
+        description: 'Pluto/Scorpio dominant — drawn to psychological depth and transformation',
+        match: (sub) => {
+          const c = sub.chart;
+          return c && (c.sunSign === 'Scorpio' || c.moonSign === 'Scorpio' || hasStrongPlanet(c, 'Pluto'));
+        }
+      },
+      {
+        name: 'Dreamy Romantics', emoji: '🌊',
+        description: 'Neptune/Pisces dominant — drawn to fantasy, romance, and emotional beauty',
+        match: (sub) => {
+          const c = sub.chart;
+          return c && (c.sunSign === 'Pisces' || c.moonSign === 'Pisces' || hasStrongPlanet(c, 'Neptune'));
+        }
+      },
+      {
+        name: 'Action Adventurers', emoji: '⚡',
+        description: 'Fire-dominant charts — drawn to action, adventure, and high-energy storytelling',
+        match: (sub) => getDominantElement(sub.chart) === 'Fire'
+      },
+      {
+        name: 'Cerebral Explorers', emoji: '🧠',
+        description: 'Air-dominant or Uranus-heavy — drawn to sci-fi, indie, and unconventional narratives',
+        match: (sub) => {
+          const c = sub.chart;
+          return c && (getDominantElement(c) === 'Air' || hasStrongPlanet(c, 'Uranus'));
+        }
+      },
+      {
+        name: 'Nostalgic Nurturers', emoji: '🌙',
+        description: 'Cancer/Moon-dominant — drawn to comfort films, family stories, and emotional safety',
+        match: (sub) => {
+          const c = sub.chart;
+          return c && (c.sunSign === 'Cancer' || c.moonSign === 'Cancer');
+        }
+      },
+      {
+        name: 'Grounded Realists', emoji: '🌍',
+        description: 'Earth-dominant or Saturn-heavy — drawn to drama, biopics, and grounded storytelling',
+        match: (sub) => {
+          const c = sub.chart;
+          return c && (getDominantElement(c) === 'Earth' || hasStrongPlanet(c, 'Saturn'));
+        }
+      }
+    ];
+
+    const archetypes = archetypeRules.map(rule => {
+      const members = realSubs.filter(rule.match);
+      const genreCounts = {};
+      for (const m of members) {
+        for (const g of getMultiAnswer(m, 'genres.genres_love')) genreCounts[g] = (genreCounts[g] || 0) + 1;
+      }
+      const topGenres = Object.entries(genreCounts).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([genre]) => genre);
+
+      const signCounts = {};
+      for (const m of members) {
+        if (m.chart?.sunSign) signCounts[m.chart.sunSign] = (signCounts[m.chart.sunSign] || 0) + 1;
+      }
+      const dominantSigns = Object.entries(signCounts).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([sign]) => sign);
+
+      const movieCounts = {};
+      for (const m of members) {
+        const comfort = parseAnswer(m.fullData['core_memory.comfort_watch'] || '').trim();
+        const power = parseAnswer(m.fullData['core_memory.power_watch'] || '').trim();
+        if (comfort.length > 2) {
+          const k = comfort.toLowerCase();
+          movieCounts[k] = movieCounts[k] || { text: comfort, count: 0 };
+          movieCounts[k].count++;
+        }
+        if (power.length > 2) {
+          const k = power.toLowerCase();
+          movieCounts[k] = movieCounts[k] || { text: power, count: 0 };
+          movieCounts[k].count++;
+        }
+      }
+      const representativeMovies = Object.values(movieCounts).sort((a, b) => b.count - a.count).slice(0, 4).map(m => m.text);
+
+      return {
+        name: rule.name,
+        emoji: rule.emoji,
+        description: rule.description,
+        count: members.length,
+        pct: +(members.length / (realSubs.length || 1) * 100).toFixed(1),
+        traits: { dominantSigns, topGenres },
+        representativeMovies
+      };
+    });
+
+    res.json({
+      overview: {
+        totalReal: realSubs.length,
+        totalTest: testCount,
+        avgCompletion: +avgCompletion.toFixed(1),
+        totalWithChart: realSubs.filter(s => s.chart).length,
+        totalWithAspects: realSubs.filter(s => s.chart?.aspects?.length > 0).length,
+        submissionsByMonth
+      },
+      zodiac,
+      houses,
+      aspects: { topAspects, conjunctionTotal, oppositionTotal },
+      surveyInsights,
+      freeText,
+      crossCorrelations: { signToGenre, signToEscapism, aspectToGenre, signToMovies },
+      archetypes
+    });
+  } catch (error) {
+    console.error('Analysis API Error:', error);
+    res.status(500).json({ error: 'Failed to compute analysis', details: error.message });
+  }
+});
+
+// --- ADMIN ANALYSIS PAGE ---
+app.get('/admin/analysis', (req, res) => {
+  res.render('admin_analysis');
+});
+
 // --- ADMIN DATA VIEW (Spreadsheet-style 2D table) ---
 app.get('/admin/data', async (req, res) => {
   try {

@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FateFlix — Data Analysis</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .card {
+            @apply bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden;
+        }
+
+        .section-title {
+            @apply text-xl font-bold text-gray-900 mb-1;
+        }
+
+        .section-sub {
+            @apply text-sm text-gray-500 mb-5;
+        }
+
+        .nav-pill {
+            @apply px-3 py-1.5 text-xs font-medium rounded-full cursor-pointer transition-all;
+        }
+
+        .nav-pill.active {
+            @apply bg-indigo-600 text-white shadow-md;
+        }
+
+        .nav-pill:not(.active) {
+            @apply bg-gray-100 text-gray-600 hover:bg-gray-200;
+        }
+
+        .heatmap-cell {
+            @apply w-full aspect-square rounded flex items-center justify-center text-xs font-medium transition-all;
+        }
+
+        .corr-bar {
+            @apply h-2 rounded-full transition-all;
+        }
+
+        .archetype-card {
+            @apply rounded-xl p-5 border transition-all hover:shadow-lg;
+        }
+
+        .fade-in {
+            animation: fadeIn 0.4s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(8px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .loading-pulse {
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 0.4;
+            }
+
+            50% {
+                opacity: 1;
+            }
+        }
+
+        .chart-container {
+            position: relative;
+        }
+
+        .chart-container canvas {
+            max-height: 320px;
+        }
+    </style>
+</head>
+
+<body class="bg-gradient-to-br from-slate-50 via-white to-indigo-50/30 text-slate-900 min-h-screen">
+    <!-- Loading State -->
+    <div id="loading" class="fixed inset-0 bg-white/90 backdrop-blur-sm z-50 flex flex-col items-center justify-center">
+        <div class="flex items-center gap-3 mb-4">
+            <div class="w-3 h-3 bg-indigo-500 rounded-full loading-pulse"></div>
+            <div class="w-3 h-3 bg-purple-500 rounded-full loading-pulse" style="animation-delay: 0.3s;"></div>
+            <div class="w-3 h-3 bg-rose-500 rounded-full loading-pulse" style="animation-delay: 0.6s;"></div>
+        </div>
+        <p class="text-sm text-gray-500 font-medium">Analysing your cosmic data…</p>
+    </div>
+
+    <div id="app" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8" style="display:none;">
+
+        <!-- Header -->
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8 fade-in">
+            <div>
+                <div class="flex items-center gap-3 mb-1">
+                    <a href="/admin/dashboard" class="text-gray-400 hover:text-gray-600 transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                        </svg>
+                    </a>
+                    <h1
+                        class="text-2xl font-extrabold tracking-tight bg-gradient-to-r from-indigo-600 via-purple-600 to-rose-500 bg-clip-text text-transparent">
+                        Data Analysis
+                    </h1>
+                </div>
+                <p class="text-sm text-gray-500 ml-8">Automated insights across all real user submissions</p>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="loadData()"
+                    class="inline-flex items-center px-3.5 py-2 text-sm font-medium rounded-lg text-gray-700 bg-white border border-gray-200 hover:bg-gray-50 shadow-sm transition-all">
+                    <svg class="mr-1.5 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    Refresh
+                </button>
+                <a href="/admin/export"
+                    class="inline-flex items-center px-3.5 py-2 text-sm font-medium rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 shadow-sm transition-all">
+                    <svg class="mr-1.5 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    Export CSV
+                </a>
+            </div>
+        </div>
+
+        <!-- Section Nav -->
+        <div class="flex flex-wrap gap-2 mb-8 fade-in" style="animation-delay: 0.1s;">
+            <span class="nav-pill active" onclick="scrollToSection('overview')">Overview</span>
+            <span class="nav-pill" onclick="scrollToSection('zodiac')">Zodiac</span>
+            <span class="nav-pill" onclick="scrollToSection('houses')">Houses</span>
+            <span class="nav-pill" onclick="scrollToSection('aspects')">Aspects</span>
+            <span class="nav-pill" onclick="scrollToSection('taste')">Taste Profile</span>
+            <span class="nav-pill" onclick="scrollToSection('freetext')">Movies</span>
+            <span class="nav-pill" onclick="scrollToSection('correlations')">🔗 Correlations</span>
+            <span class="nav-pill" onclick="scrollToSection('archetypes')">🧬 Archetypes</span>
+        </div>
+
+        <!-- OVERVIEW -->
+        <section id="overview" class="mb-10 fade-in" style="animation-delay: 0.15s;">
+            <h2 class="section-title">Overview</h2>
+            <p class="section-sub">High-level stats about your user base</p>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+                <div class="card p-5">
+                    <div class="text-xs font-medium text-gray-500 uppercase tracking-wider">Real Users</div>
+                    <div id="stat-real" class="mt-1 text-3xl font-extrabold text-indigo-600">—</div>
+                </div>
+                <div class="card p-5">
+                    <div class="text-xs font-medium text-gray-500 uppercase tracking-wider">With Charts</div>
+                    <div id="stat-charts" class="mt-1 text-3xl font-extrabold text-purple-600">—</div>
+                </div>
+                <div class="card p-5">
+                    <div class="text-xs font-medium text-gray-500 uppercase tracking-wider">With Aspects</div>
+                    <div id="stat-aspects" class="mt-1 text-3xl font-extrabold text-rose-500">—</div>
+                </div>
+                <div class="card p-5">
+                    <div class="text-xs font-medium text-gray-500 uppercase tracking-wider">Avg Responses</div>
+                    <div id="stat-avg" class="mt-1 text-3xl font-extrabold text-amber-500">—</div>
+                </div>
+            </div>
+            <div class="card p-5">
+                <h3 class="text-sm font-semibold text-gray-700 mb-3">Submissions Over Time</h3>
+                <div class="chart-container"><canvas id="timelineChart"></canvas></div>
+            </div>
+        </section>
+
+        <!-- ZODIAC DISTRIBUTION -->
+        <section id="zodiac" class="mb-10 fade-in">
+            <h2 class="section-title">✦ Zodiac Distribution</h2>
+            <p class="section-sub">How your user base breaks down by sign</p>
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                <div class="card p-5">
+                    <h3 class="text-sm font-semibold text-gray-700 mb-3">☉ Sun Signs</h3>
+                    <div class="chart-container"><canvas id="sunChart"></canvas></div>
+                </div>
+                <div class="card p-5">
+                    <h3 class="text-sm font-semibold text-gray-700 mb-3">☽ Moon Signs</h3>
+                    <div class="chart-container"><canvas id="moonChart"></canvas></div>
+                </div>
+                <div class="card p-5">
+                    <h3 class="text-sm font-semibold text-gray-700 mb-3">↑ Rising Signs</h3>
+                    <div class="chart-container"><canvas id="risingChart"></canvas></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- HOUSE PLACEMENTS -->
+        <section id="houses" class="mb-10 fade-in">
+            <h2 class="section-title">🏠 House Placements</h2>
+            <p class="section-sub">Which planets land in which houses — darker = more frequent</p>
+            <div class="card p-5 overflow-x-auto">
+                <div id="heatmap" class="min-w-[700px]"></div>
+            </div>
+        </section>
+
+        <!-- ASPECTS -->
+        <section id="aspects" class="mb-10 fade-in">
+            <h2 class="section-title">✦ Major Aspects</h2>
+            <p class="section-sub">Most frequent conjunction (☌) and opposition (☍) pairs among your users</p>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div class="card p-5">
+                    <div class="chart-container"><canvas id="aspectChart"></canvas></div>
+                </div>
+                <div class="card p-5">
+                    <div class="flex gap-4 mb-4">
+                        <span class="inline-flex items-center gap-1.5 text-xs font-medium"><span
+                                class="w-2.5 h-2.5 rounded-full bg-amber-400"></span>Conjunctions: <span id="conj-count"
+                                class="font-bold">—</span></span>
+                        <span class="inline-flex items-center gap-1.5 text-xs font-medium"><span
+                                class="w-2.5 h-2.5 rounded-full bg-rose-400"></span>Oppositions: <span id="opp-count"
+                                class="font-bold">—</span></span>
+                    </div>
+                    <div id="aspectTable" class="space-y-1.5 max-h-[300px] overflow-y-auto pr-2"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SURVEY TASTE PROFILE -->
+        <section id="taste" class="mb-10 fade-in">
+            <h2 class="section-title">🎬 Taste Profile</h2>
+            <p class="section-sub">What your users love, how they watch, and what they crave</p>
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                <div class="card p-5">
+                    <h3 class="text-sm font-semibold text-gray-700 mb-3">Genres Loved</h3>
+                    <div class="chart-container"><canvas id="genreChart"></canvas></div>
+                </div>
+                <div class="card p-5">
+                    <h3 class="text-sm font-semibold text-gray-700 mb-3">Escapism Style</h3>
+                    <div class="chart-container"><canvas id="escapismChart"></canvas></div>
+                </div>
+                <div class="card p-5">
+                    <h3 class="text-sm font-semibold text-gray-700 mb-3">Cinephile Level</h3>
+                    <div class="chart-container"><canvas id="cineChart"></canvas></div>
+                </div>
+                <div class="card p-5">
+                    <h3 class="text-sm font-semibold text-gray-700 mb-3">Favourite Era</h3>
+                    <div class="chart-container"><canvas id="eraChart"></canvas></div>
+                </div>
+                <div class="card p-5">
+                    <h3 class="text-sm font-semibold text-gray-700 mb-3">Watch Habit</h3>
+                    <div class="chart-container"><canvas id="habitChart"></canvas></div>
+                </div>
+                <div class="card p-5">
+                    <h3 class="text-sm font-semibold text-gray-700 mb-3">What They Crave Most</h3>
+                    <div class="chart-container"><canvas id="craveChart"></canvas></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- FREE TEXT HIGHLIGHTS -->
+        <section id="freetext" class="mb-10 fade-in">
+            <h2 class="section-title">🎥 Movie Mentions</h2>
+            <p class="section-sub">Most frequently mentioned movies across survey responses</p>
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4" id="freeTextCards"></div>
+        </section>
+
+        <!-- CROSS-CORRELATIONS -->
+        <section id="correlations" class="mb-10 fade-in">
+            <h2 class="section-title">🔗 Cross-Correlations</h2>
+            <p class="section-sub">Connecting astrological placements to film taste — the core of your recommendation
+                engine</p>
+
+            <!-- Sign → Genre -->
+            <div class="card p-5 mb-4">
+                <h3 class="text-sm font-semibold text-gray-700 mb-1">Sun Sign → Genre Preferences</h3>
+                <p class="text-xs text-gray-400 mb-4">Top genres loved by each sun sign's users (% of that sign's users
+                    who picked the genre)</p>
+                <div id="signGenreGrid" class="space-y-3"></div>
+            </div>
+
+            <!-- Sign → Escapism -->
+            <div class="card p-5 mb-4">
+                <h3 class="text-sm font-semibold text-gray-700 mb-1">Sun Sign → Escapism Style</h3>
+                <p class="text-xs text-gray-400 mb-4">How each sign escapes into cinema</p>
+                <div id="signEscGrid" class="space-y-3"></div>
+            </div>
+
+            <!-- Aspect → Genre -->
+            <div class="card p-5 mb-4">
+                <h3 class="text-sm font-semibold text-gray-700 mb-1">Aspect → Genre Preferences</h3>
+                <p class="text-xs text-gray-400 mb-4">Which genres are preferred by users with specific major aspects
+                </p>
+                <div id="aspectGenreGrid" class="space-y-3"></div>
+            </div>
+
+            <!-- Sign → Movies -->
+            <div class="card p-5">
+                <h3 class="text-sm font-semibold text-gray-700 mb-1">Sun Sign → Comfort & Power Watches</h3>
+                <p class="text-xs text-gray-400 mb-4">Which movies each sign reaches for</p>
+                <div id="signMovieGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+            </div>
+        </section>
+
+        <!-- ARCHETYPE CLUSTERS -->
+        <section id="archetypes" class="mb-10 fade-in">
+            <h2 class="section-title">🧬 Archetype Clusters</h2>
+            <p class="section-sub">Users grouped by combined astrological + taste profiles (users may appear in multiple
+                archetypes)</p>
+            <div id="archetypeGrid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"></div>
+        </section>
+
+        <!-- Footer -->
+        <div class="text-center text-xs text-gray-400 py-6">
+            FateFlix Analysis • Generated <span id="genTime"></span>
+        </div>
+    </div>
+
+    <script>
+        // ===== GLOBALS =====
+        const SIGN_COLORS = {
+            Aries: '#ef4444', Taurus: '#22c55e', Gemini: '#eab308', Cancer: '#a3a3f5',
+            Leo: '#f97316', Virgo: '#84cc16', Libra: '#ec4899', Scorpio: '#991b1b',
+            Sagittarius: '#f59e0b', Capricorn: '#6b7280', Aquarius: '#06b6d4', Pisces: '#8b5cf6'
+        };
+        const ELEMENT_COLORS = { Fire: '#ef4444', Earth: '#22c55e', Air: '#eab308', Water: '#3b82f6' };
+        const SIGN_ELEMENT = {};
+        ['Aries', 'Leo', 'Sagittarius'].forEach(s => SIGN_ELEMENT[s] = 'Fire');
+        ['Taurus', 'Virgo', 'Capricorn'].forEach(s => SIGN_ELEMENT[s] = 'Earth');
+        ['Gemini', 'Libra', 'Aquarius'].forEach(s => SIGN_ELEMENT[s] = 'Air');
+        ['Cancer', 'Scorpio', 'Pisces'].forEach(s => SIGN_ELEMENT[s] = 'Water');
+
+        const PALETTE = ['#6366f1', '#8b5cf6', '#a855f7', '#d946ef', '#ec4899', '#f43f5e', '#f97316', '#eab308', '#22c55e', '#14b8a6', '#06b6d4', '#3b82f6'];
+        const chartInstances = [];
+
+        function destroyCharts() {
+            chartInstances.forEach(c => c.destroy());
+            chartInstances.length = 0;
+        }
+
+        function makeChart(id, config) {
+            const ctx = document.getElementById(id);
+            if (!ctx) return;
+            const c = new Chart(ctx, config);
+            chartInstances.push(c);
+            return c;
+        }
+
+        function scrollToSection(id) {
+            document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            document.querySelectorAll('.nav-pill').forEach(p => p.classList.remove('active'));
+            event.target.classList.add('active');
+        }
+
+        // ===== RENDER FUNCTIONS =====
+
+        function renderOverview(data) {
+            document.getElementById('stat-real').textContent = data.totalReal;
+            document.getElementById('stat-charts').textContent = data.totalWithChart;
+            document.getElementById('stat-aspects').textContent = data.totalWithAspects;
+            document.getElementById('stat-avg').textContent = Math.round(data.avgCompletion);
+
+            const months = Object.keys(data.submissionsByMonth).sort();
+            const counts = months.map(m => data.submissionsByMonth[m]);
+            makeChart('timelineChart', {
+                type: 'bar',
+                data: {
+                    labels: months.map(m => { const [y, mo] = m.split('-'); return new Date(y, mo - 1).toLocaleString('en', { month: 'short', year: '2-digit' }); }),
+                    datasets: [{ label: 'Submissions', data: counts, backgroundColor: '#6366f1', borderRadius: 6 }]
+                },
+                options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+            });
+        }
+
+        function renderZodiac(zodiac) {
+            const signs = Object.keys(zodiac.sunSigns);
+            const colors = signs.map(s => SIGN_COLORS[s]);
+
+            [['sunChart', zodiac.sunSigns, '☉ Sun'], ['moonChart', zodiac.moonSigns, '☽ Moon'], ['risingChart', zodiac.risingSigns, '↑ Rising']].forEach(([id, data, label]) => {
+                makeChart(id, {
+                    type: 'bar',
+                    data: {
+                        labels: signs,
+                        datasets: [{ label, data: signs.map(s => data[s]), backgroundColor: colors, borderRadius: 4 }]
+                    },
+                    options: {
+                        indexAxis: 'y', responsive: true,
+                        plugins: { legend: { display: false } },
+                        scales: { x: { beginAtZero: true, ticks: { stepSize: 1 } } }
+                    }
+                });
+            });
+        }
+
+        function renderHeatmap(houses) {
+            const planets = Object.keys(houses);
+            const allVals = planets.flatMap(p => Object.values(houses[p]));
+            const maxVal = Math.max(...allVals, 1);
+
+            let html = '<div class="grid gap-1" style="grid-template-columns: 100px repeat(12, 1fr);">';
+            // Header row
+            html += '<div class="text-xs font-medium text-gray-400 flex items-end justify-center pb-1"></div>';
+            for (let h = 1; h <= 12; h++) {
+                html += `<div class="text-xs font-medium text-gray-500 text-center pb-1">H${h}</div>`;
+            }
+            // Planet rows
+            for (const planet of planets) {
+                html += `<div class="text-xs font-semibold text-gray-700 flex items-center">${planet}</div>`;
+                for (let h = 1; h <= 12; h++) {
+                    const val = houses[planet][h] || 0;
+                    const intensity = val / maxVal;
+                    const bg = intensity === 0 ? '#f8fafc' : `rgba(99, 102, 241, ${0.15 + intensity * 0.75})`;
+                    const textColor = intensity > 0.5 ? '#fff' : '#64748b';
+                    html += `<div class="heatmap-cell" style="background:${bg};color:${textColor};" title="${planet} in House ${h}: ${val} users">${val || ''}</div>`;
+                }
+            }
+            html += '</div>';
+            document.getElementById('heatmap').innerHTML = html;
+        }
+
+        function renderAspects(aspects) {
+            document.getElementById('conj-count').textContent = aspects.conjunctionTotal;
+            document.getElementById('opp-count').textContent = aspects.oppositionTotal;
+
+            const top10 = aspects.topAspects.slice(0, 10);
+            makeChart('aspectChart', {
+                type: 'bar',
+                data: {
+                    labels: top10.map(a => a.pair),
+                    datasets: [{
+                        label: 'Users',
+                        data: top10.map(a => a.count),
+                        backgroundColor: top10.map(a => a.pair.includes('☌') ? '#f59e0b' : '#f43f5e'),
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    indexAxis: 'y', responsive: true,
+                    plugins: { legend: { display: false } },
+                    scales: { x: { beginAtZero: true, ticks: { stepSize: 1 } } }
+                }
+            });
+
+            // Aspect table
+            const tableHtml = aspects.topAspects.map(a => {
+                const color = a.pair.includes('☌') ? 'bg-amber-400' : 'bg-rose-400';
+                return `<div class="flex items-center gap-3">
+                <span class="text-xs font-mono w-36 truncate" title="${a.pair}">${a.pair}</span>
+                <div class="flex-1 bg-gray-100 rounded-full h-2"><div class="${color} corr-bar" style="width:${Math.min(a.pct * 2, 100)}%"></div></div>
+                <span class="text-xs text-gray-500 w-16 text-right">${a.count} (${a.pct}%)</span>
+            </div>`;
+            }).join('');
+            document.getElementById('aspectTable').innerHTML = tableHtml;
+        }
+
+        function renderTaste(insights) {
+            const configs = [
+                { id: 'genreChart', data: insights.genresLove, type: 'bar' },
+                { id: 'escapismChart', data: insights.escapismStyle, type: 'doughnut' },
+                { id: 'cineChart', data: insights.cineLevel, type: 'doughnut' },
+                { id: 'eraChart', data: insights.favEra, type: 'bar' },
+                { id: 'habitChart', data: insights.watchHabit, type: 'doughnut' },
+                { id: 'craveChart', data: insights.craveMost, type: 'doughnut' },
+            ];
+
+            configs.forEach(({ id, data, type }) => {
+                if (!data || data.length === 0) return;
+                const top = data.slice(0, 10);
+                const labels = top.map(d => d.label.length > 25 ? d.label.slice(0, 22) + '…' : d.label);
+                const values = top.map(d => d.count);
+                const colors = top.map((_, i) => PALETTE[i % PALETTE.length]);
+
+                if (type === 'doughnut') {
+                    makeChart(id, {
+                        type: 'doughnut',
+                        data: { labels, datasets: [{ data: values, backgroundColor: colors, borderWidth: 0 }] },
+                        options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } } } }
+                    });
+                } else {
+                    makeChart(id, {
+                        type: 'bar',
+                        data: { labels, datasets: [{ label: 'Users', data: values, backgroundColor: colors, borderRadius: 4 }] },
+                        options: { indexAxis: 'y', responsive: true, plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+                    });
+                }
+            });
+        }
+
+        function renderFreeText(freeText) {
+            const sections = [
+                { key: 'top3Movies', title: '🎬 Top 3 Movies', icon: '🎬' },
+                { key: 'comfortWatch', title: '🛋️ Comfort Watches', icon: '🛋️' },
+                { key: 'powerWatch', title: '⚡ Power Watches', icon: '⚡' },
+                { key: 'firstCrush', title: '💕 First Crushes', icon: '💕' },
+                { key: 'foreverCrush', title: '💘 Forever Crushes', icon: '💘' },
+                { key: 'movieUniverse', title: '🌌 Dream Universes', icon: '🌌' },
+            ];
+
+            const container = document.getElementById('freeTextCards');
+            container.innerHTML = sections.map(({ key, title }) => {
+                const items = (freeText[key] || []).slice(0, 8);
+                if (items.length === 0) return '';
+                const maxCount = items[0]?.count || 1;
+                const rows = items.map((item, i) => {
+                    const width = (item.count / maxCount * 100).toFixed(0);
+                    return `<div class="flex items-center gap-2 py-1">
+                    <span class="text-xs text-gray-400 w-5 text-right">${i + 1}.</span>
+                    <div class="flex-1 min-w-0">
+                        <div class="text-sm text-gray-800 truncate" title="${item.text}">${item.text}</div>
+                        <div class="mt-0.5 h-1 bg-gray-100 rounded-full"><div class="h-1 bg-gradient-to-r from-indigo-400 to-purple-400 rounded-full" style="width:${width}%"></div></div>
+                    </div>
+                    <span class="text-xs text-gray-400 font-medium">${item.count}</span>
+                </div>`;
+                }).join('');
+                return `<div class="card p-5"><h3 class="text-sm font-semibold text-gray-700 mb-3">${title}</h3>${rows}</div>`;
+            }).join('');
+        }
+
+        function renderCorrelations(corr) {
+            // Sign → Genre
+            const signGenreEl = document.getElementById('signGenreGrid');
+            signGenreEl.innerHTML = Object.entries(corr.signToGenre).map(([sign, genres]) => {
+                const bars = genres.map(g => `<div class="flex items-center gap-2">
+                <span class="text-xs text-gray-600 w-28 truncate">${g.genre}</span>
+                <div class="flex-1 bg-gray-100 rounded-full h-2"><div class="corr-bar bg-indigo-400" style="width:${g.pct}%"></div></div>
+                <span class="text-xs text-gray-400 w-10 text-right">${g.pct}%</span>
+            </div>`).join('');
+                return `<div class="flex gap-4 items-start py-2 border-b border-gray-50">
+                <div class="w-24 flex-shrink-0"><span class="text-sm font-semibold" style="color:${SIGN_COLORS[sign]}">${sign}</span></div>
+                <div class="flex-1 space-y-1">${bars}</div>
+            </div>`;
+            }).join('');
+
+            // Sign → Escapism
+            const signEscEl = document.getElementById('signEscGrid');
+            signEscEl.innerHTML = Object.entries(corr.signToEscapism).map(([sign, styles]) => {
+                const tags = styles.map(s => `<span class="inline-flex items-center gap-1 px-2 py-0.5 bg-purple-50 text-purple-700 rounded-full text-xs">${s.style} <span class="text-purple-400">${s.pct}%</span></span>`).join(' ');
+                return `<div class="flex gap-4 items-center py-2 border-b border-gray-50">
+                <span class="w-24 text-sm font-semibold flex-shrink-0" style="color:${SIGN_COLORS[sign]}">${sign}</span>
+                <div class="flex flex-wrap gap-1.5">${tags}</div>
+            </div>`;
+            }).join('');
+
+            // Aspect → Genre
+            const aspectGenreEl = document.getElementById('aspectGenreGrid');
+            aspectGenreEl.innerHTML = Object.entries(corr.aspectToGenre).map(([aspect, genres]) => {
+                const bars = genres.map(g => `<div class="flex items-center gap-2">
+                <span class="text-xs text-gray-600 w-28 truncate">${g.genre}</span>
+                <div class="flex-1 bg-gray-100 rounded-full h-2"><div class="corr-bar bg-rose-400" style="width:${g.pct}%"></div></div>
+                <span class="text-xs text-gray-400 w-10 text-right">${g.pct}%</span>
+            </div>`).join('');
+                const color = aspect.includes('☌') ? '#f59e0b' : '#f43f5e';
+                return `<div class="flex gap-4 items-start py-2 border-b border-gray-50">
+                <div class="w-32 flex-shrink-0"><span class="text-sm font-semibold" style="color:${color}">${aspect}</span></div>
+                <div class="flex-1 space-y-1">${bars}</div>
+            </div>`;
+            }).join('');
+
+            // Sign → Movies
+            const signMovieEl = document.getElementById('signMovieGrid');
+            signMovieEl.innerHTML = Object.entries(corr.signToMovies).map(([sign, movies]) => {
+                const comfortList = (movies.comfort || []).map(m => `<span class="text-xs">${m.text}</span>`).join(', ') || '—';
+                const powerList = (movies.power || []).map(m => `<span class="text-xs">${m.text}</span>`).join(', ') || '—';
+                return `<div class="rounded-lg border border-gray-100 p-3">
+                <div class="text-sm font-semibold mb-2" style="color:${SIGN_COLORS[sign]}">${sign}</div>
+                <div class="mb-1.5"><span class="text-xs font-medium text-gray-400">🛋️ Comfort:</span> ${comfortList}</div>
+                <div><span class="text-xs font-medium text-gray-400">⚡ Power:</span> ${powerList}</div>
+            </div>`;
+            }).join('');
+        }
+
+        function renderArchetypes(archetypes) {
+            const archetypeColors = ['#6366f1', '#8b5cf6', '#ef4444', '#06b6d4', '#a3a3f5', '#22c55e'];
+            const container = document.getElementById('archetypeGrid');
+            container.innerHTML = archetypes.map((arch, i) => {
+                const color = archetypeColors[i % archetypeColors.length];
+                const signTags = (arch.traits.dominantSigns || []).map(s => `<span class="px-1.5 py-0.5 rounded text-xs" style="background:${SIGN_COLORS[s]}20;color:${SIGN_COLORS[s]}">${s}</span>`).join(' ');
+                const genreTags = (arch.traits.topGenres || []).map(g => `<span class="px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 text-xs">${g}</span>`).join(' ');
+                const movies = (arch.representativeMovies || []).map(m => `<span class="text-xs text-gray-500">• ${m}</span>`).join(' ');
+
+                return `<div class="archetype-card" style="border-color:${color}30;background:linear-gradient(135deg, ${color}05, white);">
+                <div class="flex items-center gap-2 mb-2">
+                    <span class="text-2xl">${arch.emoji}</span>
+                    <div>
+                        <h3 class="font-bold text-gray-900">${arch.name}</h3>
+                        <span class="text-xs" style="color:${color}">${arch.count} users (${arch.pct}%)</span>
+                    </div>
+                </div>
+                <p class="text-xs text-gray-500 mb-3">${arch.description}</p>
+                <div class="space-y-2">
+                    <div><span class="text-xs font-medium text-gray-400">Signs:</span> <span class="space-x-1">${signTags}</span></div>
+                    <div><span class="text-xs font-medium text-gray-400">Genres:</span> <span class="space-x-1">${genreTags}</span></div>
+                    ${movies ? `<div><span class="text-xs font-medium text-gray-400">Movies:</span> ${movies}</div>` : ''}
+                </div>
+            </div>`;
+            }).join('');
+        }
+
+        // ===== DATA LOADING =====
+        async function loadData() {
+            document.getElementById('loading').style.display = 'flex';
+            document.getElementById('app').style.display = 'none';
+            destroyCharts();
+
+            try {
+                const res = await fetch('/admin/api/analysis');
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('app').style.display = 'block';
+
+                renderOverview(data.overview);
+                renderZodiac(data.zodiac);
+                renderHeatmap(data.houses);
+                renderAspects(data.aspects);
+                renderTaste(data.surveyInsights);
+                renderFreeText(data.freeText);
+                renderCorrelations(data.crossCorrelations);
+                renderArchetypes(data.archetypes);
+
+                document.getElementById('genTime').textContent = new Date().toLocaleString();
+            } catch (err) {
+                document.getElementById('loading').innerHTML = `<div class="text-center">
+                <p class="text-red-500 font-medium mb-2">Failed to load analysis</p>
+                <p class="text-sm text-gray-400">${err.message}</p>
+                <button onclick="loadData()" class="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm">Retry</button>
+            </div>`;
+            }
+        }
+
+        // Load on page mount
+        loadData();
+    </script>
+</body>
+
+</html>

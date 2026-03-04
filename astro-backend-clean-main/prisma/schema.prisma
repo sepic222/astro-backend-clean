@@ -7,9 +7,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ... existing models ...
-
-
 model Chart {
   id               String             @id @default(cuid())
   createdAt        DateTime           @default(now())
@@ -235,6 +232,7 @@ model SurveySubmission {
   userEmail String?
   chartId   String?
   createdAt DateTime         @default(now())
+  fullData  Json?
   chart     Chart?           @relation(fields: [chartId], references: [id])
   responses SurveyResponse[]
 

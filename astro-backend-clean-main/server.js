@@ -62,11 +62,12 @@ const corsOptions = {
       sanitize(process.env.FRONTEND_URL),
       sanitize(process.env.BASE_URL),
       'https://dashboard.fateflix.app',
+      'https://tastetest.fateflix.app',
       'https://surveyfrontend.vercel.app'
     ].filter(Boolean);
 
-    // Allow if origin is in list, or if it's a Vercel preview, or if no origin (local/mobile)
-    if (!origin || allowed.includes(origin) || origin.includes('vercel.app')) {
+    // Allow if origin is in list, or if it's a Vercel preview/fateflix subdomain, or if no origin (local/mobile)
+    if (!origin || allowed.includes(origin) || origin.includes('vercel.app') || origin.endsWith('.fateflix.app')) {
       callback(null, true);
     } else {
       console.warn('CORS Blocked for origin:', origin);
@@ -109,14 +110,15 @@ const basicAuth = (req, res, next) => {
 };
 
 function toCsv(headers, rows) {
-  const headerRow = headers.join(',') + '\n';
-  const dataRows = rows.map(row =>
-    row.map(cell => {
-      if (cell === null || cell === undefined) return '';
-      const str = String(cell).replace(/"/g, '""');
-      return `"${str}"`;
-    }).join(',')
-  ).join('\n');
+  const escapeCell = (cell) => {
+    if (cell === null || cell === undefined) return '';
+    // Escape quotes and remove newlines for Excel compatibility
+    const str = String(cell).replace(/"/g, '""').replace(/\r?\n|\r/g, ' ');
+    return `"${str}"`;
+  };
+
+  const headerRow = headers.map(escapeCell).join(',') + '\r\n';
+  const dataRows = rows.map(row => row.map(escapeCell).join(',')).join('\r\n');
   return headerRow + dataRows;
 }
 
@@ -148,53 +150,22 @@ function parseAnswer(answerText, responseOptions = []) {
     return responseOptions.map(ro => ro.option?.label || ro.option?.value).join('; ');
   }
 
-  let answer = answerText || '';
+  let answer = answerText;
+  if (answer === null || answer === undefined) return '';
   if (answer === '[object Object]') return '(Data error)';
 
-  if (answer && typeof answer === 'string') {
-    try {
-      if (answer.startsWith('[') || answer.startsWith('{')) {
-        const parsed = JSON.parse(answer);
-        if (Array.isArray(parsed)) {
-          return parsed.map(item => {
-            if (typeof item === 'object' && item !== null) {
-              return item.label || item.value || item.text || JSON.stringify(item);
-            }
-            return String(item);
-          }).join('; ');
-        } else if (typeof parsed === 'object' && parsed !== null) {
-          if (parsed.selected !== undefined) {
-            // Checkbox with "Other": {selected: [...], otherText: '...'}
-            if (Array.isArray(parsed.selected)) {
-              let result = parsed.selected.map(item => {
-                if (typeof item === 'object' && item !== null) {
-                  return item.label || item.value || item.text || JSON.stringify(item);
-                }
-                return String(item);
-              }).join('; ');
-              if (parsed.otherText) result += '; ' + parsed.otherText;
-              return result;
-            }
-            // Radio with "Other": {selected: 'other', otherText: '...'}
-            if (typeof parsed.selected === 'string') {
-              return (parsed.selected === 'other' && parsed.otherText) ? parsed.otherText : parsed.selected;
-            }
-          }
-          return JSON.stringify(parsed);
-        }
-      }
-    } catch (e) {
-      // Not JSON, keep original string
-    }
-  } else if (typeof answer === 'object' && answer !== null) {
+  // If answer is already an object/array (from JSONB)
+  if (typeof answer === 'object') {
     if (Array.isArray(answer)) {
       return answer.map(item => {
         if (typeof item === 'object' && item !== null) {
           return item.label || item.value || item.text || JSON.stringify(item);
         }
         return String(item);
-      }).join('; ').replace(/; ;/g, ';');
-    } else if (answer.selected !== undefined) {
+      }).join('; ');
+    }
+
+    if (answer.selected !== undefined) {
       if (Array.isArray(answer.selected)) {
         let result = answer.selected.map(item => {
           if (typeof item === 'object' && item !== null) {
@@ -211,8 +182,22 @@ function parseAnswer(answerText, responseOptions = []) {
     }
     return JSON.stringify(answer);
   }
+
+  // If answer is a string, try parsing it as JSON (for compatibility with Option B strings)
+  if (typeof answer === 'string') {
+    try {
+      if (answer.startsWith('[') || answer.startsWith('{')) {
+        const parsed = JSON.parse(answer);
+        return parseAnswer(parsed); // Recursive call to handle the parsed object
+      }
+    } catch (e) {
+      // Not JSON, fall through to String()
+    }
+  }
+
   return String(answer);
 }
+
 
 /**
  * Determines if a submission is a test submission based on multiple heuristics
@@ -285,6 +270,7 @@ app.get('/admin/dashboard', async (req, res) => {
       select: {
         id: true,
         userEmail: true,
+        fullData: true,
         _count: { select: { responses: true } },
         responses: {
           where: {
@@ -299,13 +285,17 @@ app.get('/admin/dashboard', async (req, res) => {
     let totalTestCount = 0;
     let totalRealCount = 0;
     for (const s of allSubmissionsForCount) {
-      let username = '';
-      let discoverySource = '';
+      const fullData = (s.fullData && typeof s.fullData === 'object') ? s.fullData : {};
+      let username = parseAnswer(fullData.username || '');
+      let discoverySource = parseAnswer(fullData.discovery || '');
+
       for (const resp of s.responses || []) {
-        if (resp.question?.key === 'username' || resp.question?.key === 'cosmic.username') username = resp.answerText || '';
-        if (resp.question?.key === 'fit.found_survey' || resp.question?.key === 'fit.discovery') discoverySource = resp.answerText || '';
+        if (!username && (resp.question?.key === 'username' || resp.question?.key === 'cosmic.username')) username = parseAnswer(resp.answerText || '');
+        if (!discoverySource && (resp.question?.key === 'fit.found_survey' || resp.question?.key === 'fit.discovery')) discoverySource = parseAnswer(resp.answerText || '');
       }
-      const testResult = isTestSubmission(s, username, discoverySource, s._count?.responses || 0, 50);
+
+      const responseCount = (s._count?.responses || 0) + Object.keys(fullData).length;
+      const testResult = isTestSubmission(s, username, discoverySource, responseCount, 50);
       if (testResult.isTest) totalTestCount++;
       else totalRealCount++;
     }
@@ -316,13 +306,16 @@ app.get('/admin/dashboard', async (req, res) => {
       orderBy: { createdAt: 'desc' },
       include: {
         _count: { select: { responses: true } },
-        chart: { select: { id: true, risingSign: true, sunSign: true, moonSign: true } },
+        chart: { select: { id: true, risingSign: true, sunSign: true, moonSign: true, city: true, birthDateTimeUtc: true } },
         responses: {
           where: { question: { key: { in: ['username', 'cosmic.username', 'discovery', 'fit.found_survey', 'fit.discovery'] } } },
           include: { question: { select: { key: true } } }
         }
       }
     });
+
+    // Fetch submissions with fullData as well which is not included in the findMany responses filter
+    // We already have submissions from the query above.
 
     // Fetch readings for displayed submissions
     const submissionIds = submissions.map(s => s.id);
@@ -334,15 +327,20 @@ app.get('/admin/dashboard', async (req, res) => {
 
     // Process submissions with test detection
     let processedSubmissions = submissions.map(s => {
-      let username = '';
-      let discoverySource = '';
+      const fullData = (s.fullData && typeof s.fullData === 'object') ? s.fullData : {};
+      let username = parseAnswer(fullData.username || '');
+      let discoverySource = parseAnswer(fullData.discovery || '');
+
       for (const resp of s.responses || []) {
-        if (resp.question?.key === 'username' || resp.question?.key === 'cosmic.username') username = resp.answerText || '';
-        if (resp.question?.key === 'fit.found_survey' || resp.question?.key === 'fit.discovery' || resp.question?.key === 'discovery') {
-          discoverySource = resp.answerText || '';
+        if (!username && (resp.question?.key === 'username' || resp.question?.key === 'cosmic.username')) username = parseAnswer(resp.answerText || '');
+        if (!discoverySource && (resp.question?.key === 'fit.found_survey' || resp.question?.key === 'fit.discovery' || resp.question?.key === 'discovery')) {
+          discoverySource = parseAnswer(resp.answerText || '');
         }
       }
-      const testResult = isTestSubmission(s, username, discoverySource, s._count?.responses || 0, 50);
+
+      const responseCount = (s._count?.responses || 0) + Object.keys(fullData).length;
+      const testResult = isTestSubmission(s, username, discoverySource, responseCount, 50);
+
       return {
         ...s,
         readingId: readingMap.get(s.id) || null,
@@ -352,7 +350,9 @@ app.get('/admin/dashboard', async (req, res) => {
         testReason: testResult.reason,
         risingSign: s.chart?.risingSign || null,
         sunSign: s.chart?.sunSign || null,
-        moonSign: s.chart?.moonSign || null
+        moonSign: s.chart?.moonSign || null,
+        birthCity: s.chart?.city || fullData.city || null,
+        birthDateTimeUtc: s.chart?.birthDateTimeUtc || null,
       };
     });
 
@@ -399,23 +399,403 @@ app.get('/admin/api/stats', async (req, res) => {
   }
 });
 
+// --- ADMIN ANALYSIS API (aggregated insights for all real users) ---
+app.get('/admin/api/analysis', async (req, res) => {
+  try {
+    const SIGNS = ['Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo', 'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces'];
+    const PLANETS_LIST = ['Sun', 'Moon', 'Mercury', 'Venus', 'Mars', 'Jupiter', 'Saturn', 'Uranus', 'Neptune', 'Pluto'];
+    const ELEMENTS = { Fire: ['Aries', 'Leo', 'Sagittarius'], Earth: ['Taurus', 'Virgo', 'Capricorn'], Air: ['Gemini', 'Libra', 'Aquarius'], Water: ['Cancer', 'Scorpio', 'Pisces'] };
+    const ASPECT_SYM = { Conjunction: '☌', Opposition: '☍' };
+
+    // 1. Fetch all submissions with charts + aspects + fullData
+    const allSubmissions = await prisma.surveySubmission.findMany({
+      include: {
+        _count: { select: { responses: true } },
+        chart: { include: { aspects: true } }
+      }
+    });
+
+    // 2. Deduplicate by email (same logic as /admin/export)
+    const userGroups = new Map();
+    for (const sub of allSubmissions) {
+      const email = (sub.userEmail || '').toLowerCase().trim();
+      const responseCount = sub._count.responses + Object.keys(sub.fullData || {}).length;
+      const currentBest = userGroups.get(email);
+      const betterThanCurrent = !currentBest ||
+        (responseCount > currentBest.responseCount) ||
+        (responseCount === currentBest.responseCount && sub.createdAt > currentBest.createdAt);
+      if (betterThanCurrent) {
+        userGroups.set(email, { submission: sub, responseCount });
+      }
+    }
+    const dedupedSubmissions = Array.from(userGroups.values()).map(g => g.submission);
+
+    // 3. Filter to real users only
+    const realSubs = [];
+    let testCount = 0;
+    for (const sub of dedupedSubmissions) {
+      const fullData = (sub.fullData && typeof sub.fullData === 'object') ? sub.fullData : {};
+      const username = parseAnswer(fullData['cosmic.username'] || fullData.username || '');
+      const discoverySource = parseAnswer(fullData['fit.discovery'] || fullData.discovery || '');
+      const responseCount = sub._count.responses + Object.keys(fullData).length;
+      const testResult = isTestSubmission(sub, username, discoverySource, responseCount, 50);
+      if (testResult.isTest) { testCount++; continue; }
+      realSubs.push({ ...sub, fullData, _username: username });
+    }
+
+    // === OVERVIEW ===
+    const avgCompletion = realSubs.reduce((sum, s) => {
+      return sum + s._count.responses + Object.keys(s.fullData).length;
+    }, 0) / (realSubs.length || 1);
+
+    const submissionsByMonth = {};
+    for (const s of realSubs) {
+      const key = s.createdAt.toISOString().slice(0, 7);
+      submissionsByMonth[key] = (submissionsByMonth[key] || 0) + 1;
+    }
+
+    // === ZODIAC DISTRIBUTION ===
+    const zodiac = { sunSigns: {}, moonSigns: {}, risingSigns: {} };
+    for (const sign of SIGNS) {
+      zodiac.sunSigns[sign] = 0;
+      zodiac.moonSigns[sign] = 0;
+      zodiac.risingSigns[sign] = 0;
+    }
+    for (const sub of realSubs) {
+      const c = sub.chart;
+      if (c?.sunSign) zodiac.sunSigns[c.sunSign]++;
+      if (c?.moonSign) zodiac.moonSigns[c.moonSign]++;
+      if (c?.risingSign) zodiac.risingSigns[c.risingSign]++;
+    }
+
+    // === HOUSE PLACEMENTS ===
+    const houses = {};
+    for (const planet of PLANETS_LIST) {
+      houses[planet] = {};
+      for (let h = 1; h <= 12; h++) houses[planet][h] = 0;
+    }
+    for (const sub of realSubs) {
+      const c = sub.chart;
+      if (!c) continue;
+      for (const planet of PLANETS_LIST) {
+        const house = c[`${planet.toLowerCase()}House`];
+        if (house >= 1 && house <= 12) houses[planet][house]++;
+      }
+    }
+
+    // === ASPECTS ===
+    const aspectCounts = {};
+    let conjunctionTotal = 0, oppositionTotal = 0;
+    for (const sub of realSubs) {
+      for (const a of (sub.chart?.aspects || [])) {
+        const sym = ASPECT_SYM[a.aspect] || a.aspect;
+        const key = `${a.a} ${sym} ${a.b}`;
+        aspectCounts[key] = (aspectCounts[key] || 0) + 1;
+        if (a.aspect === 'Conjunction') conjunctionTotal++;
+        else oppositionTotal++;
+      }
+    }
+    const topAspects = Object.entries(aspectCounts)
+      .map(([pair, count]) => ({ pair, count, pct: +(count / realSubs.length * 100).toFixed(1) }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 20);
+
+    // === SURVEY INSIGHTS (multi-choice and radio tallies) ===
+    function tallyAnswers(key) {
+      const counts = {};
+      for (const sub of realSubs) {
+        const raw = sub.fullData[key];
+        if (!raw) continue;
+        const parsed = parseAnswer(raw);
+        const items = parsed.split(/;\s*/).map(s => s.trim()).filter(Boolean);
+        for (const item of items) {
+          counts[item] = (counts[item] || 0) + 1;
+        }
+      }
+      return Object.entries(counts)
+        .map(([label, count]) => ({ label, count }))
+        .sort((a, b) => b.count - a.count);
+    }
+
+    const surveyInsights = {
+      cineLevel: tallyAnswers('casting.cine_level'),
+      escapismStyle: tallyAnswers('casting.escapism_style'),
+      genresLove: tallyAnswers('genres.genres_love'),
+      turnOffs: tallyAnswers('genres.turn_offs'),
+      favEra: tallyAnswers('taste.fav_era'),
+      watchHabit: tallyAnswers('taste.watch_habit'),
+      foreignFilms: tallyAnswers('global.foreign_films'),
+      lifeRole: tallyAnswers('casting.life_role'),
+      attractionStyle: tallyAnswers('casting.attraction_style'),
+      craveMost: tallyAnswers('world.crave_most'),
+      hypeStyle: tallyAnswers('genres.hype_style'),
+      selectionMethod: tallyAnswers('fit.selection_method'),
+    };
+
+    // === FREE TEXT HIGHLIGHTS ===
+    function tallyFreeText(key) {
+      const counts = {};
+      for (const sub of realSubs) {
+        const raw = sub.fullData[key];
+        if (!raw) continue;
+        const parsed = parseAnswer(raw).trim();
+        if (!parsed || parsed.length < 2) continue;
+        const normKey = parsed.toLowerCase();
+        if (!counts[normKey]) counts[normKey] = { text: parsed, count: 0 };
+        counts[normKey].count++;
+      }
+      return Object.values(counts).sort((a, b) => b.count - a.count).slice(0, 15);
+    }
+
+    const freeText = {
+      top3Movies: tallyFreeText('casting.top_3_movies'),
+      comfortWatch: tallyFreeText('core_memory.comfort_watch'),
+      powerWatch: tallyFreeText('core_memory.power_watch'),
+      firstCrush: tallyFreeText('casting.first_crush'),
+      movieUniverse: tallyFreeText('world.movie_universe'),
+      villainRelate: tallyFreeText('world.villain_relate'),
+      foreverCrush: tallyFreeText('world.forever_crush'),
+    };
+
+    // === CROSS-CORRELATIONS ===
+    function getMultiAnswer(sub, key) {
+      const raw = sub.fullData[key];
+      if (!raw) return [];
+      return parseAnswer(raw).split(/;\s*/).map(s => s.trim()).filter(Boolean);
+    }
+
+    // Sign → Genre
+    const signToGenre = {};
+    const signToEscapism = {};
+    const signToMovies = {};
+
+    for (const sign of SIGNS) {
+      const usersWithSign = realSubs.filter(s => s.chart?.sunSign === sign);
+      if (usersWithSign.length < 2) continue;
+
+      const genreCounts = {};
+      for (const u of usersWithSign) {
+        for (const g of getMultiAnswer(u, 'genres.genres_love')) genreCounts[g] = (genreCounts[g] || 0) + 1;
+      }
+      signToGenre[sign] = Object.entries(genreCounts)
+        .map(([genre, count]) => ({ genre, count, pct: +(count / usersWithSign.length * 100).toFixed(1) }))
+        .sort((a, b) => b.pct - a.pct)
+        .slice(0, 5);
+
+      const escCounts = {};
+      for (const u of usersWithSign) {
+        for (const e of getMultiAnswer(u, 'casting.escapism_style')) escCounts[e] = (escCounts[e] || 0) + 1;
+      }
+      signToEscapism[sign] = Object.entries(escCounts)
+        .map(([style, count]) => ({ style, count, pct: +(count / usersWithSign.length * 100).toFixed(1) }))
+        .sort((a, b) => b.pct - a.pct)
+        .slice(0, 3);
+
+      const comfortCounts = {};
+      const powerCounts = {};
+      for (const u of usersWithSign) {
+        const comfort = parseAnswer(u.fullData['core_memory.comfort_watch'] || '').trim().toLowerCase();
+        const power = parseAnswer(u.fullData['core_memory.power_watch'] || '').trim().toLowerCase();
+        if (comfort && comfort.length > 2) comfortCounts[comfort] = (comfortCounts[comfort] || 0) + 1;
+        if (power && power.length > 2) powerCounts[power] = (powerCounts[power] || 0) + 1;
+      }
+      signToMovies[sign] = {
+        comfort: Object.entries(comfortCounts).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([text, count]) => ({ text, count })),
+        power: Object.entries(powerCounts).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([text, count]) => ({ text, count })),
+      };
+    }
+
+    // Aspect → Genre (top 10 most frequent aspects)
+    const aspectToGenre = {};
+    for (const { pair } of topAspects.slice(0, 10)) {
+      const usersWithAspect = realSubs.filter(s => {
+        return (s.chart?.aspects || []).some(a => {
+          const sym = ASPECT_SYM[a.aspect] || a.aspect;
+          return `${a.a} ${sym} ${a.b}` === pair;
+        });
+      });
+      if (usersWithAspect.length < 2) continue;
+      const genreCounts = {};
+      for (const u of usersWithAspect) {
+        for (const g of getMultiAnswer(u, 'genres.genres_love')) genreCounts[g] = (genreCounts[g] || 0) + 1;
+      }
+      aspectToGenre[pair] = Object.entries(genreCounts)
+        .map(([genre, count]) => ({ genre, count, pct: +(count / usersWithAspect.length * 100).toFixed(1) }))
+        .sort((a, b) => b.pct - a.pct)
+        .slice(0, 5);
+    }
+
+    // === ARCHETYPE CLUSTERS ===
+    function getDominantElement(chart) {
+      if (!chart) return null;
+      const counts = { Fire: 0, Earth: 0, Air: 0, Water: 0 };
+      const signs = [chart.sunSign, chart.moonSign, chart.risingSign, chart.mercurySign, chart.venusSign, chart.marsSign].filter(Boolean);
+      for (const sign of signs) {
+        for (const [element, elementSigns] of Object.entries(ELEMENTS)) {
+          if (elementSigns.includes(sign)) counts[element]++;
+        }
+      }
+      return Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
+    }
+
+    function hasStrongPlanet(chart, planet) {
+      if (!chart?.aspects) return false;
+      return chart.aspects.filter(a => a.a === planet || a.b === planet).length >= 2;
+    }
+
+    const archetypeRules = [
+      {
+        name: 'Intense Seekers', emoji: '🔥',
+        description: 'Pluto/Scorpio dominant — drawn to psychological depth and transformation',
+        match: (sub) => {
+          const c = sub.chart;
+          return c && (c.sunSign === 'Scorpio' || c.moonSign === 'Scorpio' || hasStrongPlanet(c, 'Pluto'));
+        }
+      },
+      {
+        name: 'Dreamy Romantics', emoji: '🌊',
+        description: 'Neptune/Pisces dominant — drawn to fantasy, romance, and emotional beauty',
+        match: (sub) => {
+          const c = sub.chart;
+          return c && (c.sunSign === 'Pisces' || c.moonSign === 'Pisces' || hasStrongPlanet(c, 'Neptune'));
+        }
+      },
+      {
+        name: 'Action Adventurers', emoji: '⚡',
+        description: 'Fire-dominant charts — drawn to action, adventure, and high-energy storytelling',
+        match: (sub) => getDominantElement(sub.chart) === 'Fire'
+      },
+      {
+        name: 'Cerebral Explorers', emoji: '🧠',
+        description: 'Air-dominant or Uranus-heavy — drawn to sci-fi, indie, and unconventional narratives',
+        match: (sub) => {
+          const c = sub.chart;
+          return c && (getDominantElement(c) === 'Air' || hasStrongPlanet(c, 'Uranus'));
+        }
+      },
+      {
+        name: 'Nostalgic Nurturers', emoji: '🌙',
+        description: 'Cancer/Moon-dominant — drawn to comfort films, family stories, and emotional safety',
+        match: (sub) => {
+          const c = sub.chart;
+          return c && (c.sunSign === 'Cancer' || c.moonSign === 'Cancer');
+        }
+      },
+      {
+        name: 'Grounded Realists', emoji: '🌍',
+        description: 'Earth-dominant or Saturn-heavy — drawn to drama, biopics, and grounded storytelling',
+        match: (sub) => {
+          const c = sub.chart;
+          return c && (getDominantElement(c) === 'Earth' || hasStrongPlanet(c, 'Saturn'));
+        }
+      }
+    ];
+
+    const archetypes = archetypeRules.map(rule => {
+      const members = realSubs.filter(rule.match);
+      const genreCounts = {};
+      for (const m of members) {
+        for (const g of getMultiAnswer(m, 'genres.genres_love')) genreCounts[g] = (genreCounts[g] || 0) + 1;
+      }
+      const topGenres = Object.entries(genreCounts).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([genre]) => genre);
+
+      const signCounts = {};
+      for (const m of members) {
+        if (m.chart?.sunSign) signCounts[m.chart.sunSign] = (signCounts[m.chart.sunSign] || 0) + 1;
+      }
+      const dominantSigns = Object.entries(signCounts).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([sign]) => sign);
+
+      const movieCounts = {};
+      for (const m of members) {
+        const comfort = parseAnswer(m.fullData['core_memory.comfort_watch'] || '').trim();
+        const power = parseAnswer(m.fullData['core_memory.power_watch'] || '').trim();
+        if (comfort.length > 2) {
+          const k = comfort.toLowerCase();
+          movieCounts[k] = movieCounts[k] || { text: comfort, count: 0 };
+          movieCounts[k].count++;
+        }
+        if (power.length > 2) {
+          const k = power.toLowerCase();
+          movieCounts[k] = movieCounts[k] || { text: power, count: 0 };
+          movieCounts[k].count++;
+        }
+      }
+      const representativeMovies = Object.values(movieCounts).sort((a, b) => b.count - a.count).slice(0, 4).map(m => m.text);
+
+      return {
+        name: rule.name,
+        emoji: rule.emoji,
+        description: rule.description,
+        count: members.length,
+        pct: +(members.length / (realSubs.length || 1) * 100).toFixed(1),
+        traits: { dominantSigns, topGenres },
+        representativeMovies
+      };
+    });
+
+    res.json({
+      overview: {
+        totalReal: realSubs.length,
+        totalTest: testCount,
+        avgCompletion: +avgCompletion.toFixed(1),
+        totalWithChart: realSubs.filter(s => s.chart).length,
+        totalWithAspects: realSubs.filter(s => s.chart?.aspects?.length > 0).length,
+        submissionsByMonth
+      },
+      zodiac,
+      houses,
+      aspects: { topAspects, conjunctionTotal, oppositionTotal },
+      surveyInsights,
+      freeText,
+      crossCorrelations: { signToGenre, signToEscapism, aspectToGenre, signToMovies },
+      archetypes
+    });
+  } catch (error) {
+    console.error('Analysis API Error:', error);
+    res.status(500).json({ error: 'Failed to compute analysis', details: error.message });
+  }
+});
+
+// --- ADMIN ANALYSIS PAGE ---
+app.get('/admin/analysis', (req, res) => {
+  res.render('admin_analysis');
+});
+
 // --- ADMIN DATA VIEW (Spreadsheet-style 2D table) ---
 app.get('/admin/data', async (req, res) => {
   try {
     const filterType = req.query.type || 'all';
 
-    // Get all unique question keys for columns
-    const questions = await prisma.surveyQuestion.findMany({
-      orderBy: { sortOrder: 'asc' },
-      select: { id: true, key: true, text: true }
+    // Get dynamic columns from the auto-synced backend schema
+    const { surveySchema } = require('./src/config/surveySchema');
+    const dynamicColumns = [];
+    surveySchema.forEach(section => {
+      if (section.questions && Array.isArray(section.questions)) {
+        section.questions.forEach(q => {
+          if (['text', 'radio', 'checkbox', 'textarea', 'email', 'date', 'time', 'number'].includes(q.type)) {
+            // Check if it's already in the list to avoid duplicates
+            if (!dynamicColumns.find(col => col.key === q.id)) {
+              dynamicColumns.push({
+                key: q.id,
+                text: q.text,
+                sectionId: section.id
+              });
+            }
+          }
+        });
+      }
     });
 
-    // Fetch all submissions with all responses
+    // Fetch all submissions with all responses (including the new fullData field)
     const submissions = await prisma.surveySubmission.findMany({
       orderBy: { createdAt: 'desc' },
       include: {
         chart: {
-          select: { risingSign: true, sunSign: true, moonSign: true }
+          select: {
+            id: true, risingSign: true, sunSign: true, moonSign: true,
+            city: true, birthDateTimeUtc: true,
+            aspects: { select: { a: true, b: true, aspect: true, orb: true } }
+          }
         },
         responses: {
           include: {
@@ -432,33 +812,102 @@ app.get('/admin/data', async (req, res) => {
     const rows = submissions.map(sub => {
       // Create answer map for this submission
       const answerMap = {};
-      let username = '';
-      let discoverySource = '';
 
+      // 1. Try to populate from the new JSONB field first (Option B)
+      const fullData = (sub.fullData && typeof sub.fullData === 'object') ? sub.fullData : {};
+
+      // Handle birth data fields if they're in JSONB
+      // (Mapping logic from FateFlixSurvey.jsx payload: date, time, latitude, longitude, city, country, username, userEmail)
+
+      // 2. Fallback to individual responses for older data
       for (const resp of sub.responses) {
         const key = resp.question?.key;
         if (!key) continue;
 
-        answerMap[key] = parseAnswer(resp.answerText, resp.responseOptions);
-
-        if (key === 'username' || key === 'cosmic.username') username = answerMap[key];
-        if (key === 'fit.found_survey' || key === 'fit.discovery' || key === 'discovery') discoverySource = answerMap[key];
+        // Only use individual response if not already in JSONB (prefer JSONB)
+        // Note: we need to map the flat key from JSONB to the section-prefixed key in answerMap for the EJS view
+        const displayKey = key; // Use the canonical key as the display key
+        if (!answerMap[displayKey]) {
+          answerMap[displayKey] = parseAnswer(resp.answerText, resp.responseOptions);
+        }
       }
 
-      const testResult = isTestSubmission(sub, username, discoverySource, sub.responses.length, 50);
+      // 3. Add data from JSONB (overwriting or complementing)
+      // We need to map frontend keys in JSONB to their canonical or display keys
+      // For now, let's just make sure those dynamic column keys are populated
+      dynamicColumns.forEach(cat => {
+        if (fullData[cat.key] !== undefined) {
+          // Parse the JSONB value for display
+          answerMap[cat.key] = parseAnswer(fullData[cat.key]);
+        }
+      });
+
+      // Special handling for username and discoverySource for test detection
+      const username = answerMap['cosmic.username'] || answerMap['username'] || '';
+      const discoverySource = answerMap['fit.discovery'] || answerMap['discovery'] || '';
+
+      const testResult = isTestSubmission(sub, username, discoverySource, sub.responses.length + Object.keys(fullData).length, 50);
+
+      // Build compact aspect summary: one entry per outer planet / angle
+      const ASPECT_SYM = { Conjunction: '☌', Opposition: '☍' };
+      const OUTER_COLS = ['Jupiter', 'Saturn', 'Uranus', 'Neptune', 'Pluto'];
+      const aspectSummary = {};
+      (sub.chart?.aspects || []).forEach(a => {
+        const key = a.b; // outer planet or angle
+        const sym = ASPECT_SYM[a.aspect] || a.aspect;
+        if (!aspectSummary[key]) aspectSummary[key] = [];
+        aspectSummary[key].push(`${a.a}${sym}`);
+      });
+      // Compact string per outer planet column
+      const aspectCols = {};
+      OUTER_COLS.forEach(o => { aspectCols[o] = (aspectSummary[o] || []).join(', '); });
 
       return {
         id: sub.id,
         createdAt: sub.createdAt,
-        userEmail: sub.userEmail || '',
+        userEmail: sub.userEmail || fullData.email || '',
         isTest: testResult.isTest,
         testReason: testResult.reason,
         risingSign: sub.chart?.risingSign || '',
         sunSign: sub.chart?.sunSign || '',
         moonSign: sub.chart?.moonSign || '',
-        responseCount: sub.responses.length,
-        answers: answerMap
+        birthCity: sub.chart?.city || fullData.city || '',
+        birthDateTimeUtc: sub.chart?.birthDateTimeUtc || '',
+        responseCount: sub.responses.length + Object.keys(fullData).length,
+        answers: answerMap,
+        fullData,
+        aspectCols
       };
+    });
+
+    // Define question order matching the frontend survey (surveyData.js)
+    const SURVEY_QUESTION_ORDER = [
+      'cosmic.username', 'cosmic.date', 'cosmic.time', 'cosmic.time_accuracy', 'cosmic.city', 'cosmic.latitude', 'cosmic.longitude',
+      'casting.gender', 'casting.attraction_style', 'casting.cine_level', 'casting.life_role', 'casting.escapism_style',
+      'casting.top_3_movies', 'casting.first_crush',
+      'taste.watch_habit', 'taste.fav_era', 'taste.culture_background', 'taste.environment_growing_up',
+      'core_memory.first_feeling', 'core_memory.life_changing', 'core_memory.comfort_watch', 'core_memory.power_watch', 'core_memory.date_impress',
+      'world.movie_universe', 'world.villain_relate', 'world.forever_crush', 'world.crave_most',
+      'screen_ed.tv_taste', 'screen_ed.top_3_series_detailed', 'screen_ed.cinematography', 'screen_ed.directors', 'screen_ed.access_growing_up',
+      'genres.genres_love', 'genres.turn_offs', 'genres.hated_film', 'genres.hype_style',
+      'genres.character_match',
+      'global.foreign_films',
+      'fit.selection_method', 'fit.discovery_apps', 'fit.discovery', 'fit.email', 'fit.beta_test', 'fit.open_feedback'
+    ];
+
+    // Order dynamic columns according to predefined survey order
+    const orderedQuestions = [];
+    for (const key of SURVEY_QUESTION_ORDER) {
+      const col = dynamicColumns.find(c => c.key === key);
+      if (col) {
+        orderedQuestions.push(col);
+      }
+    }
+    // Add any remaining dynamic columns not in our predefined list
+    dynamicColumns.forEach(col => {
+      if (!SURVEY_QUESTION_ORDER.includes(col.key)) {
+        orderedQuestions.push(col);
+      }
     });
 
     // Apply filter
@@ -469,44 +918,13 @@ app.get('/admin/data', async (req, res) => {
       filteredRows = rows.filter(r => !r.isTest);
     }
 
-    // Define question order matching the frontend survey (surveyData.js)
-    const SURVEY_QUESTION_ORDER = [
-      'cosmic.username', 'cosmic.date', 'cosmic.time', 'cosmic.time_accuracy', 'cosmic.city', 'cosmic.latitude', 'cosmic.longitude',
-      'casting.gender', 'casting.attraction_style', 'casting.cine_level', 'casting.life_role', 'casting.escapism_style',
-      'casting.top_3_movies', 'casting.first_crush',
-      'taste.watch_habit', 'taste.fav_era', 'taste.culture_background', 'taste.environment_growing_up',
-      'core_memory.first_feeling', 'core_memory.life_changing', 'core_memory.comfort_watch', 'core_memory.power_watch', 'core_memory.date_impress',
-      'world.movie_universe', 'world.villain_relate', 'world.forever_crush', 'world.crave_most',
-      'screen_ed.tv_taste', 'screen_ed.top_3_series_detailed', 'screen_ed.cinematography', 'screen_ed.directors', 'screen_ed.access_growing_up',
-      'genres.genres_love', 'genres.turn_offs', 'genres.hated_film', 'genres.hype_style',
-      'genres.character_match',
-      'global.foreign_films',
-      'fit.selection_method', 'fit.discovery_apps', 'fit.discovery', 'fit.email', 'fit.beta_test', 'fit.open_feedback'
-    ];
-
-    // Order questions according to survey order
-    const questionMap = new Map(questions.map(q => [q.key, q]));
-    const orderedQuestions = [];
-    for (const key of SURVEY_QUESTION_ORDER) {
-      if (questionMap.has(key)) {
-        orderedQuestions.push(questionMap.get(key));
-      }
-    }
-    // Add any remaining questions not in our predefined list
-    for (const q of questions) {
-      if (!SURVEY_QUESTION_ORDER.includes(q.key)) {
-        orderedQuestions.push(q);
-      }
-    }
-
     res.render('admin_data', {
       rows: filteredRows,
-      questions: orderedQuestions,
-      allQuestions: orderedQuestions,
-      currentFilter: filterType,
+      questions: orderedQuestions, // This will be the dynamicColumns in the EJS
       testCount: rows.filter(r => r.isTest).length,
       realCount: rows.filter(r => !r.isTest).length,
-      totalCount: rows.length
+      totalCount: rows.length,
+      currentFilter: filterType
     });
   } catch (error) {
     console.error('Data View Error:', error);
@@ -517,57 +935,124 @@ app.get('/admin/data', async (req, res) => {
 
 app.get('/admin/export', async (req, res) => {
   try {
-    // Define question order matching the frontend survey (surveyData.js)
-    const SURVEY_QUESTION_ORDER = [
-      'cosmic.username', 'cosmic.date', 'cosmic.time', 'cosmic.time_accuracy', 'cosmic.city', 'cosmic.latitude', 'cosmic.longitude',
-      'casting.gender', 'casting.attraction_style', 'casting.cine_level', 'casting.life_role', 'casting.escapism_style',
-      'casting.top_3_movies', 'casting.first_crush',
-      'taste.watch_habit', 'taste.fav_era', 'taste.culture_background', 'taste.environment_growing_up',
-      'core_memory.first_feeling', 'core_memory.life_changing', 'core_memory.comfort_watch', 'core_memory.power_watch', 'core_memory.date_impress',
-      'world.movie_universe', 'world.villain_relate', 'world.forever_crush', 'world.crave_most',
-      'screen_ed.tv_taste', 'screen_ed.top_3_series_detailed', 'screen_ed.cinematography', 'screen_ed.directors', 'screen_ed.access_growing_up',
-      'genres.genres_love', 'genres.turn_offs', 'genres.hated_film', 'genres.hype_style',
-      'genres.character_match',
-      'global.foreign_films',
-      'fit.selection_method', 'fit.discovery_apps', 'fit.discovery', 'fit.email', 'fit.beta_test', 'fit.open_feedback'
-    ];
+    // Get dynamic columns from the auto-synced backend schema
+    const { surveySchema } = require('./src/config/surveySchema');
 
-    // Get all unique question keys from database
-    const dbQuestions = await prisma.surveyQuestion.findMany({
-      select: { id: true, key: true, text: true }
-    });
-    const dbQuestionMap = new Map(dbQuestions.map(q => [q.key, q]));
-
-    // Build ordered question list: survey order first, then any extras from DB
+    // Build ordered question list from the schema
     const orderedQuestions = [];
-    for (const key of SURVEY_QUESTION_ORDER) {
-      if (dbQuestionMap.has(key)) {
-        orderedQuestions.push(dbQuestionMap.get(key));
-        dbQuestionMap.delete(key);
-      }
-    }
-    // Add any remaining questions not in our predefined list
-    for (const q of dbQuestionMap.values()) {
-      orderedQuestions.push(q);
-    }
-
-    const submissions = await prisma.surveySubmission.findMany({
-      orderBy: { createdAt: 'desc' },
-      include: {
-        responses: {
-          include: {
-            question: { select: { key: true } },
-            responseOptions: {
-              include: { option: { select: { label: true, value: true } } }
-            }
+    surveySchema.forEach(section => {
+      if (section.questions && Array.isArray(section.questions)) {
+        section.questions.forEach(q => {
+          // Only include relevant question types
+          if (['text', 'radio', 'checkbox', 'textarea', 'email', 'date', 'time', 'number'].includes(q.type)) {
+            orderedQuestions.push({
+              key: q.id,
+              text: q.text
+            });
           }
-        },
+        });
+      }
+    });
+
+    // Add columns that might exist only in fullData but not in DB yet (dynamic catch-all)
+    // We'll scan a few recent submissions to find extra keys if needed, but for now relies on DB + List
+
+    // 1. Fetch all submissions
+    const allSubmissions = await prisma.surveySubmission.findMany({
+      include: {
+        _count: { select: { responses: true } },
         chart: true
       }
     });
 
+    // 2. Smart Deduplication: Group by email and pick the "best" submission per user
+    const userGroups = new Map();
+    const GOLDEN_IDS = []; // Reserve for manually identified best submissions
+
+    for (const sub of allSubmissions) {
+      const email = (sub.userEmail || '').toLowerCase().trim();
+      const responseCount = sub._count.responses + Object.keys(sub.fullData || {}).length;
+      const currentBest = userGroups.get(email);
+
+      // Selection logic:
+      // - Priority 1: Golden ID matches
+      // - Priority 2: High response count
+      // - Priority 3: Most recent
+      const isGolden = GOLDEN_IDS.includes(sub.id);
+      const betterThanCurrent = !currentBest ||
+        (isGolden && !GOLDEN_IDS.includes(currentBest.id)) ||
+        (responseCount > currentBest.responseCount) ||
+        (responseCount === currentBest.responseCount && sub.createdAt > currentBest.createdAt);
+
+      if (betterThanCurrent) {
+        userGroups.set(email, {
+          id: sub.id,
+          submission: sub,
+          responseCount
+        });
+      }
+    }
+
+    // 3. Final list: Sort winners alphabetically by email
+    const submissions = Array.from(userGroups.values())
+      .map(group => group.submission)
+      .sort((a, b) => {
+        const emailA = (a.userEmail || '').toLowerCase();
+        const emailB = (b.userEmail || '').toLowerCase();
+        return emailA.localeCompare(emailB);
+      });
+
+    // Bulk fetch readings to avoid N+1 query overhead during loop
+    const submissionIds = submissions.map(s => s.id);
+    const readings = await prisma.reading.findMany({
+      where: { submissionId: { in: submissionIds } }
+    });
+    const readingMap = new Map(readings.map(r => [r.submissionId, r]));
+
+    // Bulk-fetch aspects for all charts in one query
+    const chartIds = submissions.map(s => s.chart?.id).filter(Boolean);
+    const allAspects = chartIds.length > 0
+      ? await prisma.chartAspect.findMany({ where: { chartId: { in: chartIds } }, select: { chartId: true, a: true, b: true, aspect: true } })
+      : [];
+    const aspectsByChart = new Map();
+    allAspects.forEach(a => {
+      if (!aspectsByChart.has(a.chartId)) aspectsByChart.set(a.chartId, []);
+      aspectsByChart.get(a.chartId).push(a);
+    });
+    const ASPECT_SYM_EXP = { Conjunction: '☌', Opposition: '☍' };
+    const OUTER_COLS_EXP = ['Jupiter', 'Saturn', 'Uranus', 'Neptune', 'Pluto'];
+    function buildAspectCols(chartId) {
+      const rows = aspectsByChart.get(chartId) || [];
+      const grouped = {};
+      rows.forEach(a => {
+        if (!grouped[a.b]) grouped[a.b] = [];
+        grouped[a.b].push(`${a.a}${ASPECT_SYM_EXP[a.aspect] || a.aspect}`);
+      });
+      return OUTER_COLS_EXP.map(o => (grouped[o] || []).join(', '));
+    }
+
     // Build headers: fixed columns + one per question
-    const fixedHeaders = ['Submission ID', 'Date', 'User Email', 'Type', 'Responses Count', 'Reading ID', 'Ascendant', 'Sun', 'Moon'];
+    const fixedHeaders = [
+      'Submission ID', 'Date', 'User Email', 'Type', 'Responses Count', 'Reading ID', 'City', 'Reading Content',
+      // Chart Angles
+      'Rising Sign', 'Ascendant °', 'MC Sign', 'MC °',
+      // Personal Planets
+      'Sun Sign', 'Sun House',
+      'Moon Sign', 'Moon House',
+      'Mercury Sign', 'Mercury House',
+      'Venus Sign', 'Venus House',
+      'Mars Sign', 'Mars House',
+      // Social/Outer Planets
+      'Jupiter Sign', 'Jupiter House',
+      'Saturn Sign', 'Saturn House',
+      'Uranus Sign', 'Uranus House',
+      'Neptune Sign', 'Neptune House',
+      'Pluto Sign', 'Pluto House',
+      // Other Points
+      'North Node House', 'Chiron House', 'Chart Ruler Planet', 'Chart Ruler House',
+      // Major Aspects (one column per outer planet)
+      'Aspects: Jupiter', 'Aspects: Saturn', 'Aspects: Uranus', 'Aspects: Neptune', 'Aspects: Pluto'
+    ];
     const questionHeaders = orderedQuestions.map(q => q.key);
     const headers = [...fixedHeaders, ...questionHeaders];
 
@@ -576,37 +1061,64 @@ app.get('/admin/export', async (req, res) => {
     // parseAnswer helper is now defined at top level for all admin routes
 
     for (const sub of submissions) {
-      // Look up reading
-      const reading = await prisma.reading.findUnique({ where: { submissionId: sub.id } });
+      // Look up reading from map (Optimized)
+      const reading = readingMap.get(sub.id);
 
-      // Build answer map for this submission
+      // Build answer map primarily from fullData for better performance
       const answerMap = {};
-      let username = '';
-      let discoverySource = '';
+      const fullData = (sub.fullData && typeof sub.fullData === 'object') ? sub.fullData : {};
 
-      for (const resp of sub.responses) {
-        const key = resp.question?.key;
-        if (!key) continue;
-        answerMap[key] = parseAnswer(resp.answerText, resp.responseOptions);
+      // Only iterate through responses if fullData is significantly smaller than expected
+      // but usually fullData in this app contains everything.
+      // 2. Override with JSONB data
+      orderedQuestions.forEach(col => {
+        if (fullData[col.key] !== undefined) {
+          answerMap[col.key] = parseAnswer(fullData[col.key]);
+        }
+      });
 
-        if (key === 'username' || key === 'cosmic.username') username = answerMap[key];
-        if (key === 'fit.found_survey' || key === 'fit.discovery' || key === 'discovery') discoverySource = answerMap[key];
-      }
+      const username = answerMap['cosmic.username'] || answerMap['username'] || fullData.username || '';
+      const discoverySource = answerMap['fit.discovery'] || answerMap['discovery'] || fullData.discovery || '';
 
-      // Determine if test submission
-      const testResult = isTestSubmission(sub, username, discoverySource, sub.responses.length, 50);
+      // Determine if test submission using _count.responses
+      const totalResponses = sub._count.responses + Object.keys(fullData).length;
+      const testResult = isTestSubmission(sub, username, discoverySource, totalResponses, 50);
 
       // Fixed columns
+      const c = sub.chart || {};
       const row = [
         sub.id,
         sub.createdAt.toISOString(),
         sub.userEmail || '',
         testResult.isTest ? 'Test' : 'Real',
-        sub.responses.length,
+        totalResponses,
         reading ? reading.id : '',
-        sub.chart ? (sub.chart.risingSign || sub.chart.ascendant || '') : '',
-        sub.chart ? (sub.chart.sunSign || '') : '',
-        sub.chart ? (sub.chart.moonSign || '') : ''
+        c.city || fullData.city || '', // Birth City
+        reading ? reading.summary : '', // Correct field (summary, not content)
+
+        // Chart Angles
+        c.risingSign || '', c.ascendant?.toFixed(2) || '',
+        c.mcSign || '', c.mc?.toFixed(2) || '',
+
+        // Personal Planets
+        c.sunSign || '', c.sunHouse || '',
+        c.moonSign || '', c.moonHouse || '',
+        c.mercurySign || '', c.mercuryHouse || '',
+        c.venusSign || '', c.venusHouse || '',
+        c.marsSign || '', c.marsHouse || '',
+
+        // Social/Outer Planets
+        c.jupiterSign || '', c.jupiterHouse || '',
+        c.saturnSign || '', c.saturnHouse || '',
+        c.uranusSign || '', c.uranusHouse || '',
+        c.neptuneSign || '', c.neptuneHouse || '',
+        c.plutoSign || '', c.plutoHouse || '',
+
+        // Other Points
+        c.northNodeHouse || '', c.chironHouse || '', c.chartRulerPlanet || '', c.chartRulerHouse || '',
+
+        // Major Aspects (5 outer planet columns)
+        ...buildAspectCols(c.id)
       ];
 
       // Add one column per question
@@ -618,9 +1130,14 @@ app.get('/admin/export', async (req, res) => {
     }
 
     const csvContent = toCsv(headers, rows);
-    res.header('Content-Type', 'text/csv');
-    res.attachment(`fateflix_export_${new Date().toISOString().split('T')[0]}.csv`);
-    return res.send(csvContent);
+    const dateStr = new Date().toISOString().split('T')[0];
+    const filename = `fateflix_export_${dateStr}.csv`;
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.attachment(filename);
+
+    // Add UTF-8 BOM (\uFEFF) to help Excel recognize encoding
+    return res.send('\uFEFF' + csvContent);
 
   } catch (error) {
     console.error('Export Error:', error);
@@ -677,6 +1194,143 @@ app.get('/admin/latest-report', async (req, res) => {
     res.status(500).send('Failed to generate report: ' + error.message);
   }
 });
+
+/**
+ * ADMIN DEEP DIVE VIEW
+ * Shows Chart Wheel + Curated Survey Answers
+ */
+app.get('/admin/deep-dive/:submissionId', async (req, res) => {
+  try {
+    const { submissionId } = req.params;
+    const submission = await prisma.surveySubmission.findUnique({
+      where: { id: submissionId },
+      include: {
+        chart: true,
+        responses: {
+          include: {
+            question: { select: { key: true, text: true, section: { select: { title: true } } } },
+            responseOptions: {
+              include: { option: { select: { label: true, value: true } } }
+            }
+          }
+        }
+      }
+    });
+
+    if (!submission) {
+      return res.status(404).send('Submission not found.');
+    }
+
+    // Curated list of taste-focused fields
+    const curatedFieldKeys = [
+      'username', 'gender', 'attraction_style', 'life_role', 'alter-ego', 'culture_background',
+      'top_3_movies', 'top_3_series_detailed', 'top_3_documentaries', 'guilty_pleasure',
+      'first_fascination', 'first_feeling', 'life_changing',
+      'movie_universe', 'villain_relate', 'crave_most', 'forever_crush',
+      'foreign_films', 'cinematography', 'directors', 'access_growing_up',
+      'turn_offs', 'hated_film'
+    ];
+
+    const fullData = (submission.fullData && typeof submission.fullData === 'object') ? submission.fullData : {};
+    const answerMap = {};
+
+    // 1. Process responses from table (older/fallback)
+    submission.responses.forEach(resp => {
+      const key = resp.question?.key;
+      if (key) {
+        const simpleKey = key.split('.').pop();
+        answerMap[simpleKey] = {
+          question: resp.question.text,
+          answer: parseAnswer(resp.answerText, resp.responseOptions),
+          section: resp.question.section?.title || 'Other'
+        };
+      }
+    });
+
+    // 2. Load schema to get labels for fullData keys
+    const { surveySchema } = require('./src/config/surveySchema');
+    const schemaMap = {};
+    surveySchema.forEach(section => {
+      if (section.questions) {
+        section.questions.forEach(q => {
+          const simpleQId = q.id.split('.').pop();
+          schemaMap[simpleQId] = { text: q.text, section: section.title };
+        });
+      }
+    });
+
+    // 3. Build curated list
+    const curatedAnswers = [];
+    curatedFieldKeys.forEach(key => {
+      const val = fullData[key] !== undefined ? fullData[key] : (answerMap[key] ? answerMap[key].answer : null);
+      if (val !== null && val !== undefined && val !== '') {
+        const schemaInfo = schemaMap[key] || answerMap[key] || { text: key, section: 'Other' };
+        curatedAnswers.push({
+          key: key,
+          question: schemaInfo.text || schemaInfo.question || key,
+          section: schemaInfo.section || 'Other',
+          answer: parseAnswer(val)
+        });
+      }
+    });
+
+    // 4. Group by section
+    const groupedAnswers = curatedAnswers.reduce((acc, curr) => {
+      if (!acc[curr.section]) acc[curr.section] = [];
+      acc[curr.section].push(curr);
+      return acc;
+    }, {});
+
+    // 5. Prepare Chart DTO for high-fidelity rendering
+    const rawChart = (submission.chart?.rawChart && typeof submission.chart.rawChart === 'object') ? submission.chart.rawChart : {};
+    const chartDTO = {
+      planets: rawChart.planets || {},
+      rawHouses: rawChart.houses || [],
+      ascendant: submission.chart?.ascendant || 0,
+      mc: rawChart.angles?.mcDeg || 0,
+      sunSign: submission.chart?.sunSign,
+      moonSign: submission.chart?.moonSign,
+      risingSign: submission.chart?.risingSign
+    };
+
+
+    // 6. Fetch stored major aspects for this chart
+    let majorAspects = [];
+    if (submission.chart?.id) {
+      const storedAspects = await prisma.chartAspect.findMany({
+        where: { chartId: submission.chart.id },
+        orderBy: [{ a: 'asc' }, { b: 'asc' }]
+      });
+      majorAspects = storedAspects.map(a => ({
+        planet1: a.a,
+        planet2: a.b,
+        aspect: a.aspect,
+        orb: a.orb,
+        strength: a.strength
+      }));
+
+      // If nothing in DB (chart pre-dates this feature), compute on-the-fly from rawChart
+      if (majorAspects.length === 0 && rawChart.planets) {
+        const acDeg = submission.chart?.ascendant ?? null;
+        const mcDeg = rawChart.angles?.mcDeg ?? null;
+        majorAspects = computeAspects(rawChart.planets, acDeg, mcDeg);
+      }
+    }
+
+    res.render('admin_deep_dive', {
+      submission,
+      chart: submission.chart,
+      chartDTO,
+      groupedAnswers,
+      buildChartWheelHtml,
+      majorAspects
+    });
+
+  } catch (error) {
+    console.error('Deep Dive View Error:', error);
+    res.status(500).send('Deep Dive Failed: ' + error.message);
+  }
+});
 app.get('/ping', (_req, res) => res.json({ ok: true, t: Date.now() }));
 // Single source of truth for PORT
 const PORT = process.env.PORT || 3001;
@@ -704,6 +1358,7 @@ function listAllRoutes(app) {
   return out;
 }
 
+
 // --- OpenAI (optional) ---
 let openai = null;
 if (process.env.OPENAI_API_KEY) {
@@ -712,7 +1367,6 @@ if (process.env.OPENAI_API_KEY) {
 } else {
   console.warn('⚠️ OpenAI API key missing — AI routes disabled.');
 }
-
 // --- email helper ---------------------------------------------
 const fetch = require('node-fetch');
 const LOOPS_API_KEY = process.env.LOOPS_API_KEY;
@@ -893,6 +1547,83 @@ const SIGN_RULER = {
   Sagittarius: "Jupiter", Capricorn: "Saturn", Aquarius: "Saturn", Pisces: "Jupiter"
 };
 
+// --------------------------------------------------------------
+// MAJOR ASPECTS ENGINE
+// Computes Conjunction (0°) and Opposition (180°) between:
+//   Personal planets (Sun, Moon, Mercury, Venus, Mars)
+//   × Outer planets   (Jupiter, Saturn, Uranus, Neptune, Pluto)
+//   + All 10 planets  × Angles (AC / MC)
+// Orb: 8° for both aspect types
+// --------------------------------------------------------------
+const ASPECT_ORB = 8;
+
+const PERSONAL_PLANETS = ['sun', 'moon', 'mercury', 'venus', 'mars'];
+const OUTER_PLANETS = ['jupiter', 'saturn', 'uranus', 'neptune', 'pluto'];
+const ALL_TEN_PLANETS = [...PERSONAL_PLANETS, ...OUTER_PLANETS];
+
+const MAJOR_ASPECT_ANGLES = {
+  Conjunction: 0,
+  Opposition: 180
+};
+
+/**
+ * computeAspects(planets, ascendantDeg, mcDeg)
+ * @param {Object} planets       - map of planet name → { longitude (0-360) }
+ * @param {number|null} ascendantDeg - AC longitude, null if unknown time
+ * @param {number|null} mcDeg        - MC longitude, null if unknown time
+ * @returns {Array} detected aspects
+ */
+function computeAspects(planets, ascendantDeg = null, mcDeg = null) {
+  const aspects = [];
+
+  // Helper: angular difference (shortest arc, 0-180)
+  const angularDiff = (a, b) => {
+    const diff = Math.abs(((a - b) + 360) % 360);
+    return diff > 180 ? 360 - diff : diff;
+  };
+
+  // Helper: check a single pair at a given aspect angle
+  const check = (label1, lon1, label2, lon2) => {
+    for (const [aspectName, targetAngle] of Object.entries(MAJOR_ASPECT_ANGLES)) {
+      const diff = angularDiff(lon1, lon2);
+      const deviation = Math.abs(diff - targetAngle);
+      if (deviation <= ASPECT_ORB) {
+        aspects.push({
+          planet1: label1,
+          planet2: label2,
+          aspect: aspectName,
+          orb: Math.round(deviation * 100) / 100,   // 2 d.p.
+          isExact: deviation < 1
+        });
+      }
+    }
+  };
+
+  // --- 1. Personal × Outer (50 pairs) ---
+  for (const p of PERSONAL_PLANETS) {
+    const pData = planets[p];
+    if (!pData) continue;
+    for (const o of OUTER_PLANETS) {
+      const oData = planets[o];
+      if (!oData) continue;
+      check(p, pData.longitude, o, oData.longitude);
+    }
+  }
+
+  // --- 2. All 10 planets × AC and MC (40 pairs, only when time is known) ---
+  if (ascendantDeg !== null && mcDeg !== null) {
+    for (const p of ALL_TEN_PLANETS) {
+      const pData = planets[p];
+      if (!pData) continue;
+      check(p, pData.longitude, 'ascendant', ascendantDeg);
+      check(p, pData.longitude, 'mc', mcDeg);
+    }
+  }
+
+  return aspects;
+}
+
+
 function houseOfLongitude(lon, houseCusps) {
   const L = normalize360(lon);
   for (let i = 0; i < 12; i++) {
@@ -1053,6 +1784,34 @@ async function saveChartToDB(input, output) {
     };
 
     const rec = await prisma.chart.create({ data, select: { id: true } });
+
+    // Persist major aspects to ChartAspect table
+    const aspects = output?.aspects ?? [];
+    if (aspects.length > 0) {
+      // The Planet enum uses TitleCase (e.g. "Sun", "Moon").
+      // Angle labels ('ascendant', 'mc') are not in the Planet enum — skip them.
+      const PLANET_ENUM_MAP = {
+        sun: 'Sun', moon: 'Moon', mercury: 'Mercury', venus: 'Venus',
+        mars: 'Mars', jupiter: 'Jupiter', saturn: 'Saturn',
+        uranus: 'Uranus', neptune: 'Neptune', pluto: 'Pluto'
+      };
+      const aspectRows = aspects
+        .filter(a => PLANET_ENUM_MAP[a.planet1] && PLANET_ENUM_MAP[a.planet2])
+        .map(a => ({
+          chartId: rec.id,
+          a: PLANET_ENUM_MAP[a.planet1],
+          b: PLANET_ENUM_MAP[a.planet2],
+          aspect: a.aspect,           // 'Conjunction' | 'Opposition'
+          orb: a.orb,
+          strength: Math.round((1 - a.orb / 8) * 100)
+        }));
+
+      if (aspectRows.length > 0) {
+        await prisma.chartAspect.createMany({ data: aspectRows, skipDuplicates: true });
+        console.log(`🔭 Saved ${aspectRows.length} major aspects for chart ${rec.id}`);
+      }
+    }
+
     return rec.id;
   } catch (e) {
     console.error("🟥 DB save failed (non-fatal):", e);
@@ -1311,7 +2070,8 @@ const PLANET_SYMBOLS = {
 };
 
 function buildChartWheelHtml(chartDTO) {
-  // Convert chartDTO.planets to the format expected by the chart wheel
+  const chartId = 'chart-' + Math.random().toString(36).substr(2, 9);
+
   const planets = chartDTO.planets || {};
   const planetData = Object.entries(planets).map(([name, data]) => ({
     name: name.charAt(0).toUpperCase() + name.slice(1),
@@ -1319,25 +2079,18 @@ function buildChartWheelHtml(chartDTO) {
     degree: data.longitude || 0
   }));
 
-  // Calculate aspects between planets
   const aspectData = [];
   const planetList = Object.entries(planets);
-
   for (let i = 0; i < planetList.length; i++) {
     for (let j = i + 1; j < planetList.length; j++) {
       const [name1, data1] = planetList[i];
       const [name2, data2] = planetList[j];
       const deg1 = data1.longitude || 0;
       const deg2 = data2.longitude || 0;
-
-      // Calculate angular distance
       let diff = Math.abs(deg1 - deg2);
       if (diff > 180) diff = 360 - diff;
-
-      // Check for major aspects (with 8-degree orb)
       const orb = 8;
       let aspectType = null;
-
       if (Math.abs(diff - 0) <= orb) aspectType = 'Conjunction';
       else if (Math.abs(diff - 60) <= orb) aspectType = 'Sextile';
       else if (Math.abs(diff - 90) <= orb) aspectType = 'Square';
@@ -1356,183 +2109,157 @@ function buildChartWheelHtml(chartDTO) {
 
   const planetDataJson = JSON.stringify(planetData);
   const aspectDataJson = JSON.stringify(aspectData);
+  const houseDataJson = JSON.stringify(chartDTO.rawHouses || []);
+  const ascDegree = chartDTO.ascendant || 0;
 
   return `
     <style>
-      .chart-wheel-container {
+      .chart-wheel-wrapper {
         width: 100%;
         max-width: 100%;
         margin: 0 auto;
-        opacity: 1;
+        aspect-ratio: 1/1;
+        position: relative;
+        background: radial-gradient(circle at center, #0a0a1a 0%, #000 100%);
+        border-radius: 50%;
       }
-      .chart-wheel-logo-text {
-        font-size: 28px;
-        letter-spacing: 0.35em;
-        font-weight: 200;
-        opacity: 0.95;
-        fill: white;
-        text-anchor: middle;
-        dominant-baseline: middle;
+      .chart-wheel-container {
+        width: 100%;
+        height: 100%;
       }
     </style>
-    <div id="chart-wheel-root" class="chart-wheel-container"></div>
+    <div class="chart-wheel-wrapper">
+      <div id="${chartId}" class="chart-wheel-container"></div>
+    </div>
     <script>
     (function() {
-      // --- CORE GEOMETRY FUNCTIONS ---
+      const ASC_DEGREE = ${ascDegree};
+      const MC_DEGREE = ${chartDTO.mc || 0};
+      const PLANET_DATA = ${planetDataJson};
+      const ASPECT_DATA = ${aspectDataJson};
+      const HOUSE_DATA = ${houseDataJson};
+
+      const normalize = (deg) => ((deg % 360) + 360) % 360;
+      const rotate = (deg) => normalize(270 - (deg - ASC_DEGREE));
       const degToRad = (deg) => (deg * Math.PI) / 180;
       
       const polarToCartesian = (centerX, centerY, radius, angleInDegrees) => {
-        const angleInRadians = degToRad(angleInDegrees - 90);
+        const radians = degToRad(angleInDegrees - 90);
         return {
-          x: centerX + radius * Math.cos(angleInRadians),
-          y: centerY + radius * Math.sin(angleInRadians)
+          x: centerX + radius * Math.cos(radians),
+          y: centerY + radius * Math.sin(radians)
         };
       };
 
-      const htmlHead = '<link rel="preconnect" href="https://fonts.googleapis.com">' +
-        '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>' +
-        '<link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500&display=swap" rel="stylesheet">' +
-        '<style>' +
-          '.chart-wheel-logo-text {' +
-            "font-family: 'Inter', sans-serif;" +
-            'text-transform: uppercase;' +
-          '}' +
-        '</style>';
-
-      const describeArc = (x, y, innerRadius, outerRadius, startAngle, endAngle) => {
-        if (endAngle - startAngle >= 360) endAngle = startAngle + 359.99;
-        
-        const start = polarToCartesian(x, y, outerRadius, endAngle);
-        const end = polarToCartesian(x, y, outerRadius, startAngle);
-        const startInner = polarToCartesian(x, y, innerRadius, endAngle);
-        const endInner = polarToCartesian(x, y, innerRadius, startAngle);
-        const largeArcFlag = endAngle - startAngle <= 180 ? "0" : "1";
-
-        return [
-          "M", start.x, start.y,
-          "A", outerRadius, outerRadius, 0, largeArcFlag, 0, end.x, end.y,
-          "L", endInner.x, endInner.y,
-          "A", innerRadius, innerRadius, 0, largeArcFlag, 1, startInner.x, startInner.y,
-          "Z"
-        ].join(" ");
+      const formatDegree = (deg) => {
+        const d = Math.floor(deg);
+        const m = Math.floor((deg - d) * 60);
+        return d + "°" + (m < 10 ? "0" + m : m) + "'";
       };
 
-      // --- CONSTANTS AND DIMENSIONS ---
+      const signArc = (x, y, ir, or, start, end) => {
+        const s = polarToCartesian(x, y, or, end);
+        const e = polarToCartesian(x, y, or, start);
+        const si = polarToCartesian(x, y, ir, end);
+        const ei = polarToCartesian(x, y, ir, start);
+        return ["M", e.x, e.y, "A", or, or, 0, 0, 0, s.x, s.y, "L", si.x, si.y, "A", ir, ir, 0, 0, 1, ei.x, ei.y, "Z"].join(" ");
+      };
+
       const ZODIACS = [
-        { name: 'Aries', symbol: '♈︎' }, { name: 'Pisces', symbol: '♓︎' },
-        { name: 'Aquarius', symbol: '♒︎' }, { name: 'Capricorn', symbol: '♑︎' },
-        { name: 'Sagittarius', symbol: '♐︎' }, { name: 'Scorpio', symbol: '♏︎' },
-        { name: 'Libra', symbol: '♎︎' }, { name: 'Virgo', symbol: '♍︎' },
-        { name: 'Leo', symbol: '♌︎' }, { name: 'Cancer', symbol: '♋︎' },
-        { name: 'Gemini', symbol: '♊︎' }, { name: 'Taurus', symbol: '♉︎' },
+        { name: 'Aries', symbol: '♈︎' }, { name: 'Taurus', symbol: '♉︎' }, { name: 'Gemini', symbol: '♊︎' },
+        { name: 'Cancer', symbol: '♋︎' }, { name: 'Leo', symbol: '♌︎' }, { name: 'Virgo', symbol: '♍︎' },
+        { name: 'Libra', symbol: '♎︎' }, { name: 'Scorpio', symbol: '♏︎' }, { name: 'Sagittarius', symbol: '♐︎' },
+        { name: 'Capricorn', symbol: '♑︎' }, { name: 'Aquarius', symbol: '♒︎' }, { name: 'Pisces', symbol: '♓︎' }
       ];
 
-      const size = 1000; // Increased for better visibility (25% larger than original 800px)
-      const center = size / 2;
-      const outerRadius = 400; // Scaled proportionally (320 * 1.25 = 400)
-      const ringThickness = 65; // Scaled proportionally (52 * 1.25 = 65)
-      const innerRadius = outerRadius - ringThickness;
-      const textRadius = outerRadius - (ringThickness / 2);
-      const contentRadius = innerRadius - 25; // Scaled proportionally 
+      // --- CONFIG & DIMENSIONS (Bigger Scaled) ---
+      const size = 1000, center = 500;
+      const outerRad = 490;
+      const ringThick = 65;
+      const innerRad = outerRad - ringThick;
+      const contentRad = innerRad - 45;
+      
+      const cRing = "#2563EB";
+      const cCusp = "#FFD700";
+      const cAngle = "#FF5533";
+      const cLine = "rgba(255, 255, 255, 0.15)";
 
-      const cRing = "#2563EB"; 
-      const cLine = "rgba(255, 255, 255, 0.12)";
+      function render() {
+        const root = document.getElementById('${chartId}');
+        if (!root) return;
+        let svg = '';
 
-      function renderChartWheel(planetData, aspectData) {
-        const chartRoot = document.getElementById('chart-wheel-root');
-        if (!chartRoot) return;
-        
-        let svgContent = '';
+        ZODIACS.forEach((sign, i) => {
+          const degStart = i * 30;
+          const degEnd = (i + 1) * 30;
+          const start = rotate(degStart), end = rotate(degEnd), mid = rotate(degStart + 15);
+          svg += '<path d="' + signArc(center, center, innerRad, outerRad, start, end) + '" fill="' + cRing + '" stroke="rgba(255,255,255,0.2)" stroke-width="0.5"/>';
+          const t = polarToCartesian(center, center, outerRad - (ringThick/2), mid);
+          svg += '<text x="'+t.x+'" y="'+t.y+'" fill="white" font-size="28" font-weight="bold" text-anchor="middle" dominant-baseline="central" transform="rotate('+(mid+90)+','+t.x+','+t.y+')">' + sign.symbol + '</text>';
+        });
 
-        // --- 1. ZODIAC RING ---
-        let zodiacRing = '';
-        ZODIACS.forEach((sign, index) => {
-          const startAngle = index * 30;
-          const endAngle = (index + 1) * 30;
-          const midAngle = startAngle + 15;
-          
-          const pathData = describeArc(center, center, innerRadius, outerRadius, startAngle, endAngle);
-          const textPos = polarToCartesian(center, center, textRadius, midAngle);
-          const lineStart = polarToCartesian(center, center, innerRadius, startAngle);
-          const lineEnd = polarToCartesian(center, center, outerRadius, startAngle);
+        for(let i=0; i<360; i++) {
+          const deg = rotate(i);
+          const r1 = innerRad, r2 = (i % 5 === 0) ? innerRad - 18 : innerRad - 10;
+          const p1 = polarToCartesian(center, center, r1, deg), p2 = polarToCartesian(center, center, r2, deg);
+          svg += '<line x1="'+p1.x+'" y1="'+p1.y+'" x2="'+p2.x+'" y2="'+p2.y+'" stroke="white" stroke-width="0.3" opacity="0.4"/>';
+        }
 
-          let rotation = midAngle;
-          if (midAngle > 90 && midAngle < 270) {
-            rotation += 180;
+        HOUSE_DATA.forEach((h, i) => {
+          const degLong = typeof h === 'object' ? h.longitude : h;
+          const deg = rotate(degLong);
+          const p1 = polarToCartesian(center, center, innerRad, deg), p2 = polarToCartesian(center, center, 0, deg);
+          const isAngle = (i === 0 || i === 3 || i === 6 || i === 9);
+          svg += '<line x1="'+p1.x+'" y1="'+p1.y+'" x2="'+p2.x+'" y2="'+p2.y+'" stroke="'+(isAngle?cAngle:cCusp)+'" stroke-width="'+(isAngle?3:1)+'" opacity="'+(isAngle?1:0.5)+'"/>';
+          const cuspLabelPos = polarToCartesian(center, center, innerRad + 12, deg);
+          svg += '<text x="'+cuspLabelPos.x+'" y="'+cuspLabelPos.y+'" fill="rgba(255,255,255,0.9)" font-size="11" font-weight="600" text-anchor="middle" dominant-baseline="central" transform="rotate('+(deg+90)+','+cuspLabelPos.x+','+cuspLabelPos.y+')">'+formatDegree(degLong % 30)+'</text>';
+          const nextHouse = HOUSE_DATA[(i+1)%12];
+          const nextDegLong = typeof nextHouse === 'object' ? nextHouse.longitude : nextHouse;
+          let midHouse = rotate(degLong + (normalize(nextDegLong - degLong) / 2));
+          const houseNumPos = polarToCartesian(center, center, contentRad - 90, midHouse);
+          svg += '<text x="'+houseNumPos.x+'" y="'+houseNumPos.y+'" fill="white" font-size="28" font-weight="light" text-anchor="middle" dominant-baseline="central" opacity="0.6">'+(i+1)+'</text>';
+        });
+
+        ASPECT_DATA.forEach(a => {
+          const p1 = PLANET_DATA.find(p => p.name === a.p1), p2 = PLANET_DATA.find(p => p.name === a.p2);
+          if(p1 && p2) {
+            const pos1 = polarToCartesian(center, center, contentRad, rotate(p1.degree)), pos2 = polarToCartesian(center, center, contentRad, rotate(p2.degree));
+            svg += '<line x1="'+pos1.x+'" y1="'+pos1.y+'" x2="'+pos2.x+'" y2="'+pos2.y+'" stroke="white" stroke-width="0.8" opacity="0.15"/>';
           }
-
-          zodiacRing += '<path d="' + pathData + '" fill="' + cRing + '" stroke="none" />';
-          zodiacRing += '<line x1="' + lineStart.x + '" y1="' + lineStart.y + '" x2="' + lineEnd.x + '" y2="' + lineEnd.y + '" stroke="rgba(255,255,255,0.15)" stroke-width="0.5" />';
-          zodiacRing += '<text x="' + textPos.x + '" y="' + textPos.y + '" fill="white" text-anchor="middle" dominant-baseline="central" transform="rotate(' + rotation + ', ' + textPos.x + ', ' + textPos.y + ')" style="font-family: \'Inter\', sans-serif; font-size: 11px; letter-spacing: 0.2em; font-weight: 500; text-transform: uppercase; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;">' + sign.name + '</text>';
         });
-        
-        zodiacRing += '<circle cx="' + center + '" cy="' + center + '" r="' + outerRadius + '" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="0.5" />';
-        zodiacRing += '<circle cx="' + center + '" cy="' + center + '" r="' + innerRadius + '" fill="none" stroke="white" stroke-width="1.2" opacity="0.9" />';
-        svgContent += '<g class="zodiac-ring">' + zodiacRing + '</g>';
 
-        // --- 2. ASPECTS ---
-        let aspectsSvg = '';
-        aspectData.forEach((aspect) => {
-          const p1 = planetData.find(p => p.name === aspect.p1);
-          const p2 = planetData.find(p => p.name === aspect.p2);
-          if (!p1 || !p2) return;
-
-          const pos1 = polarToCartesian(center, center, contentRadius, p1.degree);
-          const pos2 = polarToCartesian(center, center, contentRadius, p2.degree);
-
-          aspectsSvg += '<line x1="' + pos1.x + '" y1="' + pos1.y + '" x2="' + pos2.x + '" y2="' + pos2.y + '" stroke="url(#chartWheelGradient)" stroke-width="0.6" opacity="0.9" />';
+        const sortedPlanets = [...PLANET_DATA].sort((a,b) => a.degree - b.degree);
+        const radiusMap = new Map();
+        sortedPlanets.forEach((p, idx) => {
+          let overlapCount = 0;
+          for(let i=0; i<idx; i++) {
+            const other = sortedPlanets[i];
+            const diff = normalize(p.degree - other.degree);
+            if(diff < 10 || (360 - diff) < 10) overlapCount++;
+          }
+          radiusMap.set(p.name, contentRad - (overlapCount * 45));
         });
-        svgContent += '<g class="aspects">' + aspectsSvg + '</g>';
 
-        // --- 3. PLANETS ---
-        let planetsSvg = '';
-        planetData.forEach((planet) => {
-          const pos = polarToCartesian(center, center, contentRadius, planet.degree);
-          const tickStart = polarToCartesian(center, center, innerRadius, planet.degree);
-          
-          planetsSvg += '<g class="planet-group" data-planet-name="' + planet.name + '">';
-          planetsSvg += '<line x1="' + pos.x + '" y1="' + pos.y + '" x2="' + tickStart.x + '" y2="' + tickStart.y + '" stroke="white" stroke-width="0.5" opacity="0.5" />';
-          planetsSvg += '<circle cx="' + pos.x + '" cy="' + pos.y + '" r="12" fill="black" stroke="white" stroke-width="0.8" />';
-          planetsSvg += '<text x="' + pos.x + '" y="' + pos.y + '" fill="white" font-size="14" dy="0.5" text-anchor="middle" dominant-baseline="central">' + planet.symbol + '</text>';
-          planetsSvg += '</g>';
+        PLANET_DATA.forEach(p => {
+          const deg = rotate(p.degree);
+          const pRad = radiusMap.get(p.name) || contentRad;
+          const pos = polarToCartesian(center, center, pRad, deg);
+          svg += '<g class="planet-body" filter="url(#glow)">';
+          svg += '<circle cx="'+pos.x+'" cy="'+pos.y+'" r="22" fill="#000" stroke="white" stroke-width="1.5"/>';
+          svg += '<text x="'+pos.x+'" y="'+pos.y+'" fill="white" font-size="24" text-anchor="middle" dominant-baseline="central">'+p.symbol+'</text>';
+          const tPos = polarToCartesian(center, center, pRad + 45, deg);
+          svg += '<text x="'+tPos.x+'" y="'+tPos.y+'" fill="white" font-size="12" font-weight="500" text-anchor="middle" dominant-baseline="central" transform="rotate('+(deg+90)+','+tPos.x+','+tPos.y+')">'+formatDegree(p.degree % 30)+'</text>';
+          svg += '</g>';
         });
-        svgContent += '<g class="planets">' + planetsSvg + '</g>';
 
-        // --- 4. INNER MECHANICS & AXIS ---
-        svgContent += '<g class="inner-mechanics">';
-        svgContent += '<circle cx="' + center + '" cy="' + center + '" r="' + contentRadius + '" fill="none" stroke="' + cLine + '" stroke-width="0.5" />';
-        svgContent += '<path d="' + describeArc(center, center, contentRadius, innerRadius, 0, 359.99) + '" fill="rgba(255,255,255,0.03)" stroke="none" />';
-        svgContent += '</g>';
-        svgContent += '<g class="axis">';
-        svgContent += '<text x="' + (center - outerRadius - 20) + '" y="' + center + '" text-anchor="end" dominant-baseline="middle" style="font-family: \'Inter\', sans-serif; font-size: 10px; font-weight: 400; letter-spacing: 0.2em; fill: rgba(255,255,255,0.5);">AC</text>';
-        svgContent += '<text x="' + (center + outerRadius + 20) + '" y="' + center + '" text-anchor="start" dominant-baseline="middle" style="font-family: \'Inter\', sans-serif; font-size: 10px; font-weight: 400; letter-spacing: 0.2em; fill: rgba(255,255,255,0.5);">DC</text>';
-        svgContent += '</g>';
+        const acPos = polarToCartesian(center, center, outerRad + 30, rotate(ASC_DEGREE));
+        svg += '<text x="'+acPos.x+'" y="'+acPos.y+'" fill="white" font-size="42" font-weight="bold" text-anchor="middle" dominant-baseline="central">AC</text>';
+        const mcPos = polarToCartesian(center, center, outerRad + 30, rotate(MC_DEGREE));
+        svg += '<text x="'+mcPos.x+'" y="'+mcPos.y+'" fill="white" font-size="32" font-weight="bold" text-anchor="middle" dominant-baseline="central">MC</text>';
 
-        // --- 5. LOGO ---
-        svgContent += '<g transform="translate(' + center + ', ' + center + ')">';
-        svgContent += '<text x="0" y="0" class="chart-wheel-logo-text" style="font-family: \'Inter\', sans-serif; font-weight: 200; font-size: 28px; letter-spacing: 0.35em; opacity: 0.95; fill: white; text-anchor: middle; dominant-baseline: middle;">FATEFLIX</text>';
-        svgContent += '</g>';
-
-        // Final SVG structure
-        const finalSvg = htmlHead + '<svg viewBox="0 0 ' + size + ' ' + size + '" style="width:100%;height:auto;overflow:visible;">' +
-          '<defs><linearGradient id="chartWheelGradient" x1="0%" y1="0%" x2="100%" y2="100%">' +
-          '<stop offset="0%" stop-color="rgba(255,255,255,0.02)" />' +
-          '<stop offset="50%" stop-color="rgba(255,255,255,0.5)" />' +
-          '<stop offset="100%" stop-color="rgba(255,255,255,0.02)" />' +
-          '</linearGradient></defs>' + svgContent + '</svg>';
-
-        chartRoot.innerHTML = finalSvg;
+        root.innerHTML = '<svg viewBox="-50 -50 1100 1100" style="width:100%;height:100%;overflow:visible;"><defs><filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="4" result="blur" /><feComposite in="SourceGraphic" in2="blur" operator="over" /></filter></defs>' + svg + '</svg>';
       }
-
-      // Inject dynamic data from server
-      const PLANET_DATA = ${planetDataJson};
-      const ASPECT_DATA = ${aspectDataJson};
-
-      if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', function() { renderChartWheel(PLANET_DATA, ASPECT_DATA); });
-      } else {
-        renderChartWheel(PLANET_DATA, ASPECT_DATA);
-      }
+      render();
     })();
     </script>
   `;
@@ -1623,7 +2350,7 @@ app.get('/dev/chart-ruler', (req, res) => {
   };
 
   // Redirect to the HTML view (page 2 is where the chart ruler logic lives)
-  res.redirect(`/reading/${submissionId}/html/2`);
+  res.redirect(`/ reading / ${submissionId} /html/2`);
 });
 
 // Dev route for Badge preview (uses EJS template)
@@ -1655,82 +2382,82 @@ app.get('/dev/chart-wheel', (req, res) => {
     }
   };
 
-  const html = `<!DOCTYPE html>
-  <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>FateFlix Chart Wheel Preview</title>
-    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@600&family=Inter:wght@200;400;500&display=swap" rel="stylesheet">
-    <style>
-      body { 
-        background-color: #000; 
-        margin: 0; 
-        padding: 60px 40px; 
-        display: flex; 
-        flex-direction: column;
-        align-items: center; 
-        min-height: 100vh; 
-        box-sizing: border-box;
-        font-family: 'Inter', sans-serif;
-        color: white;
+  const html = `< !DOCTYPE html >
+    <html lang="en">
+      <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>FateFlix Chart Wheel Preview</title>
+        <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@600&family=Inter:wght@200;400;500&display=swap" rel="stylesheet">
+          <style>
+            body {
+              background - color: #000;
+            margin: 0;
+            padding: 60px 40px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+            color: white;
       }
-      .chart-card-header {
-        text-align: center;
-        margin-bottom: 60px;
-        width: 100%;
+            .chart-card-header {
+              text - align: center;
+            margin-bottom: 60px;
+            width: 100%;
       }
-      .chart-card-header h1 {
-        font-family: 'Manrope', sans-serif;
-        font-size: 42px;
-        font-weight: 600;
-        letter-spacing: -0.02em;
-        margin: 0;
-        text-shadow: 0 0 30px rgba(142, 197, 252, 0.4);
+            .chart-card-header h1 {
+              font - family: 'Manrope', sans-serif;
+            font-size: 42px;
+            font-weight: 600;
+            letter-spacing: -0.02em;
+            margin: 0;
+            text-shadow: 0 0 30px rgba(142, 197, 252, 0.4);
       }
-      .chart-card-content {
-        position: relative;
-        width: 100%;
-        max-width: 800px;
-        aspect-ratio: 1 / 1;
-        display: flex;
-        justify-content: center;
-        align-items: center;
+            .chart-card-content {
+              position: relative;
+            width: 100%;
+            max-width: 800px;
+            aspect-ratio: 1 / 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
       }
-      .metadata-block {
-        position: absolute;
-        font-size: 16px;
-        line-height: 1.5;
-        font-weight: 400;
-        color: rgba(255, 255, 255, 0.9);
+            .metadata-block {
+              position: absolute;
+            font-size: 16px;
+            line-height: 1.5;
+            font-weight: 400;
+            color: rgba(255, 255, 255, 0.9);
       }
-      .top-left { top: -20px; left: 0; text-align: left; }
-      .bottom-right { bottom: 20px; right: 0; text-align: right; }
-      .label { font-weight: 200; color: rgba(255, 255, 255, 0.6); }
-    </style>
-  </head>
-  <body>
-    <div class="chart-card-header">
-      <h1>My Astro-Cinematic Chart</h1>
-    </div>
+            .top-left {top: -20px; left: 0; text-align: left; }
+            .bottom-right {bottom: 20px; right: 0; text-align: right; }
+            .label {font - weight: 200; color: rgba(255, 255, 255, 0.6); }
+          </style>
+      </head>
+      <body>
+        <div class="chart-card-header">
+          <h1>My Astro-Cinematic Chart</h1>
+        </div>
 
-    <div class="chart-card-content">
-      <div class="metadata-block top-left">
-        <div><span class="label">Date:</span> June 10, 1991</div>
-        <div><span class="label">Time:</span> 08:15 AM</div>
-        <div><span class="label">Place:</span> Munich, Germany</div>
-      </div>
+        <div class="chart-card-content">
+          <div class="metadata-block top-left">
+            <div><span class="label">Date:</span> June 10, 1991</div>
+            <div><span class="label">Time:</span> 08:15 AM</div>
+            <div><span class="label">Place:</span> Munich, Germany</div>
+          </div>
 
-      <div style="width: 100%; height: 100%;">
-        ${buildChartWheelHtml(mockChartDTO)}
-      </div>
+          <div style="width: 100%; height: 100%;">
+            ${buildChartWheelHtml(mockChartDTO)}
+          </div>
 
-      <div class="metadata-block bottom-right">
-        <div><span class="label">username:</span> mi-gerer</div>
-      </div>
-    </div>
-  </body>
-  </html>`;
+          <div class="metadata-block bottom-right">
+            <div><span class="label">username:</span> mi-gerer</div>
+          </div>
+        </div>
+      </body>
+    </html>`;
 
   res.set('Content-Type', 'text/html; charset=utf-8');
   res.send(html);
@@ -1998,7 +2725,7 @@ app.post('/api/birth-chart-swisseph', async (req, res) => {
     const timezones = find(lat, lng);
     const timeZone = timezones && timezones.length > 0 ? timezones[0] : 'UTC';
 
-    console.log(`🌍 Coordinates: ${lat}, ${lng} -> Timezone: ${timeZone}`);
+    console.log(`🌍 Coordinates: ${lat}, ${lng} -> Timezone: ${timeZone} `);
 
     // Convert input date/time (Local zone) → UTC
     const birthDT = DateTime.fromISO(`${date}T${time}`, { zone: timeZone });
@@ -2037,7 +2764,7 @@ app.post('/api/birth-chart-swisseph', async (req, res) => {
     const houseSigns = housesDeg.map(signFromLongitude);
 
     const houseRulers = {};
-    for (let i = 0; i < 12; i++) houseRulers[`house${i + 1}`] = houseSigns[i] || null;
+    for (let i = 0; i < 12; i++) houseRulers[`house${i + 1} `] = houseSigns[i] || null;
 
     function houseOf(longitude) {
       for (let i = 0; i < 12; i++) {
@@ -2080,8 +2807,8 @@ app.post('/api/birth-chart-swisseph', async (req, res) => {
           house
         };
       } catch (err) {
-        // If Chiron fails due to missing `seas_*.se1`, log and continue.
-        console.warn(`⚠️ Skipping ${name}:`, err.message);
+        // If Chiron fails due to missing `seas_ *.se1`, log and continue.
+        console.warn(`⚠️ Skipping ${name}: `, err.message);
       }
     }
 
@@ -2128,6 +2855,11 @@ app.post('/api/birth-chart-swisseph', async (req, res) => {
       chartRulerPlanet,
       chartRulerHouse
     };
+    payload.aspects = computeAspects(
+      planets,
+      isUnknownTime ? null : ascendant,
+      isUnknownTime ? null : mc
+    );
 
     if (isUnknownTime) {
       payload.angles = {
@@ -2257,7 +2989,7 @@ app.get('/api/birth-chart-swisseph', async (req, res) => {
     const houseSigns = housesDeg.map(signFromLongitude);
 
     const houseRulers = {};
-    for (let i = 0; i < 12; i++) houseRulers[`house${i + 1}`] = houseSigns[i] || null;
+    for (let i = 0; i < 12; i++) houseRulers[`house${i + 1} `] = houseSigns[i] || null;
 
     function houseOf(longitude) {
       for (let i = 0; i < 12; i++) {
@@ -2299,7 +3031,7 @@ app.get('/api/birth-chart-swisseph', async (req, res) => {
           house
         };
       } catch (err) {
-        console.warn(`⚠️ Skipping ${name}:`, err.message);
+        console.warn(`⚠️ Skipping ${name}: `, err.message);
       }
     }
 
@@ -2347,8 +3079,12 @@ app.get('/api/birth-chart-swisseph', async (req, res) => {
       chartRulerPlanet,
       chartRulerHouse
     };
+    payload.aspects = computeAspects(
+      planets,
+      isUnknownTime ? null : ascendant,
+      isUnknownTime ? null : mc
+    );
 
-    // Mask if unknown time
     if (isUnknownTime) {
       payload.angles = {
         ascendantDeg: null,
@@ -2525,7 +3261,9 @@ app.post('/api/dev/chart-to-svg', async (req, res) => {
             data: {
               chart: { connect: { id: chartId } },
               // Update email if provided and changed
-              ...(userEmail ? { userEmail } : {})
+              ...(userEmail ? { userEmail } : {}),
+              // Save full survey data to JSONB field
+              ...(req.body.fullResponses ? { fullData: req.body.fullResponses } : {})
             }
           });
           submissionId = existingSubmissionId;
@@ -2561,7 +3299,12 @@ app.post('/api/dev/chart-to-svg', async (req, res) => {
       // If no valid existing ID, create new
       if (!submissionId) {
         const submission = await prisma.surveySubmission.create({
-          data: { userEmail: userEmail || null, chart: { connect: { id: chartId } } },
+          data: {
+            userEmail: userEmail || null,
+            chart: { connect: { id: chartId } },
+            // Save full survey data to JSONB field
+            ...(req.body.fullResponses ? { fullData: req.body.fullResponses } : {})
+          },
           select: { id: true }
         });
         submissionId = submission.id;
@@ -2592,51 +3335,52 @@ app.post('/api/dev/chart-to-svg', async (req, res) => {
 
           const keyMapping = {
             // Section I: Cosmic
-            'username': 'cosmic.name',
+            'username': 'cosmic.username',
             // Section II: Casting
             'gender': 'casting.gender',
             'attraction_style': 'casting.attraction_style',
-            'cine_level': 'casting.love_o_meter',
-            'life_role': 'casting.movie_role',
+            'cine_level': 'casting.cine_level',
+            'life_role': 'casting.life_role',
             'escapism_style': 'casting.escapism_style',
-            'first_crush': 'casting.first_obsession',
+            'first_crush': 'casting.first_crush',
             // Section III: Taste
-            'watch_habit': 'taste.how_you_watch',
-            'fav_era': 'taste.favorite_era',
-            'culture_background': 'taste.cultural_background',
-            'environment_growing_up': 'taste.childhood_environment',
+            'watch_habit': 'taste.watch_habit',
+            'fav_era': 'taste.fav_era',
+            'culture_background': 'taste.culture_background',
+            'environment_growing_up': 'taste.environment_growing_up',
             // Section IV: Core Memory
-            'first_feeling': 'core_memory.first_emotional',
+            'first_feeling': 'core_memory.first_feeling',
             'life_changing': 'core_memory.life_changing',
             'comfort_watch': 'core_memory.comfort_watch',
-            'power_watch': 'core_memory.power_movie',
-            'date_impress': 'core_memory.impress_movie',
+            'power_watch': 'core_memory.power_watch',
+            'date_impress': 'core_memory.date_impress',
             // Section V: World
             'movie_universe': 'world.movie_universe',
-            'villain_relate': 'world.villain',
+            'villain_relate': 'world.villain_relate',
             'forever_crush': 'world.forever_crush',
-            'crave_most': 'world.crave_in_movie',
-            'life_tagline': 'world.life_tagline',
+            'crave_most': 'world.crave_most',
             // Section VI: Screen Ed
             'tv_taste': 'screen_ed.tv_taste',
-            'fav_tv': 'screen_ed.favorite_tv_show',
+            'fav_tv': 'screen_ed.fav_tv',
             'cinematography': 'screen_ed.cinematography',
-            'directors': 'screen_ed.favorite_directors',
+            'directors': 'screen_ed.directors',
             'access_growing_up': 'screen_ed.access_growing_up',
             // Section VII: Genres
-            'genres_love': 'genres.loved',
+            'genres_love': 'genres.genres_love',
             'turn_offs': 'genres.turn_offs',
-            'hated_film': 'genres.hated_but_loved',
+            'hated_film': 'genres.hated_film',
+            'hype_style': 'genres.hype_style',
             // Section Swipe
-            'character_match': 'genres.twin_flame',
+            'character_match': 'genres.character_match',
             // Section VIII: Global
             'foreign_films': 'global.foreign_films',
             // Section IX: Fit
-            'selection_method': 'fit.pick_what_to_watch',
-            'discovery': 'fit.found_survey',
+            'selection_method': 'fit.selection_method',
+            'discovery_apps': 'fit.discovery_apps',
+            'discovery': 'fit.discovery',
             'email': 'fit.email',
             'beta_test': 'fit.beta_test',
-            // top3_films, top3_series, top3_docs handled separately (combined into fit.hall_of_fame)
+            'open_feedback': 'fit.open_feedback',
           };
 
           // Build answers array from fullResponses
@@ -2808,10 +3552,14 @@ app.post('/api/dev/chart-to-svg', async (req, res) => {
     const svgUrl = `${baseUrl}/reading/${submissionId}/chart.svg`;
     const htmlUrl = `${baseUrl}/reading/${submissionId}`;
 
-    // Send the "magic link" email (if we have an email)
-    if (userEmail && submissionId) {
+    // Send the "magic link" email (if requested)
+    const triggerEmail = req.body?.triggerEmail === true;
+
+    if (triggerEmail && userEmail && submissionId) {
       console.log('📧 Attempting to send reading email via dev route to:', userEmail);
       sendReadingEmail(userEmail, submissionId, username).catch(err => console.error('Dev route email trigger failed:', err));
+    } else if (userEmail && submissionId) {
+      console.log('📧 Skipping email send (triggerEmail not set):', userEmail);
     }
 
     return res.json({ ok: true, chartId, submissionId: submissionId, svgUrl, htmlUrl });
@@ -4566,7 +5314,7 @@ app.get("/api/survey/state/:submissionId", async (req, res) => {
     }
 
     // Transform to simple map: questionKey -> answerValue
-    const answers = {};
+    let answers = {};
     for (const r of submission.responses) {
       if (r.responseOptions.length > 0) {
         const values = r.responseOptions.map(ro => ro.option.value);
@@ -4574,6 +5322,11 @@ app.get("/api/survey/state/:submissionId", async (req, res) => {
       } else {
         answers[r.question.key] = r.answerText;
       }
+    }
+
+    // Merge in JSONB data
+    if (submission.fullData && typeof submission.fullData === 'object') {
+      answers = { ...answers, ...submission.fullData };
     }
 
     // Also include userEmail if present
@@ -4666,19 +5419,49 @@ app.post("/api/survey/submit", async (req, res) => {
       return res.status(400).json({ ok: false, error: "answers[] is required" });
     }
 
-    const submission = await prisma.surveySubmission.create({
-      data: {
-        userEmail: userEmail || null,
-        ...(chartId ? { chart: { connect: { id: chartId } } } : {}),
-      },
-      select: { id: true },
-    });
+    const existingSubmissionId = req.body?.submissionId || req.body?.survey?.meta?.submissionId;
+    let submission;
+
+    if (existingSubmissionId) {
+      // Try to update existing
+      const existing = await prisma.surveySubmission.findUnique({ where: { id: existingSubmissionId } });
+      if (existing) {
+        submission = await prisma.surveySubmission.update({
+          where: { id: existingSubmissionId },
+          data: {
+            userEmail: userEmail || existing.userEmail,
+            ...(chartId ? { chart: { connect: { id: chartId } } } : {}),
+            fullData: req.body.survey || req.body
+          },
+          select: { id: true },
+        });
+        console.log('✅ Updated existing submission during /submit:', submission.id);
+      }
+    }
+
+    if (!submission) {
+      submission = await prisma.surveySubmission.create({
+        data: {
+          userEmail: userEmail || null,
+          ...(chartId ? { chart: { connect: { id: chartId } } } : {}),
+          // Save full survey data to JSONB field
+          fullData: req.body.survey || req.body // Save the highest level survey object available
+        },
+        select: { id: true },
+      });
+      console.log('✅ Created new submission during /submit:', submission.id);
+    }
 
     // Send the "magic link" email
-    if (userEmail) {
+    // Default to true for this endpoint as it's intended to be the final submission
+    const triggerEmail = req.body?.triggerEmail !== false;
+
+    if (userEmail && triggerEmail) {
       console.log('📧 Attempting to send reading email to:', userEmail);
       // We don't await this so it doesn't block the UI response
       sendReadingEmail(userEmail, submission.id, username).catch(err => console.error('Email trigger failed:', err));
+    } else if (userEmail) {
+      console.log('📧 Skipping email send for /api/survey/submit (triggerEmail is false):', userEmail);
     }
 
     let madeResponses = 0;
@@ -4695,6 +5478,14 @@ app.post("/api/survey/submit", async (req, res) => {
         include: { options: true },
       });
       if (!q) { console.warn("No question found for key:", a.questionKey); continue; }
+
+      // Delete existing response for this question (upsert behavior)
+      await prisma.surveyResponse.deleteMany({
+        where: {
+          submissionId: submission.id,
+          questionId: q.id,
+        },
+      });
 
       const response = await prisma.surveyResponse.create({
         data: {
@@ -4766,12 +5557,23 @@ app.post("/api/survey/save-answer", async (req, res) => {
     // Verify submission exists
     const submission = await prisma.surveySubmission.findUnique({
       where: { id: submissionId },
-      select: { id: true },
+      select: { id: true, fullData: true },
     });
 
     if (!submission) {
       return res.status(404).json({ ok: false, error: "Submission not found" });
     }
+
+    // Merge into fullData JSONB field for real-time persistence
+    const currentData = (submission.fullData && typeof submission.fullData === 'object')
+      ? submission.fullData
+      : {};
+    const updatedData = { ...currentData, [frontendKey]: answerValue };
+
+    await prisma.surveySubmission.update({
+      where: { id: submissionId },
+      data: { fullData: updatedData }
+    });
 
     // Map frontend key to database question key (same mapping as in /api/dev/chart-to-svg)
     const keyMapping = {

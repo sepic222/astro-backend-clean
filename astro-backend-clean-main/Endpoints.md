@@ -1,86 +1,57 @@
 # FateFlix Backend — Endpoints
 
-Generated from the repository sepic222/astro-backend-clean on 2025-11-03 UTC. This file organizes discovered API endpoints by priority/usage for sharing with the team. Results were gathered from server.js, README, API.http and project docs; verify by checking server.js for the authoritative implementation.
+*Last Updated: Feb 5, 2026*
+
+This file organizes active API endpoints. Authoritative implementations live in `server.js`.
 
 ----
 
-High priority — core product (frontend depends on these)
+## 🟢 High Priority — Core Product
 
-- POST /api/birth-chart-swisseph
-  - Purpose: Compute a full birth chart using Swiss Ephemeris and save a Chart record.
-  - Required: date, time, latitude, longitude. Optional: city, country, userEmail, timeAccuracy.
-  - Called by: frontend Section 1 (computeChartIfNeeded). Produces savedChartId used for survey linking.
-  - Notes: Returns computed chart payload and savedChartId; critical for downstream personalization.
+### 📝 Survey & Submission
+- **`POST /api/survey/submit`**
+  - **Purpose**: Main survey completion handler. Persists `SurveySubmission` and merged JSONB `fullData`.
+  - **Trigger**: Final "See Results" click.
+  - **Notes**: Reuses existing `submissionId` if provided to avoid duplicates.
 
-- POST /api/survey/submit
-  - Purpose: Final survey submission endpoint. Normalizes payload, links to chartId, triggers reading/email generation.
-  - Required: userEmail, answers array (chartId optional).
-  - Called by: frontend final-submit flow.
-  - Notes: Primary data capture for the survey; persists Submission + Responses.
+- **`GET /api/reading/:submissionId`**
+  - **Purpose**: Returns the calculated interpretation JSON used by the interactive dashboard.
 
-- GET /api/geocode
-  - Purpose: Forward geocoding via OpenCage; returns latitude and longitude.
-  - Required query params: city, country. Optional userEmail.
-  - Called by: frontend to auto-fill coordinates based on city/country.
-  - Notes: Requires OPENCAGE_API_KEY on the server.
+### 🧮 Astrological Calculations (Swiss Ephemeris)
+- **`POST /api/birth-chart-swisseph`**
+  - **Purpose**: Computes full chart data (planets, aspects).
+  - **Inputs**: `date`, `time`, `latitude`, `longitude`.
+  - **Source**: [server.js:L2083](file:///Users/saraellenpicard/Documents/fateflix-code/astro-backend-clean-main/server.js#L2083)
 
-- GET /health
-  - Purpose: Health check for deployments and local sanity checks.
-  - Response: { ok: true, status: 'healthy' }
+- **`POST /api/chart-houses`**
+  - **Purpose**: Calculates house cusps and rulers.
+  - **Source**: [server.js:L4534](file:///Users/saraellenpicard/Documents/fateflix-code/astro-backend-clean-main/server.js#L4534)
 
 ----
 
-Medium priority — supporting / diagnostic
+## 🏢 Admin & Data Management
 
-- POST /api/chart-houses
-  - Purpose: Compact houses/rulers computation (houses, houseSigns, planets by house, etc.).
-  - Required: date, time, latitude, longitude.
-  - Notes: Used for lighter-weight insights and diagnostics.
+### 📊 Dashboard Views
+- **`GET /admin/dashboard`**: High-level overview of submissions with test/real filtering.
+- **`GET /admin/data`**: Full spreadsheet view of all answers (dynamic reconstructed logic).
+- **`GET /admin/latest-report`**: Visual breakdown of the most recent submission.
 
-- POST /api/chart-houses/ping
-  - Purpose: Lightweight ping for the chart-houses module.
-  - Notes: Returns { ok: true }.
-
-- POST /api/survey-response
-  - Purpose: Save a normalized survey response into Prisma (creates response + answers rows).
-  - Required: surveyId and answers[].
-  - Notes: Lower-level storage endpoint used by imports/tools or alternate flows.
-
-- GET /api/ai/test
-  - Purpose: Small OpenAI smoke test endpoint; verifies OpenAI connectivity.
-  - Notes: Useful when debugging AI-driven features.
+### 📤 Data Export
+- **`GET /admin/export`**: Downloads a CSV of all submissions.
+- **Optimization**: Uses bulk reading fetching and Map-based lookups for speed.
+- **Compatibility**: UTF-8 BOM enabled for Excel; date-stamped filename.
 
 ----
 
-Low priority — dev / debug utilities
+## 🛠️ Debug & Dev Utilities
 
-- GET /
-  - Purpose: Root — returns 'OK'.
+- **`GET /health`**: Simple health check (returns `{ ok: true }`).
+- **`GET /ping`**: Latency/uptime check.
+- **`GET /dev/no-time`**: UI test for "Unknown Birth Time" flow.
+- **`GET /dev/chart-wheel`**: UI test for chart visualizations.
 
-- GET /_whoami
-  - Purpose: Debug information (cwd, __dirname, route count).
+---
 
-- GET /__routes
-  - Purpose: Lists registered Express routes for debugging and discovery.
-
-- GET /dev/email/preview/:outboxId
-  - Purpose: Dev-only: display stored email HTML previews for local testing.
-
-----
-
-Documented / verify
-
-- GET /api/test
-  - Notes: Referenced in BASELINE.md as a deployed test endpoint (https://astro-backend-clean-main.onrender.com/api/test). I did not find an explicit /api/test handler in the sampled server.js snippets; verify the exact handler in server.js or on the deployed instance.
-
-----
-
-Notes & next steps
-
-- This file is a shareable summary for the team. The authoritative implementations and parameter validation live in server.js — review that file for exact request/response shapes and error codes.
-- If you want, I can also: produce a Postman collection (JSON), CSV/JSON export of these endpoints, or open a PR adding this file to the repository README. Please tell me which you prefer.
-
-----
-
-Repository search link (code search for "/api/"):
-https://github.com/sepic222/astro-backend-clean/search?q=%2Fapi%2F&type=code
+## 🗑️ Deprecated (Do Not Use)
+- ❌ **`GET /api/geocode`**: OpenCage service removed.
+- ❌ **Resend Endpoints**: All email has migrated to Loops.so.

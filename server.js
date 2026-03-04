@@ -4307,7 +4307,10 @@ app.get('/reading/:submissionId/badge', async (req, res) => {
       year: 'numeric'
     });
 
-    res.render('badge', { submissionID: submissionId, creationDate });
+    // Build canonical URL for OG tags (used in badge.ejs meta tags)
+    const readingUrl = `${req.protocol}://${req.get('host')}/reading/${submissionId}`;
+
+    res.render('badge', { submissionID: submissionId, creationDate, readingUrl });
 
   } catch (e) {
     console.error('💥 /reading/:submissionId/badge error:', e);

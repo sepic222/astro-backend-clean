@@ -15,6 +15,7 @@ function loadJson(p) {
   return JSON.parse(fs.readFileSync(p, 'utf8'));
 }
 const CONTENT_DIR = path.join(__dirname, 'content', 'readings');
+const REVEL_NAMES = loadJson(path.join(__dirname, 'data', 'revel_names.json'));
 const SECTION_INTROS = loadJson(path.join(CONTENT_DIR, 'section_intros.json'));
 const ASCENDANT_TEXT = loadJson(path.join(CONTENT_DIR, 'ascendant.json'));
 const SUN_SIGN_TEXT = loadJson(path.join(CONTENT_DIR, 'sun_sign.json'));
@@ -4267,6 +4268,53 @@ app.get('/reading/:submissionId/chart.svg', async (req, res) => {
   }
 });
 
+// === Revel Name (Sun/Moon/Venus personalised summary) ============
+app.get('/reading/:submissionId/revel', async (req, res) => {
+  try {
+    const { submissionId } = req.params;
+    if (!submissionId) return res.status(400).json({ error: 'Missing submissionId' });
+
+    let chart;
+    if (MOCK_DB[submissionId]) {
+      chart = MOCK_DB[submissionId].chart;
+    } else {
+      const reading = await prisma.reading.findFirst({
+        where: { submissionId },
+        select: { chartId: true }
+      });
+      if (reading?.chartId) {
+        chart = await prisma.chart.findUnique({
+          where: { id: reading.chartId },
+          select: { rawChart: true }
+        });
+      }
+    }
+
+    if (!chart) return res.status(404).json({ error: 'Chart not found' });
+
+    const planets = chart.rawChart?.planets || {};
+    const sunSign    = planets?.sun?.sign    || null;
+    const moonSign   = planets?.moon?.sign   || null;
+    const venusSign  = planets?.venus?.sign  || null;
+
+    if (!sunSign || !moonSign || !venusSign) {
+      return res.status(404).json({ error: 'Planet signs not available', sunSign, moonSign, venusSign });
+    }
+
+    const key = `${sunSign}|${moonSign}|${venusSign}`;
+    const revel = REVEL_NAMES[key];
+
+    if (!revel) {
+      return res.status(404).json({ error: `No revel entry for ${key}` });
+    }
+
+    res.json(revel);
+  } catch (e) {
+    console.error('💥 /reading/:submissionId/revel error:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // === Screen 1: The Badge (Entry Ticket) =========================
 app.get('/reading/:submissionId/badge', async (req, res) => {
   try {
@@ -4307,7 +4355,10 @@ app.get('/reading/:submissionId/badge', async (req, res) => {
       year: 'numeric'
     });
 
-    res.render('badge', { submissionID: submissionId, creationDate });
+    // Build canonical URL for OG tags (used in badge.ejs meta tags)
+    const readingUrl = `${req.protocol}://${req.get('host')}/reading/${submissionId}`;
+
+    res.render('badge', { submissionID: submissionId, creationDate, readingUrl });
 
   } catch (e) {
     console.error('💥 /reading/:submissionId/badge error:', e);

@@ -68,7 +68,7 @@ const corsOptions = {
     ].filter(Boolean);
 
     // Allow if origin is in list, or if it's a Vercel preview/fateflix subdomain, or if no origin (local/mobile)
-    if (!origin || allowed.includes(origin) || origin.includes('vercel.app') || origin.endsWith('.fateflix.app') || origin.includes('lovable.app')) {
+    if (!origin || allowed.includes(origin) || origin.includes('vercel.app') || origin.endsWith('.fateflix.app') || origin.includes('lovable.app') || origin.includes('localhost')) {
       callback(null, true);
     } else {
       console.warn('CORS Blocked for origin:', origin);

@@ -143,7 +143,12 @@ Access these routes via the /admin prefix.
 ### 📊 Views
 *   **GET /admin/dashboard**: High-level overview of recent submissions with "Real" vs "Test" filtering.
 *   **GET /admin/data**: Spreadsheet-style 2D table of all answers, dynamically reconstructed from both SurveyResponse tables and the fullData JSONB field.
+*   **GET /admin/analysis**: Comprehensive dashboard providing aggregated insights and cross-correlations (Sign vs. Genre, Archetype clusters, etc.).
 *   **GET /admin/latest-report**: Quick view of the most recent submission's detailed breakdown.
+
+### 🔌 Admin APIs
+*   **GET /admin/api/stats**: Returns high-level submission and reading statistics.
+*   **GET /admin/api/analysis**: Returns the JSON data for the aggregated analysis view.
 
 ### 📥 Data Export
 *   **GET /admin/export**: Generates a CSV of all submissions.
@@ -152,4 +157,4 @@ Access these routes via the /admin prefix.
 
 ---
 
-*Verified & Updated: Feb 5, 2026 (Added Admin Dashboard & Data Export documentation)*
+*Verified & Updated: March 29, 2026 (Audited and confirmed all core endpoints, sync rules, and added Analysis Dashboard documentation)*

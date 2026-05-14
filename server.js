@@ -238,19 +238,6 @@ function isTestSubmission(submission, username = '', discoverySource = '', respo
     }
   }
 
-  // Check discovery source
-  if (discoverySource && discoverySource.toLowerCase() === 'founder') {
-    // Founder discovery could still be real if survey mostly completed
-    if (completionRate < 0.5) {
-      return { isTest: true, reason: 'Found via founder with low completion' };
-    }
-  }
-
-  // Very short names often indicate test
-  if (nameLower.length > 0 && nameLower.length <= 2) {
-    return { isTest: true, reason: 'Name too short (likely test)' };
-  }
-
   return { isTest: false, reason: 'Appears to be real user' };
 }
 

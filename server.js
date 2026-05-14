@@ -528,9 +528,25 @@ app.get('/admin/api/analysis', async (req, res) => {
         if (!raw) continue;
         const parsed = parseAnswer(raw).trim();
         if (!parsed || parsed.length < 2) continue;
-        const normKey = parsed.toLowerCase();
-        if (!counts[normKey]) counts[normKey] = { text: parsed, count: 0 };
-        counts[normKey].count++;
+
+        // Split on common delimiters: commas, semicolons, newlines, numbered lists, " and ", " & ", slashes
+        const items = parsed
+          .split(/[,;\n\r]+|(?:\d+\.\s*)|\s+(?:and|&|\/)\s+/i)
+          .map(s => s.replace(/^[\s\-•]+|[\s\-•]+$/g, '').trim()) // strip bullets/dashes
+          .filter(s => s.length >= 2);
+
+        for (const item of items) {
+          // Normalize: lowercase for matching, but keep best display version (longest/most capitalized)
+          const normKey = item.toLowerCase().replace(/^(the|a|an)\s+/i, '').trim();
+          if (!normKey || normKey.length < 2) continue;
+          if (!counts[normKey]) {
+            counts[normKey] = { text: item, count: 0 };
+          } else if (item.length > counts[normKey].text.length) {
+            // Keep the most complete version for display
+            counts[normKey].text = item;
+          }
+          counts[normKey].count++;
+        }
       }
       return Object.values(counts).sort((a, b) => b.count - a.count).slice(0, 15);
     }

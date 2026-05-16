@@ -140,6 +140,75 @@ const TEST_NAME_PATTERNS = [
   'test', 'demo', 'admin', 'asdf', 'xxx', 'aaa', 'bbb'
 ];
 
+// --------------------------------------------------------------
+// MOVIE TITLE CORRECTIONS
+// Maps common misspellings/abbreviations to canonical titles.
+// Keys must be lowercase, articles already stripped (matching normKey format).
+// --------------------------------------------------------------
+const MOVIE_TITLE_CORRECTIONS = {
+  'intastella': 'interstellar',
+  'intastellar': 'interstellar',
+  'interstelar': 'interstellar',
+  'intersteller': 'interstellar',
+  'interstelllar': 'interstellar',
+  'shawshank': 'shawshank redemption',
+  'shaw shank redemption': 'shawshank redemption',
+  'shawshank redmption': 'shawshank redemption',
+  'dark night': 'dark knight',
+  'dark nite': 'dark knight',
+  'darknight': 'dark knight',
+  'paraiste': 'parasite',
+  'parsite': 'parasite',
+  'forest gump': 'forrest gump',
+  'godfahter': 'godfather',
+  'godfater': 'godfather',
+  'pulp ficton': 'pulp fiction',
+  'pulp ficiton': 'pulp fiction',
+  'schindlers list': "schindler's list",
+  'schindler list': "schindler's list",
+  'shindlers list': "schindler's list",
+  'spirted away': 'spirited away',
+  'spritied away': 'spirited away',
+  'titantic': 'titanic',
+  'titanc': 'titanic',
+  'good fellas': 'goodfellas',
+  'good will huntng': 'good will hunting',
+  'goodwill hunting': 'good will hunting',
+  'eternal sunshine': 'eternal sunshine of the spotless mind',
+  'eternal sushine': 'eternal sunshine of the spotless mind',
+  'eternal sunshine of spotless mind': 'eternal sunshine of the spotless mind',
+  'lord of the ring': 'lord of the rings',
+  'lotr': 'lord of the rings',
+  'harry poter': 'harry potter',
+  'harrypotter': 'harry potter',
+  'star war': 'star wars',
+  'starwars': 'star wars',
+  'jurasic park': 'jurassic park',
+  'jurrasic park': 'jurassic park',
+  'jurrasic world': 'jurassic world',
+  'avater': 'avatar',
+  'inglourious bastards': 'inglourious basterds',
+  'inglorious basterds': 'inglourious basterds',
+  'inglorious bastards': 'inglourious basterds',
+  'whipslash': 'whiplash',
+  'whiplah': 'whiplash',
+  'django unchaned': 'django unchained',
+  'no country for old man': 'no country for old men',
+  'silence of the lamb': 'silence of the lambs',
+  'silnce of the lambs': 'silence of the lambs',
+  'kill bil': 'kill bill',
+  'note book': 'notebook',
+  'pride and prejudic': 'pride and prejudice',
+  'pride & prejudice': 'pride and prejudice',
+  'breakfast at tiffanys': "breakfast at tiffany's",
+  'breakfast at tiffanies': "breakfast at tiffany's",
+  'labrynth': 'labyrinth',
+  'labirinth': 'labyrinth',
+  'amelie': 'amélie',
+  'bladerunner': 'blade runner',
+  'blade runer': 'blade runner',
+};
+
 /**
  * Helper to parse answer values (handles Option B JSON strings and legacy data)
  * @param {string|Object} answerText - The stored answer text or object
@@ -537,8 +606,10 @@ app.get('/admin/api/analysis', async (req, res) => {
 
         for (const item of items) {
           // Normalize: lowercase for matching, but keep best display version (longest/most capitalized)
-          const normKey = item.toLowerCase().replace(/^(the|a|an)\s+/i, '').trim();
+          let normKey = item.toLowerCase().replace(/^(the|a|an)\s+/i, '').trim();
           if (!normKey || normKey.length < 2) continue;
+          // Apply movie title corrections for known misspellings
+          if (MOVIE_TITLE_CORRECTIONS[normKey]) normKey = MOVIE_TITLE_CORRECTIONS[normKey];
           if (!counts[normKey]) {
             counts[normKey] = { text: item, count: 0 };
           } else if (item.length > counts[normKey].text.length) {

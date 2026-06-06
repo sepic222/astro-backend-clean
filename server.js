@@ -2839,7 +2839,10 @@ app.post('/api/birth-chart-swisseph', async (req, res) => {
     const houseSigns = housesDeg.map(signFromLongitude);
 
     const houseRulers = {};
-    for (let i = 0; i < 12; i++) houseRulers[`house${i + 1} `] = houseSigns[i] || null;
+    for (let i = 0; i < 12; i++) {
+      const sign = houseSigns[i];
+      houseRulers[`house${i + 1}`] = sign ? (SIGN_RULER[sign] ?? null) : null;
+    }
 
     function houseOf(longitude) {
       for (let i = 0; i < 12; i++) {
@@ -3064,7 +3067,10 @@ app.get('/api/birth-chart-swisseph', async (req, res) => {
     const houseSigns = housesDeg.map(signFromLongitude);
 
     const houseRulers = {};
-    for (let i = 0; i < 12; i++) houseRulers[`house${i + 1} `] = houseSigns[i] || null;
+    for (let i = 0; i < 12; i++) {
+      const sign = houseSigns[i];
+      houseRulers[`house${i + 1}`] = sign ? (SIGN_RULER[sign] ?? null) : null;
+    }
 
     function houseOf(longitude) {
       for (let i = 0; i < 12; i++) {

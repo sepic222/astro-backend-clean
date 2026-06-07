@@ -1624,11 +1624,12 @@ const SIGN_RULER = {
 
 // --------------------------------------------------------------
 // MAJOR ASPECTS ENGINE
-// Computes Conjunction (0°) and Opposition (180°) between:
+// Computes Conjunction (0°), Square (90°), and Opposition (180°) between:
 //   Personal planets (Sun, Moon, Mercury, Venus, Mars)
 //   × Outer planets   (Jupiter, Saturn, Uranus, Neptune, Pluto)
+//   + Outer × Outer   (all unique pairs)
 //   + All 10 planets  × Angles (AC / MC)
-// Orb: 8° for both aspect types
+// Orb: 8°
 // --------------------------------------------------------------
 const ASPECT_ORB = 8;
 
@@ -1638,6 +1639,7 @@ const ALL_TEN_PLANETS = [...PERSONAL_PLANETS, ...OUTER_PLANETS];
 
 const MAJOR_ASPECT_ANGLES = {
   Conjunction: 0,
+  Square: 90,
   Opposition: 180
 };
 
@@ -1657,7 +1659,7 @@ function computeAspects(planets, ascendantDeg = null, mcDeg = null) {
     return diff > 180 ? 360 - diff : diff;
   };
 
-  // Helper: check a single pair at a given aspect angle
+  // Helper: check a single pair against all aspect angles
   const check = (label1, lon1, label2, lon2) => {
     for (const [aspectName, targetAngle] of Object.entries(MAJOR_ASPECT_ANGLES)) {
       const diff = angularDiff(lon1, lon2);
@@ -1667,7 +1669,7 @@ function computeAspects(planets, ascendantDeg = null, mcDeg = null) {
           planet1: label1,
           planet2: label2,
           aspect: aspectName,
-          orb: Math.round(deviation * 100) / 100,   // 2 d.p.
+          orb: Math.round(deviation * 100) / 100,
           isExact: deviation < 1
         });
       }
@@ -1685,7 +1687,18 @@ function computeAspects(planets, ascendantDeg = null, mcDeg = null) {
     }
   }
 
-  // --- 2. All 10 planets × AC and MC (40 pairs, only when time is known) ---
+  // --- 2. Outer × Outer (10 unique pairs) ---
+  for (let i = 0; i < OUTER_PLANETS.length; i++) {
+    const o1Data = planets[OUTER_PLANETS[i]];
+    if (!o1Data) continue;
+    for (let j = i + 1; j < OUTER_PLANETS.length; j++) {
+      const o2Data = planets[OUTER_PLANETS[j]];
+      if (!o2Data) continue;
+      check(OUTER_PLANETS[i], o1Data.longitude, OUTER_PLANETS[j], o2Data.longitude);
+    }
+  }
+
+  // --- 3. All 10 planets × AC and MC (only when birth time is known) ---
   if (ascendantDeg !== null && mcDeg !== null) {
     for (const p of ALL_TEN_PLANETS) {
       const pData = planets[p];

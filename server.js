@@ -1700,8 +1700,17 @@ if (!LOOPS_API_KEY) {
 
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
-const { registerLetterboxdImportRoutes } = require('./server/letterboxdImportRoutes');
-registerLetterboxdImportRoutes(app, { prisma, fetchImpl: fetch });
+
+try {
+  const { registerLetterboxdImportRoutes } = require('./server/letterboxdImportRoutes');
+  registerLetterboxdImportRoutes(app, { prisma, fetchImpl: fetch });
+} catch (err) {
+  if (err.code === 'MODULE_NOT_FOUND' && err.message.includes('./server/letterboxdImportRoutes')) {
+    console.warn('⚠️ Letterboxd import routes module not found — skipping registration.');
+  } else {
+    throw err;
+  }
+}
 const MOCK_DB = {
   'dev-badge-test': {
     submissionId: 'dev-badge-test',

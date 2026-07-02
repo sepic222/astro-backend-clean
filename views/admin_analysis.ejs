@@ -277,6 +277,33 @@
                     <h3 class="text-sm font-semibold text-gray-700 mb-3">Attraction Style Distribution</h3>
                     <div class="chart-container"><canvas id="attractionChart"></canvas></div>
                 </div>
+                <!-- Demographic Genre Preferences -->
+                <div class="card p-5 col-span-1 md:col-span-2 xl:col-span-3">
+                    <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+                        <div>
+                            <h3 class="text-sm font-semibold text-gray-700">Demographic Genre Preferences</h3>
+                            <p class="text-xs text-gray-400">Filter genres loved by gender or attraction style</p>
+                        </div>
+                        <select id="demoFilter" class="text-xs border border-gray-200 rounded px-2 py-1 bg-white text-gray-600 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                            <option value="all">All Submissions</option>
+                            <optgroup label="By Gender">
+                                <option value="gender_female">Female</option>
+                                <option value="gender_male">Male</option>
+                                <option value="gender_non_binary">Non-binary</option>
+                            </optgroup>
+                            <optgroup label="By Attraction Style">
+                                <option value="attr_queer">Queer & Thriving</option>
+                                <option value="attr_men">Attracted to Men</option>
+                                <option value="attr_women">Attracted to Women</option>
+                                <option value="attr_spectrum">Across the Spectrum</option>
+                                <option value="attr_bi_pan">Bi/Pan/Switch energy</option>
+                                <option value="attr_demi_sapio">Demisexual / Sapiosexual</option>
+                                <option value="attr_no_label">No Label</option>
+                            </optgroup>
+                        </select>
+                    </div>
+                    <div class="chart-container" style="height: 250px;"><canvas id="demoGenreChart"></canvas></div>
+                </div>
             </div>
         </section>
 
@@ -697,6 +724,88 @@
             }).join('');
         }
 
+        // ===== DEMOGRAPHIC CHART HELPER =====
+        let demoGenreChartInstance = null;
+        let globalInsights = null;
+        let globalCorrelations = null;
+
+        function updateDemoGenreChart(value) {
+            if (!demoGenreChartInstance || !globalInsights || !globalCorrelations) return;
+
+            let data = [];
+            if (value === 'all') {
+                data = globalInsights.genresLove || [];
+            } else if (value.startsWith('gender_')) {
+                const key = value.replace('gender_', '');
+                data = globalCorrelations.genderToGenre[key] || [];
+            } else if (value.startsWith('attr_')) {
+                const key = value.replace('attr_', '');
+                data = globalCorrelations.attractionToGenre[key] || [];
+            }
+
+            const top = data.slice(0, 10);
+            const labels = top.map(d => {
+                const lbl = d.label || d.genre || '';
+                return lbl.length > 25 ? lbl.slice(0, 22) + '…' : lbl;
+            });
+            const values = top.map(d => d.pct !== undefined ? d.pct : d.count);
+            const isPct = top.length > 0 && top[0].pct !== undefined;
+
+            demoGenreChartInstance.data.labels = labels;
+            demoGenreChartInstance.data.datasets[0].data = values;
+            demoGenreChartInstance.data.datasets[0].label = isPct ? 'Love Percentage (%)' : 'Users';
+            demoGenreChartInstance.options.scales.x.title.text = isPct ? 'Percentage (%)' : 'Submissions';
+            demoGenreChartInstance.update();
+        }
+
+        function initDemoChart(insights, corr) {
+            globalInsights = insights;
+            globalCorrelations = corr;
+
+            const ctx = document.getElementById('demoGenreChart').getContext('2d');
+            if (demoGenreChartInstance) {
+                demoGenreChartInstance.destroy();
+            }
+
+            demoGenreChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Users',
+                        data: [],
+                        backgroundColor: PALETTE,
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            ticks: { stepSize: 10 },
+                            title: { display: true, text: 'Submissions', font: { size: 10 } }
+                        }
+                    }
+                }
+            });
+
+            const oldSelect = document.getElementById('demoFilter');
+            const newSelect = oldSelect.cloneNode(true);
+            oldSelect.parentNode.replaceChild(newSelect, oldSelect);
+
+            newSelect.addEventListener('change', (e) => {
+                updateDemoGenreChart(e.target.value);
+            });
+
+            updateDemoGenreChart(newSelect.value);
+        }
+
         // ===== DATA LOADING =====
         async function loadData() {
             document.getElementById('loading').style.display = 'flex';
@@ -719,6 +828,7 @@
                 renderFreeText(data.freeText);
                 renderCorrelations(data.crossCorrelations);
                 renderArchetypes(data.archetypes);
+                initDemoChart(data.surveyInsights, data.crossCorrelations);
 
                 document.getElementById('genTime').textContent = new Date().toLocaleString();
             } catch (err) {

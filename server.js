@@ -503,24 +503,61 @@ app.get('/admin/questions', async (req, res) => {
       }
     });
 
-    // 2. Deduplicate by email
+    // 2. Group and merge submissions by email
     const userGroups = new Map();
+    let anonymousCount = 0;
+
     for (const sub of allSubmissions) {
       const email = (sub.userEmail || '').toLowerCase().trim();
-      const responseCount = sub._count.responses + Object.keys(sub.fullData || {}).length;
-      const currentBest = userGroups.get(email);
-      const betterThanCurrent = !currentBest ||
-        (responseCount > currentBest.responseCount) ||
-        (responseCount === currentBest.responseCount && sub.createdAt > currentBest.createdAt);
-      if (betterThanCurrent) {
-        userGroups.set(email, { submission: sub, responseCount });
+      const key = email ? email : `_anonymous_${anonymousCount++}`;
+
+      if (!userGroups.has(key)) {
+        userGroups.set(key, []);
       }
+      userGroups.get(key).push(sub);
     }
-    const dedupedSubmissions = Array.from(userGroups.values()).map(g => g.submission);
+
+    const mergedSubmissions = [];
+
+    for (const [key, group] of userGroups.entries()) {
+      if (group.length === 1) {
+        mergedSubmissions.push(group[0]);
+        continue;
+      }
+
+      // Sort by createdAt ascending so later submissions overwrite earlier ones
+      group.sort((a, b) => a.createdAt - b.createdAt);
+
+      const latestSub = group[group.length - 1];
+      const mergedFullData = {};
+      const responsesByQuestionId = new Map();
+
+      for (const sub of group) {
+        const subData = (sub.fullData && typeof sub.fullData === 'object') ? sub.fullData : {};
+        Object.assign(mergedFullData, subData);
+
+        if (sub.responses) {
+          for (const resp of sub.responses) {
+            responsesByQuestionId.set(resp.questionId, resp);
+          }
+        }
+      }
+
+      const mergedSub = {
+        ...latestSub,
+        fullData: mergedFullData,
+        responses: Array.from(responsesByQuestionId.values()),
+        _count: {
+          responses: responsesByQuestionId.size
+        }
+      };
+
+      mergedSubmissions.push(mergedSub);
+    }
 
     // 3. Filter to real users only
     const realSubs = [];
-    for (const sub of dedupedSubmissions) {
+    for (const sub of mergedSubmissions) {
       const fullData = (sub.fullData && typeof sub.fullData === 'object') ? sub.fullData : {};
       
       let username = '';
@@ -531,7 +568,7 @@ app.get('/admin/questions', async (req, res) => {
       if (fullData['fit.discovery'] !== undefined) discovery = parseAnswer(fullData['fit.discovery']);
       else if (fullData.discovery !== undefined) discovery = parseAnswer(fullData.discovery);
 
-      const responseCount = sub._count.responses + Object.keys(fullData).length;
+      const responseCount = sub.responses.length + Object.keys(fullData).length;
       const testResult = isTestSubmission(sub, username, discovery, responseCount, 50);
       if (!testResult.isTest) {
         realSubs.push(sub);
@@ -719,29 +756,76 @@ app.get('/admin/api/analysis', async (req, res) => {
       }
     });
 
-    // 2. Deduplicate by email (same logic as /admin/export)
+    // 2. Group and merge submissions by email
     const userGroups = new Map();
+    let anonymousCount = 0;
+
     for (const sub of allSubmissions) {
       const email = (sub.userEmail || '').toLowerCase().trim();
-      const responseCount = sub._count.responses + Object.keys(sub.fullData || {}).length;
-      const currentBest = userGroups.get(email);
-      const betterThanCurrent = !currentBest ||
-        (responseCount > currentBest.responseCount) ||
-        (responseCount === currentBest.responseCount && sub.createdAt > currentBest.createdAt);
-      if (betterThanCurrent) {
-        userGroups.set(email, { submission: sub, responseCount });
+      const key = email ? email : `_anonymous_${anonymousCount++}`;
+
+      if (!userGroups.has(key)) {
+        userGroups.set(key, []);
       }
+      userGroups.get(key).push(sub);
     }
-    const dedupedSubmissions = Array.from(userGroups.values()).map(g => g.submission);
+
+    const mergedSubmissions = [];
+
+    for (const [key, group] of userGroups.entries()) {
+      if (group.length === 1) {
+        mergedSubmissions.push(group[0]);
+        continue;
+      }
+
+      // Sort by createdAt ascending so later submissions overwrite earlier ones
+      group.sort((a, b) => a.createdAt - b.createdAt);
+
+      const latestSub = group[group.length - 1];
+      const mergedFullData = {};
+      const responsesByQuestionId = new Map();
+
+      // Gather aspects and chart from the latest submission that has them
+      let chartToUse = latestSub.chart;
+      for (let i = group.length - 1; i >= 0; i--) {
+        if (group[i].chart) {
+          chartToUse = group[i].chart;
+          break;
+        }
+      }
+
+      for (const sub of group) {
+        const subData = (sub.fullData && typeof sub.fullData === 'object') ? sub.fullData : {};
+        Object.assign(mergedFullData, subData);
+
+        if (sub.responses) {
+          for (const resp of sub.responses) {
+            responsesByQuestionId.set(resp.questionId, resp);
+          }
+        }
+      }
+
+      const mergedSub = {
+        ...latestSub,
+        chart: chartToUse,
+        fullData: mergedFullData,
+        responses: Array.from(responsesByQuestionId.values()),
+        _count: {
+          responses: responsesByQuestionId.size
+        }
+      };
+
+      mergedSubmissions.push(mergedSub);
+    }
 
     // 3. Filter to real users only
     const realSubs = [];
     let testCount = 0;
-    for (const sub of dedupedSubmissions) {
+    for (const sub of mergedSubmissions) {
       const fullData = (sub.fullData && typeof sub.fullData === 'object') ? sub.fullData : {};
       const username = parseAnswer(fullData['cosmic.username'] || fullData.username || '');
       const discoverySource = parseAnswer(fullData['fit.discovery'] || fullData.discovery || '');
-      const responseCount = sub._count.responses + Object.keys(fullData).length;
+      const responseCount = (sub.responses ? sub.responses.length : sub._count.responses) + Object.keys(fullData).length;
       const testResult = isTestSubmission(sub, username, discoverySource, responseCount, 50);
       if (testResult.isTest) { testCount++; continue; }
       realSubs.push({ ...sub, fullData, _username: username });

@@ -121,15 +121,15 @@
         <!-- Table Container -->
         <div class="card overflow-hidden">
             <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-slate-100">
+                <table class="w-full table-fixed divide-y divide-slate-100">
                     <thead class="bg-slate-50">
                         <tr>
-                            <th scope="col" class="px-6 py-3.5 text-left text-xs font-bold text-slate-500 uppercase tracking-wider w-16">#</th>
-                            <th scope="col" class="px-6 py-3.5 text-left text-xs font-bold text-slate-500 uppercase tracking-wider w-40">Section</th>
-                            <th scope="col" class="px-6 py-3.5 text-left text-xs font-bold text-slate-500 uppercase tracking-wider w-48">Key / ID</th>
-                            <th scope="col" class="px-6 py-3.5 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Question Prompt / Text</th>
-                            <th scope="col" class="px-6 py-3.5 text-left text-xs font-bold text-slate-500 uppercase tracking-wider w-24">Status</th>
-                            <th scope="col" class="px-6 py-3.5 text-left text-xs font-bold text-slate-500 uppercase tracking-wider w-64">Completion Rate</th>
+                            <th scope="col" class="w-12 px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">#</th>
+                            <th scope="col" class="w-44 px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Key / ID</th>
+                            <th scope="col" class="w-56 px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Completion Rate</th>
+                            <th scope="col" class="w-24 px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Status</th>
+                            <th scope="col" class="w-44 px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Section</th>
+                            <th scope="col" class="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Question Prompt / Text</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100 bg-white" id="questions-table-body">
@@ -139,44 +139,44 @@
                                 data-key="<%= q.key.toLowerCase() %>"
                                 data-text="<%= q.text.toLowerCase() %>">
                                 
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-400 font-semibold"><%= q.index %></td>
+                                <td class="px-4 py-3 text-sm text-slate-400 font-semibold"><%= q.index %></td>
                                 
-                                <td class="px-6 py-4 whitespace-nowrap">
+                                <td class="px-4 py-3 text-sm font-mono text-slate-700 font-medium truncate" title="<%= q.key %>">
+                                    <%= q.key %>
+                                </td>
+                                
+                                <td class="px-4 py-3 whitespace-nowrap">
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-24 bg-slate-100 rounded-full h-2 flex-shrink-0">
+                                            <div class="h-2 rounded-full <%= q.isActive ? 'bg-indigo-500' : 'bg-amber-500' %>" 
+                                                 style="width: <%= q.completionRate %>%"></div>
+                                        </div>
+                                        <span class="text-sm font-semibold text-slate-700 min-w-[45px] text-right"><%= q.completionRate.toFixed(1) %>%</span>
+                                        <span class="text-xs text-slate-400 font-normal ml-0.5">(<%= q.completedCount %>)</span>
+                                    </div>
+                                </td>
+                                
+                                <td class="px-4 py-3 whitespace-nowrap">
+                                    <% if (q.isActive) { %>
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100">
+                                            Active
+                                        </span>
+                                    <% } else { %>
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-100">
+                                            Removed
+                                        </span>
+                                    <% } %>
+                                </td>
+                                
+                                <td class="px-4 py-3 truncate" title="<%= q.sectionTitle %>">
                                     <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold
                                         <%= q.isActive ? 'bg-indigo-50 text-indigo-700' : 'bg-slate-100 text-slate-600' %>">
                                         <%= q.sectionTitle %>
                                     </span>
                                 </td>
                                 
-                                <td class="px-6 py-4 whitespace-nowrap text-sm font-mono text-slate-700 font-medium">
-                                    <%= q.key %>
-                                </td>
-                                
-                                <td class="px-6 py-4 text-sm text-slate-600 max-w-md truncate" title="<%= q.text %>">
+                                <td class="px-4 py-3 text-sm text-slate-600 truncate" title="<%= q.text %>">
                                     <%= q.text %>
-                                </td>
-                                
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <% if (q.isActive) { %>
-                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100">
-                                            Active
-                                        </span>
-                                    <% } else { %>
-                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-100">
-                                            Removed
-                                        </span>
-                                    <% } %>
-                                </td>
-                                
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="flex items-center gap-3">
-                                        <div class="w-full bg-slate-100 rounded-full h-2">
-                                            <div class="h-2 rounded-full <%= q.isActive ? 'bg-indigo-500' : 'bg-amber-500' %>" 
-                                                 style="width: <%= q.completionRate %>%"></div>
-                                        </div>
-                                        <span class="text-sm font-semibold text-slate-700 min-w-[45px] text-right"><%= q.completionRate.toFixed(1) %>%</span>
-                                        <span class="text-xs text-slate-400">(<%= q.completedCount %>/<%= totalSubmissions %>)</span>
-                                    </div>
                                 </td>
                             </tr>
                         <% }); %>

@@ -308,6 +308,20 @@
                 <div id="aspectGenreGrid" class="space-y-3"></div>
             </div>
 
+            <!-- Gender → Genre -->
+            <div class="card p-5 mb-4">
+                <h3 class="text-sm font-semibold text-gray-700 mb-1">Gender → Genre Preferences</h3>
+                <p class="text-xs text-gray-400 mb-4">Movie preference breakdown by gender (% of that gender's users who picked each genre)</p>
+                <div id="genderGenreGrid" class="space-y-3"></div>
+            </div>
+
+            <!-- Attraction Style → Genre -->
+            <div class="card p-5 mb-4">
+                <h3 class="text-sm font-semibold text-gray-700 mb-1">Attraction Style → Genre Preferences</h3>
+                <p class="text-xs text-gray-400 mb-4">Top genres preferred by different attraction styles and sexuality profiles</p>
+                <div id="attractionGenreGrid" class="space-y-3"></div>
+            </div>
+
             <!-- Sign → Movies -->
             <div class="card p-5">
                 <h3 class="text-sm font-semibold text-gray-700 mb-1">Sun Sign → Comfort & Power Watches</h3>
@@ -569,6 +583,44 @@
                 <div class="flex-1 space-y-1">${bars}</div>
             </div>`;
             }).join('');
+
+            // Gender → Genre
+            const genderGenreEl = document.getElementById('genderGenreGrid');
+            if (corr.genderToGenre) {
+                genderGenreEl.innerHTML = Object.entries(corr.genderToGenre).map(([gender, genres]) => {
+                    const bars = genres.map(g => `<div class="flex items-center gap-2">
+                    <span class="text-xs text-gray-600 w-28 truncate">${g.genre}</span>
+                    <div class="flex-1 bg-gray-100 rounded-full h-2"><div class="corr-bar bg-teal-400" style="width:${g.pct}%"></div></div>
+                    <span class="text-xs text-gray-400 w-10 text-right">${g.pct}%</span>
+                </div>`).join('');
+                    const displayGender = gender.charAt(0).toUpperCase() + gender.slice(1).replace('_', ' ');
+                    return `<div class="flex gap-4 items-start py-2 border-b border-gray-50">
+                    <div class="w-32 flex-shrink-0"><span class="text-sm font-semibold text-teal-600">${displayGender}</span></div>
+                    <div class="flex-1 space-y-1">${bars}</div>
+                </div>`;
+                }).join('');
+            } else {
+                genderGenreEl.innerHTML = '<p class="text-xs text-gray-400">No gender correlation data available.</p>';
+            }
+
+            // Attraction Style → Genre
+            const attractionGenreEl = document.getElementById('attractionGenreGrid');
+            if (corr.attractionToGenre) {
+                attractionGenreEl.innerHTML = Object.entries(corr.attractionToGenre).map(([attr, genres]) => {
+                    const bars = genres.map(g => `<div class="flex items-center gap-2">
+                    <span class="text-xs text-gray-600 w-28 truncate">${g.genre}</span>
+                    <div class="flex-1 bg-gray-100 rounded-full h-2"><div class="corr-bar bg-purple-400" style="width:${g.pct}%"></div></div>
+                    <span class="text-xs text-gray-400 w-10 text-right">${g.pct}%</span>
+                </div>`).join('');
+                    const displayAttr = attr.charAt(0).toUpperCase() + attr.slice(1).replace('_', ' ');
+                    return `<div class="flex gap-4 items-start py-2 border-b border-gray-50">
+                    <div class="w-32 flex-shrink-0"><span class="text-sm font-semibold text-purple-600">${displayAttr}</span></div>
+                    <div class="flex-1 space-y-1">${bars}</div>
+                </div>`;
+                }).join('');
+            } else {
+                attractionGenreEl.innerHTML = '<p class="text-xs text-gray-400">No attraction style correlation data available.</p>';
+            }
 
             // Sign → Movies
             const signMovieEl = document.getElementById('signMovieGrid');

@@ -748,6 +748,14 @@ app.get('/admin/api/analysis', async (req, res) => {
     const ELEMENTS = { Fire: ['Aries', 'Leo', 'Sagittarius'], Earth: ['Taurus', 'Virgo', 'Capricorn'], Air: ['Gemini', 'Libra', 'Aquarius'], Water: ['Cancer', 'Scorpio', 'Pisces'] };
     const ASPECT_SYM = { Conjunction: '☌', Opposition: '☍' };
 
+    const getFullDataValue = (fullData, key) => {
+      if (!fullData || typeof fullData !== 'object') return null;
+      if (fullData[key] !== undefined) return fullData[key];
+      const flatKey = key.split('.').pop();
+      if (fullData[flatKey] !== undefined) return fullData[flatKey];
+      return null;
+    };
+
     // 1. Fetch all submissions with charts + aspects + fullData
     const allSubmissions = await prisma.surveySubmission.findMany({
       include: {
@@ -892,10 +900,10 @@ app.get('/admin/api/analysis', async (req, res) => {
     function tallyAnswers(key) {
       const counts = {};
       for (const sub of realSubs) {
-        const raw = sub.fullData[key];
+        const raw = getFullDataValue(sub.fullData, key);
         if (!raw) continue;
         const parsed = parseAnswer(raw);
-        const items = parsed.split(/;\s*/).map(s => s.trim()).filter(Boolean);
+        const items = parsed.split(/[,;]\s*/).map(s => s.trim()).filter(Boolean);
         for (const item of items) {
           counts[item] = (counts[item] || 0) + 1;
         }
@@ -924,7 +932,7 @@ app.get('/admin/api/analysis', async (req, res) => {
     function tallyFreeText(key) {
       const counts = {};
       for (const sub of realSubs) {
-        const raw = sub.fullData[key];
+        const raw = getFullDataValue(sub.fullData, key);
         if (!raw) continue;
         const parsed = parseAnswer(raw).trim();
         if (!parsed || parsed.length < 2) continue;
@@ -965,9 +973,9 @@ app.get('/admin/api/analysis', async (req, res) => {
 
     // === CROSS-CORRELATIONS ===
     function getMultiAnswer(sub, key) {
-      const raw = sub.fullData[key];
+      const raw = getFullDataValue(sub.fullData, key);
       if (!raw) return [];
-      return parseAnswer(raw).split(/;\s*/).map(s => s.trim()).filter(Boolean);
+      return parseAnswer(raw).split(/[,;]\s*/).map(s => s.trim()).filter(Boolean);
     }
 
     // Sign → Genre
@@ -1029,6 +1037,54 @@ app.get('/admin/api/analysis', async (req, res) => {
         .map(([genre, count]) => ({ genre, count, pct: +(count / usersWithAspect.length * 100).toFixed(1) }))
         .sort((a, b) => b.pct - a.pct)
         .slice(0, 5);
+    }
+
+    // Gender → Genre correlation
+    const GENDERS = ['male', 'female', 'non_binary', 'trans', 'other'];
+    const genderToGenre = {};
+
+    for (const gender of GENDERS) {
+      const usersWithGender = realSubs.filter(s => {
+        const val = parseAnswer(getFullDataValue(s.fullData, 'casting.gender')).trim().toLowerCase();
+        return val === gender;
+      });
+
+      if (usersWithGender.length === 0) continue;
+
+      const genreCounts = {};
+      for (const u of usersWithGender) {
+        for (const g of getMultiAnswer(u, 'genres.genres_love')) {
+          genreCounts[g] = (genreCounts[g] || 0) + 1;
+        }
+      }
+      genderToGenre[gender] = Object.entries(genreCounts)
+        .map(([genre, count]) => ({ genre, count, pct: +(count / usersWithGender.length * 100).toFixed(1) }))
+        .sort((a, b) => b.pct - a.pct)
+        .slice(0, 6);
+    }
+
+    // Attraction Style → Genre correlation
+    const ATTRACTIONS = ['queer', 'men', 'women', 'spectrum', 'bi_pan', 'demi_sapio', 'asexual', 'figuring_out', 'steamy_any', 'no_label'];
+    const attractionToGenre = {};
+
+    for (const attr of ATTRACTIONS) {
+      const usersWithAttr = realSubs.filter(s => {
+        const val = parseAnswer(getFullDataValue(s.fullData, 'casting.attraction_style')).trim().toLowerCase();
+        return val === attr || val.includes(attr);
+      });
+
+      if (usersWithAttr.length === 0) continue;
+
+      const genreCounts = {};
+      for (const u of usersWithAttr) {
+        for (const g of getMultiAnswer(u, 'genres.genres_love')) {
+          genreCounts[g] = (genreCounts[g] || 0) + 1;
+        }
+      }
+      attractionToGenre[attr] = Object.entries(genreCounts)
+        .map(([genre, count]) => ({ genre, count, pct: +(count / usersWithAttr.length * 100).toFixed(1) }))
+        .sort((a, b) => b.pct - a.pct)
+        .slice(0, 6);
     }
 
     // === ARCHETYPE CLUSTERS ===
@@ -1153,7 +1209,7 @@ app.get('/admin/api/analysis', async (req, res) => {
       aspects: { topAspects, conjunctionTotal, oppositionTotal },
       surveyInsights,
       freeText,
-      crossCorrelations: { signToGenre, signToEscapism, aspectToGenre, signToMovies },
+      crossCorrelations: { signToGenre, signToEscapism, aspectToGenre, signToMovies, genderToGenre, attractionToGenre },
       archetypes
     });
   } catch (error) {

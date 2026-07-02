@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FateFlix — Questions & Completion Rates</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px 0 rgba(0, 0, 0, 0.03);
+            border: 1px solid #f1f5f9;
+        }
+
+        .nav-button {
+            transition: all 0.2s ease-in-out;
+        }
+    </style>
+</head>
+
+<body class="bg-gradient-to-br from-slate-50 via-white to-indigo-50/20 text-slate-900 min-h-screen">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        
+        <!-- Header -->
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+            <div>
+                <div class="flex items-center gap-2 mb-1">
+                    <a href="/admin/dashboard" class="text-gray-400 hover:text-gray-600 transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                        </svg>
+                    </a>
+                    <h1 class="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                        Questions & Completion Rates
+                    </h1>
+                </div>
+                <p class="text-sm text-slate-500 ml-7">Analyzed completion rates across all real, deduplicated user submissions.</p>
+            </div>
+            
+            <div class="flex flex-wrap gap-2.5 ml-7 md:ml-0">
+                <a href="/admin/dashboard" class="nav-button inline-flex items-center px-4 py-2 border border-gray-200 text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-300 shadow-sm">
+                    ← Dashboard
+                </a>
+                <a href="/admin/analysis" class="nav-button inline-flex items-center px-4 py-2 border border-gray-200 text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-300 shadow-sm">
+                    📊 Analysis
+                </a>
+                <a href="/admin/data" class="nav-button inline-flex items-center px-4 py-2 border border-gray-200 text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-300 shadow-sm">
+                    🗂️ Spreadsheet
+                </a>
+                <a href="/admin/latest-report" class="nav-button inline-flex items-center px-4 py-2 border border-gray-200 text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-300 shadow-sm">
+                    📄 Latest Report
+                </a>
+                <a href="/admin/export" class="nav-button inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 shadow-sm">
+                    Export CSV
+                </a>
+            </div>
+        </div>
+
+        <!-- Summary Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+            <div class="card p-6 flex flex-col justify-between">
+                <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Real Submissions</span>
+                <span class="text-3xl font-bold text-slate-900 mt-2"><%= totalSubmissions %></span>
+                <span class="text-xs text-slate-500 mt-1">Deduplicated non-test users</span>
+            </div>
+            <div class="card p-6 flex flex-col justify-between">
+                <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Active Questions</span>
+                <span class="text-3xl font-bold text-indigo-600 mt-2"><%= totalActive %></span>
+                <span class="text-xs text-slate-500 mt-1">Currently being asked</span>
+            </div>
+            <div class="card p-6 flex flex-col justify-between">
+                <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Removed / Legacy</span>
+                <span class="text-3xl font-bold text-amber-600 mt-2"><%= totalRemoved %></span>
+                <span class="text-xs text-slate-500 mt-1">Found in database or data</span>
+            </div>
+            <div class="card p-6 flex flex-col justify-between">
+                <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Avg Active Completion</span>
+                <span class="text-3xl font-bold text-emerald-600 mt-2"><%= avgActiveCompletion.toFixed(1) %>%</span>
+                <span class="text-xs text-slate-500 mt-1">Rate across active questions</span>
+            </div>
+        </div>
+
+        <!-- Filters & Search Controls -->
+        <div class="card p-4 mb-6 flex flex-col sm:flex-row gap-4 justify-between items-center bg-white">
+            <!-- Search -->
+            <div class="relative w-full sm:w-80">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <svg class="h-5 w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                </div>
+                <input type="text" id="search-input" placeholder="Search keys or prompts..."
+                    class="block w-full pl-10 pr-3 py-2 border border-slate-200 rounded-lg text-sm bg-slate-50 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 focus:bg-white transition-all">
+            </div>
+
+            <!-- Status Filter -->
+            <div class="flex items-center gap-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
+                <button onclick="filterStatus('all')" id="btn-filter-all"
+                    class="px-4 py-1.5 text-xs font-semibold rounded-full border border-indigo-600 bg-indigo-50 text-indigo-700 focus:outline-none transition-all shadow-sm">
+                    All (<%= questions.length %>)
+                </button>
+                <button onclick="filterStatus('active')" id="btn-filter-active"
+                    class="px-4 py-1.5 text-xs font-semibold rounded-full border border-transparent bg-slate-100 text-slate-600 hover:bg-slate-200 focus:outline-none transition-all">
+                    Active (<%= totalActive %>)
+                </button>
+                <button onclick="filterStatus('removed')" id="btn-filter-removed"
+                    class="px-4 py-1.5 text-xs font-semibold rounded-full border border-transparent bg-slate-100 text-slate-600 hover:bg-slate-200 focus:outline-none transition-all">
+                    Removed (<%= totalRemoved %>)
+                </button>
+            </div>
+        </div>
+
+        <!-- Table Container -->
+        <div class="card overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-slate-100">
+                    <thead class="bg-slate-50">
+                        <tr>
+                            <th scope="col" class="px-6 py-3.5 text-left text-xs font-bold text-slate-500 uppercase tracking-wider w-16">#</th>
+                            <th scope="col" class="px-6 py-3.5 text-left text-xs font-bold text-slate-500 uppercase tracking-wider w-40">Section</th>
+                            <th scope="col" class="px-6 py-3.5 text-left text-xs font-bold text-slate-500 uppercase tracking-wider w-48">Key / ID</th>
+                            <th scope="col" class="px-6 py-3.5 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Question Prompt / Text</th>
+                            <th scope="col" class="px-6 py-3.5 text-left text-xs font-bold text-slate-500 uppercase tracking-wider w-24">Status</th>
+                            <th scope="col" class="px-6 py-3.5 text-left text-xs font-bold text-slate-500 uppercase tracking-wider w-64">Completion Rate</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100 bg-white" id="questions-table-body">
+                        <% questions.forEach(function(q) { %>
+                            <tr class="hover:bg-slate-50/50 transition-colors question-row" 
+                                data-status="<%= q.isActive ? 'active' : 'removed' %>"
+                                data-key="<%= q.key.toLowerCase() %>"
+                                data-text="<%= q.text.toLowerCase() %>">
+                                
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-400 font-semibold"><%= q.index %></td>
+                                
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold
+                                        <%= q.isActive ? 'bg-indigo-50 text-indigo-700' : 'bg-slate-100 text-slate-600' %>">
+                                        <%= q.sectionTitle %>
+                                    </span>
+                                </td>
+                                
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-mono text-slate-700 font-medium">
+                                    <%= q.key %>
+                                </td>
+                                
+                                <td class="px-6 py-4 text-sm text-slate-600 max-w-md truncate" title="<%= q.text %>">
+                                    <%= q.text %>
+                                </td>
+                                
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <% if (q.isActive) { %>
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100">
+                                            Active
+                                        </span>
+                                    <% } else { %>
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-100">
+                                            Removed
+                                        </span>
+                                    <% } %>
+                                </td>
+                                
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-full bg-slate-100 rounded-full h-2">
+                                            <div class="h-2 rounded-full <%= q.isActive ? 'bg-indigo-500' : 'bg-amber-500' %>" 
+                                                 style="width: <%= q.completionRate %>%"></div>
+                                        </div>
+                                        <span class="text-sm font-semibold text-slate-700 min-w-[45px] text-right"><%= q.completionRate.toFixed(1) %>%</span>
+                                        <span class="text-xs text-slate-400">(<%= q.completedCount %>/<%= totalSubmissions %>)</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        <% }); %>
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Empty State -->
+            <div id="empty-state" class="hidden py-12 text-center">
+                <svg class="mx-auto h-12 w-12 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <h3 class="mt-2 text-sm font-medium text-slate-900">No questions found</h3>
+                <p class="mt-1 text-sm text-slate-500 font-normal">Try refining your search terms or filters.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Client-side filtering script -->
+    <script>
+        let currentFilter = 'all';
+        let searchQuery = '';
+
+        const searchInput = document.getElementById('search-input');
+        const tableBody = document.getElementById('questions-table-body');
+        const rows = tableBody.querySelectorAll('.question-row');
+        const emptyState = document.getElementById('empty-state');
+
+        // Buttons
+        const btnAll = document.getElementById('btn-filter-all');
+        const btnActive = document.getElementById('btn-filter-active');
+        const btnRemoved = document.getElementById('btn-filter-removed');
+
+        function updateFilters() {
+            let visibleCount = 0;
+            
+            rows.forEach(row => {
+                const status = row.getAttribute('data-status');
+                const key = row.getAttribute('data-key');
+                const text = row.getAttribute('data-text');
+
+                const matchesFilter = (currentFilter === 'all') || (status === currentFilter);
+                const matchesSearch = key.includes(searchQuery) || text.includes(searchQuery);
+
+                if (matchesFilter && matchesSearch) {
+                    row.classList.remove('hidden');
+                    visibleCount++;
+                } else {
+                    row.classList.add('hidden');
+                }
+            });
+
+            if (visibleCount === 0) {
+                emptyState.classList.remove('hidden');
+            } else {
+                emptyState.classList.add('hidden');
+            }
+        }
+
+        searchInput.addEventListener('input', (e) => {
+            searchQuery = e.target.value.toLowerCase().trim();
+            updateFilters();
+        });
+
+        function filterStatus(status) {
+            currentFilter = status;
+            
+            // Update button styles
+            const activeClass = ['border-indigo-600', 'bg-indigo-50', 'text-indigo-700'];
+            const inactiveClass = ['border-transparent', 'bg-slate-100', 'text-slate-600', 'hover:bg-slate-200'];
+
+            [
+                { btn: btnAll, stat: 'all' },
+                { btn: btnActive, stat: 'active' },
+                { btn: btnRemoved, stat: 'removed' }
+            ].forEach(({ btn, stat }) => {
+                if (currentFilter === stat) {
+                    btn.classList.add(...activeClass);
+                    btn.classList.remove(...inactiveClass);
+                } else {
+                    btn.classList.remove(...activeClass);
+                    btn.classList.add(...inactiveClass);
+                }
+            });
+
+            updateFilters();
+        }
+    </script>
+</body>
+
+</html>

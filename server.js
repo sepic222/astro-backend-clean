@@ -437,6 +437,253 @@ app.get('/admin/dashboard', async (req, res) => {
   }
 });
 
+// --- ADMIN QUESTIONS & COMPLETION VIEW ---
+app.get('/admin/questions', async (req, res) => {
+  try {
+    const { surveySchema } = require('./src/config/surveySchema');
+    
+    // Key mapping dictionary (reproduced from route handler at line ~3432)
+    const keyMapping = {
+      'username': 'cosmic.username',
+      'gender': 'casting.gender',
+      'attraction_style': 'casting.attraction_style',
+      'cine_level': 'casting.cine_level',
+      'life_role': 'casting.life_role',
+      'escapism_style': 'casting.escapism_style',
+      'first_crush': 'casting.first_crush',
+      'watch_habit': 'taste.watch_habit',
+      'fav_era': 'taste.fav_era',
+      'culture_background': 'taste.culture_background',
+      'environment_growing_up': 'taste.environment_growing_up',
+      'first_feeling': 'core_memory.first_feeling',
+      'life_changing': 'core_memory.life_changing',
+      'comfort_watch': 'core_memory.comfort_watch',
+      'power_watch': 'core_memory.power_watch',
+      'date_impress': 'core_memory.date_impress',
+      'movie_universe': 'world.movie_universe',
+      'villain_relate': 'world.villain_relate',
+      'forever_crush': 'world.forever_crush',
+      'crave_most': 'world.crave_most',
+      'tv_taste': 'screen_ed.tv_taste',
+      'fav_tv': 'screen_ed.fav_tv',
+      'cinematography': 'screen_ed.cinematography',
+      'directors': 'screen_ed.directors',
+      'access_growing_up': 'screen_ed.access_growing_up',
+      'genres_love': 'genres.genres_love',
+      'turn_offs': 'genres.turn_offs',
+      'hated_film': 'genres.hated_film',
+      'hype_style': 'genres.hype_style',
+      'character_match': 'genres.character_match',
+      'foreign_films': 'global.foreign_films',
+      'selection_method': 'fit.selection_method',
+      'discovery_apps': 'fit.discovery_apps',
+      'discovery': 'fit.discovery',
+      'email': 'fit.email',
+      'beta_test': 'fit.beta_test',
+      'open_feedback': 'fit.open_feedback',
+    };
+
+    // Reverse mapping
+    const reverseMapping = {};
+    for (const [fKey, dbKey] of Object.entries(keyMapping)) {
+      reverseMapping[dbKey] = fKey;
+    }
+
+    // 1. Fetch all submissions with responses for evaluation
+    const allSubmissions = await prisma.surveySubmission.findMany({
+      include: {
+        _count: { select: { responses: true } },
+        responses: {
+          select: {
+            questionId: true,
+            answerText: true,
+            question: { select: { key: true } }
+          }
+        }
+      }
+    });
+
+    // 2. Deduplicate by email
+    const userGroups = new Map();
+    for (const sub of allSubmissions) {
+      const email = (sub.userEmail || '').toLowerCase().trim();
+      const responseCount = sub._count.responses + Object.keys(sub.fullData || {}).length;
+      const currentBest = userGroups.get(email);
+      const betterThanCurrent = !currentBest ||
+        (responseCount > currentBest.responseCount) ||
+        (responseCount === currentBest.responseCount && sub.createdAt > currentBest.createdAt);
+      if (betterThanCurrent) {
+        userGroups.set(email, { submission: sub, responseCount });
+      }
+    }
+    const dedupedSubmissions = Array.from(userGroups.values()).map(g => g.submission);
+
+    // 3. Filter to real users only
+    const realSubs = [];
+    for (const sub of dedupedSubmissions) {
+      const fullData = (sub.fullData && typeof sub.fullData === 'object') ? sub.fullData : {};
+      
+      let username = '';
+      if (fullData['cosmic.username'] !== undefined) username = parseAnswer(fullData['cosmic.username']);
+      else if (fullData.username !== undefined) username = parseAnswer(fullData.username);
+
+      let discovery = '';
+      if (fullData['fit.discovery'] !== undefined) discovery = parseAnswer(fullData['fit.discovery']);
+      else if (fullData.discovery !== undefined) discovery = parseAnswer(fullData.discovery);
+
+      const responseCount = sub._count.responses + Object.keys(fullData).length;
+      const testResult = isTestSubmission(sub, username, discovery, responseCount, 50);
+      if (!testResult.isTest) {
+        realSubs.push(sub);
+      }
+    }
+
+    // 4. Compile the list of active questions (preserving order of appearance)
+    const activeQuestionsList = [];
+    surveySchema.forEach(section => {
+      if (section.questions) {
+        section.questions.forEach(q => {
+          if (q.type !== 'hero_start') {
+            activeQuestionsList.push({
+              key: q.id,
+              dbKey: keyMapping[q.id] || q.id,
+              text: q.text || `Active Question: ${q.id}`,
+              isActive: true,
+              sectionTitle: section.title || 'Introduction'
+            });
+          }
+        });
+      }
+    });
+
+    // 5. Fetch all questions in database (to detect removed ones)
+    const dbQuestions = await prisma.surveyQuestion.findMany({
+      include: { section: true }
+    });
+
+    const activeKeysSet = new Set(activeQuestionsList.map(q => q.key));
+    const activeDbKeysSet = new Set(activeQuestionsList.map(q => q.dbKey));
+
+    const removedQuestionsList = [];
+    dbQuestions.forEach(q => {
+      if (!activeDbKeysSet.has(q.key) && !activeKeysSet.has(q.key)) {
+        removedQuestionsList.push({
+          key: reverseMapping[q.key] || q.key,
+          dbKey: q.key,
+          text: q.text,
+          isActive: false,
+          sectionTitle: q.section?.title || 'Removed'
+        });
+      }
+    });
+
+    // 6. Look for any question keys in fullData that aren't in active or db questions (historic keys)
+    const allKnownKeys = new Set([
+      ...activeQuestionsList.map(q => q.key),
+      ...activeQuestionsList.map(q => q.dbKey),
+      ...removedQuestionsList.map(q => q.key),
+      ...removedQuestionsList.map(q => q.dbKey)
+    ]);
+
+    const extraKeys = new Set();
+    realSubs.forEach(s => {
+      if (s.fullData && typeof s.fullData === 'object') {
+        Object.keys(s.fullData).forEach(k => {
+          if (!allKnownKeys.has(k) && k !== 'country' && k !== 'city' && k !== 'latitude' && k !== 'longitude' && k !== 'date' && k !== 'time' && k !== 'time_accuracy') {
+            extraKeys.add(k);
+          }
+        });
+      }
+    });
+
+    extraKeys.forEach(k => {
+      removedQuestionsList.push({
+        key: reverseMapping[k] || k,
+        dbKey: k,
+        text: `Historic key from data: ${k}`,
+        isActive: false,
+        sectionTitle: 'Historic Data Only'
+      });
+    });
+
+    // Helpers to check if value is non-empty
+    const isNonEmpty = (val) => {
+      if (val === null || val === undefined) return false;
+      if (typeof val === 'string') return val.trim().length > 0;
+      if (Array.isArray(val)) return val.length > 0;
+      if (typeof val === 'object') {
+        if (val.selected !== undefined) return isNonEmpty(val.selected);
+        return Object.keys(val).length > 0;
+      }
+      return true;
+    };
+
+    // 7. Calculate completion rates
+    const unifiedQuestions = [...activeQuestionsList, ...removedQuestionsList];
+    const totalSubmissions = realSubs.length;
+    
+    let activeCompletionsSum = 0;
+    let activeCompletionsCount = 0;
+
+    const questions = unifiedQuestions.map((q, idx) => {
+      let completedCount = 0;
+      realSubs.forEach(sub => {
+        const fullData = sub.fullData || {};
+        // Check in fullData
+        const hasFullDataAns = isNonEmpty(fullData[q.key]) || isNonEmpty(fullData[q.dbKey]);
+        if (hasFullDataAns) {
+          completedCount++;
+          return;
+        }
+
+        // Check in responses
+        const hasResponseAns = sub.responses.some(r => {
+          const rKey = r.question?.key;
+          return (rKey === q.key || rKey === q.dbKey) && (r.answerText && r.answerText.trim().length > 0);
+        });
+
+        if (hasResponseAns) {
+          completedCount++;
+        }
+      });
+
+      const completionRate = totalSubmissions > 0 ? (completedCount / totalSubmissions) * 100 : 0;
+      
+      if (q.isActive) {
+        activeCompletionsSum += completionRate;
+        activeCompletionsCount++;
+      }
+
+      return {
+        index: idx + 1,
+        key: q.key,
+        dbKey: q.dbKey,
+        text: q.text,
+        isActive: q.isActive,
+        sectionTitle: q.sectionTitle,
+        completedCount,
+        completionRate
+      };
+    });
+
+    const avgActiveCompletion = activeCompletionsCount > 0 ? (activeCompletionsSum / activeCompletionsCount) : 0;
+    const totalActive = activeQuestionsList.length;
+    const totalRemoved = removedQuestionsList.length;
+
+    res.render('admin_questions', {
+      totalSubmissions,
+      totalActive,
+      totalRemoved,
+      avgActiveCompletion,
+      questions
+    });
+
+  } catch (error) {
+    console.error('Questions View Error:', error);
+    res.status(500).send('Server Error');
+  }
+});
+
 // --- ADMIN API ROUTES (for AJAX refresh) ---
 app.get('/admin/api/stats', async (req, res) => {
   try {
@@ -1453,6 +1700,8 @@ if (!LOOPS_API_KEY) {
 
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
+const { registerLetterboxdImportRoutes } = require('./server/letterboxdImportRoutes');
+registerLetterboxdImportRoutes(app, { prisma, fetchImpl: fetch });
 const MOCK_DB = {
   'dev-badge-test': {
     submissionId: 'dev-badge-test',

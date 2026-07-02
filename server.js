@@ -914,6 +914,7 @@ app.get('/admin/api/analysis', async (req, res) => {
     }
 
     const surveyInsights = {
+      gender: tallyAnswers('casting.gender'),
       cineLevel: tallyAnswers('casting.cine_level'),
       escapismStyle: tallyAnswers('casting.escapism_style'),
       genresLove: tallyAnswers('genres.genres_love'),
@@ -1087,6 +1088,28 @@ app.get('/admin/api/analysis', async (req, res) => {
         .slice(0, 6);
     }
 
+    // Gender → Attraction Style correlation
+    const genderToAttraction = {};
+    for (const gender of GENDERS) {
+      const usersWithGender = realSubs.filter(s => {
+        const val = parseAnswer(getFullDataValue(s.fullData, 'casting.gender')).trim().toLowerCase();
+        return val === gender;
+      });
+
+      if (usersWithGender.length === 0) continue;
+
+      const attrCounts = {};
+      for (const u of usersWithGender) {
+        const attrVal = parseAnswer(getFullDataValue(u.fullData, 'casting.attraction_style')).trim().toLowerCase();
+        if (attrVal) {
+          attrCounts[attrVal] = (attrCounts[attrVal] || 0) + 1;
+        }
+      }
+      genderToAttraction[gender] = Object.entries(attrCounts)
+        .map(([style, count]) => ({ style, count, pct: +(count / usersWithGender.length * 100).toFixed(1) }))
+        .sort((a, b) => b.pct - a.pct);
+    }
+
     // === ARCHETYPE CLUSTERS ===
     function getDominantElement(chart) {
       if (!chart) return null;
@@ -1209,7 +1232,7 @@ app.get('/admin/api/analysis', async (req, res) => {
       aspects: { topAspects, conjunctionTotal, oppositionTotal },
       surveyInsights,
       freeText,
-      crossCorrelations: { signToGenre, signToEscapism, aspectToGenre, signToMovies, genderToGenre, attractionToGenre },
+      crossCorrelations: { signToGenre, signToEscapism, aspectToGenre, signToMovies, genderToGenre, attractionToGenre, genderToAttraction },
       archetypes
     });
   } catch (error) {

@@ -2096,6 +2096,7 @@ function buildChartWheelHtml(chartDTO) {
       else if (Math.abs(diff - 60) <= orb) aspectType = 'Sextile';
       else if (Math.abs(diff - 90) <= orb) aspectType = 'Square';
       else if (Math.abs(diff - 120) <= orb) aspectType = 'Trine';
+      else if (Math.abs(diff - 150) <= 3) aspectType = 'Quincunx';
       else if (Math.abs(diff - 180) <= orb) aspectType = 'Opposition';
 
       if (aspectType) {
@@ -2143,7 +2144,7 @@ function buildChartWheelHtml(chartDTO) {
       const normalize = (deg) => ((deg % 360) + 360) % 360;
       const rotate = (deg) => normalize(270 - (deg - ASC_DEGREE));
       const degToRad = (deg) => (deg * Math.PI) / 180;
-      
+
       const polarToCartesian = (centerX, centerY, radius, angleInDegrees) => {
         const radians = degToRad(angleInDegrees - 90);
         return {
@@ -2173,32 +2174,58 @@ function buildChartWheelHtml(chartDTO) {
         { name: 'Capricorn', symbol: '♑︎' }, { name: 'Aquarius', symbol: '♒︎' }, { name: 'Pisces', symbol: '♓︎' }
       ];
 
-      // --- CONFIG & DIMENSIONS (Bigger Scaled) ---
+      // Element colours per sign (Fire=red, Earth=green, Air=gold, Water=blue)
+      const SIGN_COLORS = [
+        '#8b1a1a', // Aries        - Fire
+        '#3a5c28', // Taurus       - Earth
+        '#7a5c0a', // Gemini       - Air
+        '#1a3d5c', // Cancer       - Water
+        '#8b1a1a', // Leo          - Fire
+        '#3a5c28', // Virgo        - Earth
+        '#7a5c0a', // Libra        - Air
+        '#1a3d5c', // Scorpio      - Water
+        '#8b1a1a', // Sagittarius  - Fire
+        '#3a5c28', // Capricorn    - Earth
+        '#7a5c0a', // Aquarius     - Air
+        '#1a3d5c', // Pisces       - Water
+      ];
+
+      // Aspect line styles — traditional colour coding
+      const ASPECT_STYLES = {
+        'Conjunction': { color: 'rgba(255,255,255,0.85)', width: 1.2, dash: '' },
+        'Opposition':  { color: 'rgba(220,60,50,0.85)',   width: 1.2, dash: '' },
+        'Square':      { color: 'rgba(220,60,50,0.70)',   width: 1.0, dash: '' },
+        'Trine':       { color: 'rgba(60,130,200,0.85)',  width: 1.2, dash: '' },
+        'Sextile':     { color: 'rgba(50,180,100,0.75)',  width: 1.0, dash: '' },
+        'Quincunx':    { color: 'rgba(160,80,200,0.65)',  width: 0.8, dash: '4,4' },
+      };
+
+      // --- CONFIG & DIMENSIONS ---
       const size = 1000, center = 500;
       const outerRad = 490;
       const ringThick = 65;
       const innerRad = outerRad - ringThick;
       const contentRad = innerRad - 45;
-      
-      const cRing = "#2563EB";
+
       const cCusp = "#FFD700";
       const cAngle = "#FF5533";
-      const cLine = "rgba(255, 255, 255, 0.15)";
 
       function render() {
         const root = document.getElementById('${chartId}');
         if (!root) return;
         let svg = '';
 
+        // Zodiac ring — element colours
         ZODIACS.forEach((sign, i) => {
           const degStart = i * 30;
           const degEnd = (i + 1) * 30;
           const start = rotate(degStart), end = rotate(degEnd), mid = rotate(degStart + 15);
-          svg += '<path d="' + signArc(center, center, innerRad, outerRad, start, end) + '" fill="' + cRing + '" stroke="rgba(255,255,255,0.2)" stroke-width="0.5"/>';
+          svg += '<path d="' + signArc(center, center, innerRad, outerRad, start, end) + '" fill="' + SIGN_COLORS[i] + '" stroke="rgba(255,255,255,0.25)" stroke-width="0.5"/>';
           const t = polarToCartesian(center, center, outerRad - (ringThick/2), mid);
           svg += '<text x="'+t.x+'" y="'+t.y+'" fill="white" font-size="28" font-weight="bold" text-anchor="middle" dominant-baseline="central" transform="rotate('+(mid+90)+','+t.x+','+t.y+')">' + sign.symbol + '</text>';
         });
 
+        // Degree tick marks
         for(let i=0; i<360; i++) {
           const deg = rotate(i);
           const r1 = innerRad, r2 = (i % 5 === 0) ? innerRad - 18 : innerRad - 10;
@@ -2206,6 +2233,7 @@ function buildChartWheelHtml(chartDTO) {
           svg += '<line x1="'+p1.x+'" y1="'+p1.y+'" x2="'+p2.x+'" y2="'+p2.y+'" stroke="white" stroke-width="0.3" opacity="0.4"/>';
         }
 
+        // House cusps and numbers
         HOUSE_DATA.forEach((h, i) => {
           const degLong = typeof h === 'object' ? h.longitude : h;
           const deg = rotate(degLong);
@@ -2217,18 +2245,23 @@ function buildChartWheelHtml(chartDTO) {
           const nextHouse = HOUSE_DATA[(i+1)%12];
           const nextDegLong = typeof nextHouse === 'object' ? nextHouse.longitude : nextHouse;
           let midHouse = rotate(degLong + (normalize(nextDegLong - degLong) / 2));
-          const houseNumPos = polarToCartesian(center, center, contentRad - 90, midHouse);
-          svg += '<text x="'+houseNumPos.x+'" y="'+houseNumPos.y+'" fill="white" font-size="28" font-weight="light" text-anchor="middle" dominant-baseline="central" opacity="0.6">'+(i+1)+'</text>';
+          const houseNumPos = polarToCartesian(center, center, contentRad - 50, midHouse);
+          svg += '<text x="'+houseNumPos.x+'" y="'+houseNumPos.y+'" fill="rgba(255,255,255,0.7)" font-size="32" font-weight="300" text-anchor="middle" dominant-baseline="central">'+(i+1)+'</text>';
         });
 
+        // Aspect lines — coloured by type
         ASPECT_DATA.forEach(a => {
           const p1 = PLANET_DATA.find(p => p.name === a.p1), p2 = PLANET_DATA.find(p => p.name === a.p2);
           if(p1 && p2) {
-            const pos1 = polarToCartesian(center, center, contentRad, rotate(p1.degree)), pos2 = polarToCartesian(center, center, contentRad, rotate(p2.degree));
-            svg += '<line x1="'+pos1.x+'" y1="'+pos1.y+'" x2="'+pos2.x+'" y2="'+pos2.y+'" stroke="white" stroke-width="0.8" opacity="0.15"/>';
+            const style = ASPECT_STYLES[a.type] || { color: 'rgba(255,255,255,0.4)', width: 0.8, dash: '' };
+            const pos1 = polarToCartesian(center, center, contentRad, rotate(p1.degree));
+            const pos2 = polarToCartesian(center, center, contentRad, rotate(p2.degree));
+            const dashAttr = style.dash ? ' stroke-dasharray="'+style.dash+'"' : '';
+            svg += '<line x1="'+pos1.x+'" y1="'+pos1.y+'" x2="'+pos2.x+'" y2="'+pos2.y+'" stroke="'+style.color+'" stroke-width="'+style.width+'"'+dashAttr+'/>';
           }
         });
 
+        // Planet glyphs — bare symbols, no circles
         const sortedPlanets = [...PLANET_DATA].sort((a,b) => a.degree - b.degree);
         const radiusMap = new Map();
         sortedPlanets.forEach((p, idx) => {
@@ -2245,20 +2278,20 @@ function buildChartWheelHtml(chartDTO) {
           const deg = rotate(p.degree);
           const pRad = radiusMap.get(p.name) || contentRad;
           const pos = polarToCartesian(center, center, pRad, deg);
-          svg += '<g class="planet-body" filter="url(#glow)">';
-          svg += '<circle cx="'+pos.x+'" cy="'+pos.y+'" r="22" fill="#000" stroke="white" stroke-width="1.5"/>';
-          svg += '<text x="'+pos.x+'" y="'+pos.y+'" fill="white" font-size="24" text-anchor="middle" dominant-baseline="central">'+p.symbol+'</text>';
-          const tPos = polarToCartesian(center, center, pRad + 45, deg);
-          svg += '<text x="'+tPos.x+'" y="'+tPos.y+'" fill="white" font-size="12" font-weight="500" text-anchor="middle" dominant-baseline="central" transform="rotate('+(deg+90)+','+tPos.x+','+tPos.y+')">'+formatDegree(p.degree % 30)+'</text>';
+          svg += '<g class="planet-body">';
+          svg += '<text x="'+pos.x+'" y="'+pos.y+'" fill="white" font-size="28" text-anchor="middle" dominant-baseline="central" style="text-shadow:0 0 8px rgba(0,0,0,1),0 0 4px rgba(0,0,0,1)">'+p.symbol+'</text>';
+          const tPos = polarToCartesian(center, center, pRad + 38, deg);
+          svg += '<text x="'+tPos.x+'" y="'+tPos.y+'" fill="rgba(255,255,255,0.75)" font-size="11" font-weight="500" text-anchor="middle" dominant-baseline="central" transform="rotate('+(deg+90)+','+tPos.x+','+tPos.y+')">'+formatDegree(p.degree % 30)+'</text>';
           svg += '</g>';
         });
 
+        // AC / MC labels outside ring
         const acPos = polarToCartesian(center, center, outerRad + 30, rotate(ASC_DEGREE));
         svg += '<text x="'+acPos.x+'" y="'+acPos.y+'" fill="white" font-size="42" font-weight="bold" text-anchor="middle" dominant-baseline="central">AC</text>';
         const mcPos = polarToCartesian(center, center, outerRad + 30, rotate(MC_DEGREE));
         svg += '<text x="'+mcPos.x+'" y="'+mcPos.y+'" fill="white" font-size="32" font-weight="bold" text-anchor="middle" dominant-baseline="central">MC</text>';
 
-        root.innerHTML = '<svg viewBox="-50 -50 1100 1100" style="width:100%;height:100%;overflow:visible;"><defs><filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="4" result="blur" /><feComposite in="SourceGraphic" in2="blur" operator="over" /></filter></defs>' + svg + '</svg>';
+        root.innerHTML = '<svg viewBox="-50 -50 1100 1100" style="width:100%;height:100%;overflow:visible;"><defs></defs>' + svg + '</svg>';
       }
       render();
     })();

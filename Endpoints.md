@@ -17,6 +17,14 @@ This file organizes active API endpoints. Authoritative implementations live in 
 - **`GET /api/reading/:submissionId`**
   - **Purpose**: Returns the calculated interpretation JSON used by the interactive dashboard.
 
+### 🎟️ FateFlix app: survey participant lookup
+- **`POST /api/participants/lookup`**
+  - **Purpose**: Tells the FateFlix app whether an email has a finished survey, so participants get free app access when they sign up with the same email.
+  - **Caller**: only the app's Supabase function `verify-survey-id`.
+  - **Auth**: `Authorization: Bearer <PARTICIPANT_LOOKUP_KEY>` (Railway variable). Without the variable the route answers 503.
+  - **Body**: `{ "email": "..." }` → `{ ok, found, submissionId?, completedAt? }` (newest finished survey for that email, any letter case).
+  - **Notes**: Read only. See `server/participantLookup.js`; tests: `node --test server/participantLookup.test.js`.
+
 ### 🧮 Astrological Calculations (Swiss Ephemeris)
 - **`POST /api/birth-chart-swisseph`**
   - **Purpose**: Computes full chart data (planets, aspects).

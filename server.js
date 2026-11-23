@@ -7,6 +7,7 @@ const cors = require('cors');
 const { DateTime } = require('luxon');
 const swisseph = require('swisseph');
 const { normalizeSurveyPayload } = require('./server/normalizeSurveyPayload');
+const { participantLookupHandler } = require('./server/participantLookup');
 const fs = require('fs');
 const path = require('path');
 
@@ -4083,6 +4084,10 @@ app.post('/api/dev/chart-to-svg', async (req, res) => {
     return res.status(500).json({ ok: false, error: e?.message || 'Unknown error' });
   }
 });
+
+// === Survey participant lookup for the FateFlix app (read only, key protected) ===
+// See server/participantLookup.js.
+app.post('/api/participants/lookup', participantLookupHandler(prisma));
 
 // === Reading DTO by submission id =================================
 app.get('/api/reading/:submissionId', async (req, res) => {

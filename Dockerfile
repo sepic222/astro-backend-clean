@@ -1,8 +1,10 @@
 FROM node:18-bullseye
 
-# Native build deps for swisseph
+# Native build deps for swisseph.
+# ca-certificates is already in the node:18-bullseye image. Asking apt for it made every build since
+# 2026-11-12 fail: apt tried to upgrade it from bullseye-security, where that file now returns 404.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    python3 build-essential pkg-config ca-certificates \
+    python3 build-essential pkg-config \
  && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
